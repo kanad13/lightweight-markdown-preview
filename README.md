@@ -18,7 +18,7 @@ A modern Visual Studio Code extension for previewing Markdown files with full su
 
 ### Option 1: Install from Release (Recommended)
 
-1. Go to [Releases](https://github.com/kanad13/vscode-markdown-preview/releases) on GitHub
+1. Go to [Releases](https://github.com/kanad13/lightweight-markdown-preview/releases) on GitHub
 2. Download the latest `.vsix` file
 3. In VS Code, open the Extensions view (`Cmd+Shift+X`)
 4. Click the "..." menu in the top-right and select **"Install from VSIX..."**
@@ -28,8 +28,8 @@ A modern Visual Studio Code extension for previewing Markdown files with full su
 
 ```bash
 # Clone the repository
-git clone https://github.com/kanad13/vscode-markdown-preview.git
-cd vscode-markdown-preview
+git clone https://github.com/kanad13/lightweight-markdown-preview.git
+cd lightweight-markdown-preview
 
 # Install dependencies
 npm install
@@ -44,8 +44,8 @@ This creates a `.vsix` file that you can install as described above.
 
 ```bash
 # Clone and install
-git clone https://github.com/kanad13/vscode-markdown-preview.git
-cd vscode-markdown-preview
+git clone https://github.com/kanad13/lightweight-markdown-preview.git
+cd lightweight-markdown-preview
 npm install
 
 # Open in VS Code and press F5 to launch Extension Development Host

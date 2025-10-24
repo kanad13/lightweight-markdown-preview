@@ -46,7 +46,7 @@ git push origin main --tags
 ```
 GitHub Actions will automatically:
 1. Build the extension
-2. Create a release at: https://github.com/kanad13/vscode-markdown-preview/releases/tag/v0.1.0
+2. Create a release at: https://github.com/kanad13/lightweight-markdown-preview/releases/tag/v0.1.0
 3. Attach the .vsix file to the release
 
 ### Option A: Publish to Marketplace (Automated - No Token Needed)

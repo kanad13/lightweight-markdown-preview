@@ -6,9 +6,9 @@
 	"icon": "icon.png",
 	"publisher": "kanad13",
 	"author": "kanad13",
-	"homepage": "https://github.com/kanad13/vscode-markdown-preview",
+	"homepage": "https://github.com/kanad13/lightweight-markdown-preview",
 	"bugs": {
-		"url": "https://github.com/kanad13/vscode-markdown-preview/issues"
+		"url": "https://github.com/kanad13/lightweight-markdown-preview/issues"
 	},
 	"engines": {
 		"vscode": "^1.85.0",
@@ -70,7 +70,7 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/kanad13/vscode-markdown-preview.git"
+		"url": "https://github.com/kanad13/lightweight-markdown-preview.git"
 	},
 	"license": "MIT"
 }

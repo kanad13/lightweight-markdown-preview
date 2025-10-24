@@ -123,7 +123,7 @@ When releasing a new version:
 4. **Commit:** `git add . && git commit -m "Release v0.x.x"`
 5. **Tag:** `git tag v0.x.x && git push origin main --tags`
 6. **GitHub Actions** builds and creates release automatically
-7. **Verify** at https://github.com/kanad13/vscode-markdown-preview/releases
+7. **Verify** at https://github.com/kanad13/lightweight-markdown-preview/releases
 
 ## Files
 
