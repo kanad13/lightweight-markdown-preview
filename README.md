@@ -61,7 +61,7 @@ npm install
 To test all features including Mermaid diagrams:
 
 1. Open the included `test.md` file in VS Code
-2. Run the command **"Markdown: Show Markdown Preview"**
+2. Run the command **"Markdown: Show Markdown Preview"** from the Command Palette
 3. Verify that:
    - All text formatting appears correctly (headings, bold, italic, lists)
    - Tables render properly

@@ -2,8 +2,14 @@
 	"name": "lightweight-markdown-viewer",
 	"displayName": "Lightweight Markdown Viewer",
 	"description": "A simple Markdown preview extension for VS Code with Mermaid diagram support.",
-	"version": "0.0.1",
+	"version": "0.1.0",
+	"icon": "icon.png",
 	"publisher": "kanad13",
+	"author": "kanad13",
+	"homepage": "https://github.com/kanad13/vscode-markdown-preview",
+	"bugs": {
+		"url": "https://github.com/kanad13/vscode-markdown-preview/issues"
+	},
 	"engines": {
 		"vscode": "^1.85.0",
 		"node": ">=18.0.0"
@@ -15,7 +21,10 @@
 		"markdown",
 		"preview",
 		"mermaid",
-		"diagrams"
+		"diagrams",
+		"viewer",
+		"live-preview",
+		"lightweight"
 	],
 	"activationEvents": [
 		"onLanguage:markdown"
@@ -45,8 +54,7 @@
 	},
 	"scripts": {
 		"lint": "eslint .",
-		"pretest": "npm run lint",
-		"test": "node ./test/runTest.js",
+		"test": "npm run lint",
 		"package": "vsce package",
 		"publish": "vsce publish"
 	},

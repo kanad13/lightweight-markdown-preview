@@ -1,8 +1,6 @@
 .git
 .gitignore
 .eslintrc.json
-test.md
-test/
 .vscode-test/
 *.vsix
 *.log
