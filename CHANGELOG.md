@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2025-10-24
 
 ### Added
+
 - Initial release with Markdown preview support
 - Full Mermaid diagram support (v11) via CDN
 - Real-time preview updates as you type
@@ -17,11 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automatic preview updates when switching between documents
 
 ### Security
+
 - Implements Content Security Policy (CSP) with nonce-based script execution
 - Sandbox restriction on webview to prevent access to extension data
 - No user data collection or transmission
 
 ### Known Limitations
+
 - Mathematical expressions (LaTeX/MathJax) are not supported and display as plain text
 - Mermaid diagrams require an internet connection (CDN-based rendering)
 - Preview panel is shared across all documents (single panel per window)
