@@ -1,0 +1,28 @@
+{
+	"name": "markdown-preview-basic",
+	"displayName": "Markdown Preview Basic",
+	"description": "A simple Markdown preview extension for VS Code.",
+	"version": "0.0.1",
+	"publisher": "your-name",
+	"engines": {
+		"vscode": "^1.50.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"activationEvents": [
+		"onCommand:markdownPreviewBasic.showPreview"
+	],
+	"main": "./extension.js",
+	"contributes": {
+		"commands": [
+			{
+				"command": "markdownPreviewBasic.showPreview",
+				"title": "Show Markdown Preview"
+			}
+		]
+	},
+	"dependencies": {
+		"marked": "^9.0.0"
+	}
+}
