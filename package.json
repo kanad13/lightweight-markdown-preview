@@ -1,28 +1,50 @@
 {
 	"name": "markdown-preview-basic",
 	"displayName": "Markdown Preview Basic",
-	"description": "A simple Markdown preview extension for VS Code.",
+	"description": "A simple Markdown preview extension for VS Code with Mermaid diagram support.",
 	"version": "0.0.1",
 	"publisher": "your-name",
 	"engines": {
-		"vscode": "^1.50.0"
+		"vscode": "^1.85.0",
+		"node": ">=18.0.0"
 	},
 	"categories": [
-		"Other"
+		"Programming Languages"
 	],
-	"activationEvents": [
-		"onCommand:markdownPreviewBasic.showPreview"
+	"keywords": [
+		"markdown",
+		"preview",
+		"mermaid",
+		"diagrams"
 	],
+	"activationEvents": [],
 	"main": "./extension.js",
 	"contributes": {
 		"commands": [
 			{
 				"command": "markdownPreviewBasic.showPreview",
-				"title": "Show Markdown Preview"
+				"title": "Show Markdown Preview",
+				"category": "Markdown"
 			}
 		]
 	},
+	"scripts": {
+		"lint": "eslint .",
+		"pretest": "npm run lint",
+		"test": "node ./test/runTest.js"
+	},
 	"dependencies": {
 		"marked": "^9.0.0"
-	}
+	},
+	"devDependencies": {
+		"@types/node": "^18.0.0",
+		"@types/vscode": "^1.85.0",
+		"@vscode/test-electron": "^2.3.0",
+		"eslint": "^8.50.0"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/your-username/vscode-markdown-preview.git"
+	},
+	"license": "MIT"
 }
