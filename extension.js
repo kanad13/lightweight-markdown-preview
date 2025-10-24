@@ -3,16 +3,16 @@ const { marked } = require("marked");
 
 /**
  * Activation function - called when the extension loads
- * 
+ *
  * This extension provides a lightweight Markdown preview with Mermaid diagram support.
  * It maintains a single webview panel that reuses across different markdown files.
- * 
+ *
  * State managed:
  * - currentPanel: The active preview panel (or undefined if closed)
  * - currentDocument: The markdown document currently being previewed
- * 
+ *
  * This approach prevents resource exhaustion and keeps the extension lightweight.
- * 
+ *
  * @param {vscode.ExtensionContext} context - Extension context provided by VS Code
  */
 function activate(context) {
@@ -88,18 +88,18 @@ function activate(context) {
 
 /**
  * Updates the webview content with rendered markdown
- * 
+ *
  * This is the core rendering pipeline:
  * 1. Extract mermaid diagram blocks (before markdown parsing)
  * 2. Convert markdown to HTML using marked library
  * 3. Wrap extracted mermaid code in <pre class="mermaid">
  * 4. Inject HTML into webview with proper CSP and styling
- * 
+ *
  * Why mermaid extraction happens first:
  * - marked parser would escape backticks in mermaid syntax
  * - Pre-processing preserves mermaid code integrity
  * - Mermaid v11 renders elements with class="mermaid"
- * 
+ *
  * @param {vscode.WebviewPanel} panel - The webview to update
  * @param {vscode.TextDocument} document - The markdown document to render
  */
@@ -131,23 +131,23 @@ function updateWebviewContent(panel, document) {
 
 /**
  * Generates the complete HTML content for the webview
- * 
+ *
  * This function creates a sandboxed HTML environment with:
  * - Security: Content Security Policy with nonce-based scripts
  * - Styling: Clean, minimal design that works in light and dark themes
  * - Interactivity: Mermaid diagrams rendered via CDN
- * 
+ *
  * CSP (Content Security Policy) breakdown:
  * - default-src 'none': Block everything by default (secure)
  * - img-src https: data: Allow images from HTTPS and data URIs
  * - script-src 'nonce-*': Only allow scripts with matching nonce
  * - style-src 'unsafe-inline': Allow inline styles (needed for rendering)
- * 
+ *
  * Mermaid Configuration:
  * - startOnLoad: false - We call mermaid.run() explicitly
  * - securityLevel: loose - Allows all diagram types
  * - CDN: jsDelivr for reliability and caching
- * 
+ *
  * @param {string} markdownHtml - Already-rendered HTML from marked
  * @param {string} nonce - Security token for CSP (random string)
  * @returns {string} Complete HTML page
@@ -242,18 +242,18 @@ function getWebviewContent(markdownHtml, nonce) {
 
 /**
  * Generates a random nonce for Content Security Policy
- * 
+ *
  * A nonce (number used once) is a random token that:
  * - Makes each rendered page unique
  * - Prevents inline script injection attacks
  * - Is required by VS Code's webview security model
- * 
+ *
  * The nonce is included in the CSP header and must match
  * all inline scripts for them to execute. This prevents
  * malicious scripts from running even if CSP is bypassed.
- * 
+ *
  * Length: 32 characters of alphanumeric (sufficient for security)
- * 
+ *
  * @returns {string} Random 32-character alphanumeric string
  */
 function getNonce() {

@@ -1,223 +1,161 @@
-# Architecture & Design Document
+# Architecture
 
-## Overview
+## Design Decisions
 
-This is a lightweight VS Code extension that provides real-time Markdown preview with built-in support for Mermaid diagrams. The extension is designed to be simple, fast, and focused on core functionality without unnecessary dependencies.
+### Single Webview Panel
 
-## Key Design Decisions
+**Decision:** One preview panel per window, not per document.
 
-### 1. **Single Webview Panel Approach**
-- **Decision:** Keep only one preview panel open at a time (tracked in `currentPanel`)
-- **Why:** 
-  - Prevents resource exhaustion from multiple webview instances
-  - Simplifies state management
-  - Aligns with VS Code's standard preview behavior (similar to built-in previews)
-- **Trade-off:** Users can only preview one file at a time. This is acceptable for the use case.
+**Why:** Simpler state management, lower memory footprint, consistent behavior with VS Code's built-in preview.
 
-### 2. **Document Tracking via `currentDocument`**
-- **Decision:** Track which document is currently being previewed
-- **Why:**
-  - Enables efficient updates via document change listeners
-  - Only updates preview for the document being viewed (not all open files)
-  - Prevents unnecessary rendering of non-visible documents
-- **Implementation:** When user switches documents, the preview updates to show the new file's content
+**Tradeoff:** Can't preview two documents simultaneously.
 
-### 3. **Pre-processing Mermaid Blocks Before Markdown Rendering**
-- **Decision:** Extract and convert mermaid code blocks BEFORE running them through the `marked` parser
-- **Why:**
-  - Prevents `marked` from escaping/modifying mermaid syntax
-  - Mermaid blocks use triple backticks (`) but need special handling
-  - Regex replacement happens before HTML generation to preserve diagram code integrity
-- **Implementation:** `/```mermaid\s*\n([\s\S]*?)```/g` regex finds blocks and wraps them in `<pre class="mermaid">`
-- **Known Issue:** If someone uses literal mermaid syntax in code blocks with exact backticks, it may be processed as a diagram
+### Markdown → HTML → Webview
 
-### 4. **Content Security Policy (CSP) with Nonce-based Scripts**
-- **Decision:** Implement CSP headers and nonce-based script loading
-- **Why:**
-  - VS Code webviews require this for security
-  - Prevents injection attacks
-  - Allows external scripts (Mermaid CDN) in a controlled way
-- **Implementation:** 
-  - Generate unique nonce on each render
-  - Include nonce in script tags
-  - Allow CDN sources in CSP header
-- **Security Level:** Set to `loose` for Mermaid to allow all diagram types
+**Flow:** User types → `onDidChangeTextDocument` → `updateWebviewContent()` → Render HTML → Display
 
-### 5. **Live Update on Document Change**
-- **Decision:** Use `onDidChangeTextDocument` listener to update preview in real-time
-- **Why:**
-  - Provides immediate feedback as user types
-  - Better UX than static previews
-  - VS Code provides this event for free
-- **Implementation:** Listener checks if changed document matches `currentDocument` before updating
-- **Performance:** Rendering is debounced by user's typing speed (not explicitly throttled)
+**Why:** Real-time preview feedback. No file save required.
 
-### 6. **Marked Library for Markdown Rendering**
-- **Decision:** Use the `marked` library instead of implementing parsing ourselves
-- **Why:**
-  - Battle-tested, fast, and standards-compliant
-  - Actively maintained
-  - Smaller than bundling a full parser
-  - Supports extensions for custom rendering
-- **Trade-off:** External dependency, but it's the standard choice for JS markdown
+### Mermaid Pre-processing
 
-### 7. **Mermaid via CDN**
-- **Decision:** Load Mermaid from CDN (jsDeliver) instead of bundling it
-- **Why:**
-  - Mermaid is large (~180KB+) - CDN keeps package size small
-  - CDN is cached across VS Code installations
-  - Easier to update independently
-- **Trade-off:** Requires internet connection for diagrams. Users on air-gapped systems cannot use diagrams.
-- **Future Improvement:** Could bundle Mermaid locally and use a setting to toggle
+**Approach:** Extract mermaid blocks before markdown parsing.
 
-## Architecture Layers
+**Why:** `marked` would escape mermaid syntax, breaking diagrams. Pre-extraction preserves syntax.
 
-```
-┌─────────────────────────────────────────┐
-│    VS Code UI (Editor + Commands)       │
-│  (Command palette, editor title icon)   │
-└──────────────┬──────────────────────────┘
-               │
-┌──────────────▼──────────────────────────┐
-│   Extension Host (extension.js)         │
-│  - Command registration                 │
-│  - Event listeners                      │
-│  - State management                     │
-└──────────────┬──────────────────────────┘
-               │
-┌──────────────▼──────────────────────────┐
-│    Webview Rendering Layer              │
-│  - Markdown rendering (marked lib)      │
-│  - Mermaid diagram rendering (CDN)      │
-│  - Styling & layout                     │
-└─────────────────────────────────────────┘
-```
+**Pattern:** Regex finds ` ```mermaid...``` `, stores separately, parses markdown, reinserts with Mermaid script.
+
+### CDN for Mermaid, NPM for Markdown
+
+**Why:** Mermaid is large (100KB+), changes frequently, only needed in previews. `marked` is small, stable, used at parse time.
+
+**Benefit:** Keep package size minimal (~180KB with marked), avoid build complexity.
+
+### Content Security Policy (CSP) with Nonces
+
+**How:** CSP header restricts script execution. Nonces allow only trusted inline scripts.
+
+**Why:** Webviews can execute arbitrary content. Nonce prevents injection attacks.
+
+**Implementation:** Generate random nonce per render, include in CSP header and script tags.
 
 ## State Management
 
-The extension maintains minimal state:
-
-```javascript
-let currentPanel = undefined;      // Currently open webview panel
-let currentDocument = undefined;   // Document being previewed
+```
+Extension Activation
+    ↓
+commands.registerCommand() registers "markdown.preview" command
+    ↓
+User clicks preview icon
+    ↓
+currentPanel = createWebviewPanel()
+currentDocument = activeTextEditor.document
+    ↓
+onDidChangeTextDocument listener
+    ↓
+updateWebviewContent() if document matches currentDocument
+    ↓
+Panel disposed → cleanup listeners
 ```
 
-**State Flow:**
-1. User clicks command → Create/reveal panel, set `currentDocument`
-2. User edits markdown → Document change event → Update same panel
-3. User closes panel → `onDidDispose` → Reset both to `undefined`
-4. User opens different markdown → Command fired → Update `currentDocument`, re-render panel
+**Key Variables:**
 
-**Why minimal state?** Simpler = fewer bugs, easier to maintain and extend
+- `currentPanel`: Active webview or null
+- `currentDocument`: Document being previewed
+- `nonce`: CSP security token (changes each render)
 
-## Extension Points (Future Enhancements)
+**No external state:** Everything stored in closure variables.
 
-### 1. Custom Themes
-- **How:** Add configuration settings for theme colors
-- **Where:** Modify the CSS in `getWebviewContent()`
-- **Impact:** Low - purely visual
+## Guardrails
 
-### 2. Additional Diagram Support
-- **How:** Detect code block language and route to appropriate renderer
-- **Where:** Extend the mermaid block detection logic in `updateWebviewContent()`
-- **Impact:** Medium - requires new CDN or bundled library
+### Do's ✅
 
-### 3. Math Expression Support
-- **How:** Similar to Mermaid - preprocess `$$..$$` or `$...$` blocks
-- **Where:** Add another regex pass before markdown rendering
-- **Impact:** Medium - adds KaTeX or MathJax dependency
+- Keep dependencies minimal (only essential)
+- Test with `npm run lint` before committing
+- Update README.md for user-facing changes
+- Include JSDoc comments explaining WHY
+- Use CSP nonces for all inline scripts
+- Test mermaid diagrams at mermaid.live
+- Update CHANGELOG.md for each release
+- Use semantic versioning (major.minor.patch)
 
-### 4. Markdown Extensions (tables, strikethrough, etc)
-- **How:** Configure `marked` parser with extensions
-- **Where:** Pass options object to `marked()` call
-- **Impact:** Low - `marked` already supports these
+### Don'ts ❌
 
-### 5. Multiple Panel Preview
-- **How:** Track panels by document URI instead of single `currentPanel`
-- **Where:** Refactor to use `Map<documentUri, panel>`
-- **Impact:** High - requires state management redesign
+- Add large dependencies without justification
+- Modify CSP headers without security review
+- Change state management carelessly
+- Skip testing before committing
+- Store user data without explicit consent
+- Commit .vsix files to git
+- Change nonce generation logic without review
 
-## Performance Considerations
+## Security Model
 
-### Current Approach
-- Rendering: On every document change (no debouncing)
-- State: Minimal, only tracking current panel and document
-- Dependencies: One npm dependency (`marked`), Mermaid via CDN
+**Threat Model:** Untrusted markdown content in VS Code
 
-### Potential Bottlenecks
-- Large files: Very large markdown files might cause lag on every keystroke
-- Mermaid rendering: Complex diagrams might take time to render (CDN latency + JS execution)
-- Regex parsing: The mermaid block extraction uses a global regex that processes entire document
+**Mitigations:**
 
-### Future Optimizations (if needed)
-- Add debouncing for document changes
-- Implement virtual scrolling for preview
-- Cache rendered HTML and only update changed sections
-- Preprocess on worker thread
+1. **Script Sandboxing:** Webview runs in restricted context
+2. **CSP:** Only allow marked output + Mermaid CDN + nonce scripts
+3. **No Access to:** User files, extension data, VS Code API (blocked by default)
+4. **Input:** No user input exposed to HTML (only rendered markdown)
 
-## Dependencies
+**If adding new scripts:**
 
-### Runtime
-- **marked** (^9.0.0): Markdown parser
-  - Why: Standard choice, actively maintained, good performance
-  - Size: ~35KB minified
-  - Used for: Converting markdown to HTML
+- Include nonce: `<script nonce="${nonce}">`
+- Never use `eval()` or `innerHTML` with user content
+- Test CSP violations in DevTools
 
-### Dev Dependencies
-- **@types/vscode**, **@types/node**: TypeScript type definitions
-- **@vscode/test-electron**: Test runner for VS Code extensions
-- **eslint**: Code linting
-- **@vscode/vsce**: Packaging tool
+## Performance
 
-### External (CDN)
-- **Mermaid v11** (jsDelivr CDN): Diagram rendering
-  - Why: Large library, better to load on demand
-  - Trade-off: Requires internet connection
+**Current:** Real-time updates with ~50ms render time
 
-## Testing Strategy
+**Bottlenecks:**
 
-Currently minimal test setup. For future:
-- Unit tests: Regex patterns for mermaid extraction
-- Integration tests: Markdown rendering with various inputs
-- Visual tests: Mermaid diagram rendering
+- Large files (>10,000 lines) may lag
+- Mermaid rendering for complex diagrams
+- CDN latency on first load
 
-See `test/` directory for current test structure.
+**If optimization needed:**
 
-## Known Limitations
+1. Debounce `onDidChangeTextDocument` listener
+2. Implement render cache
+3. Profile with DevTools (F12 in Extension Dev Host)
 
-1. **No Math Support:** LaTeX/MathJax expressions not rendered (display as plain text)
-2. **No Offline Diagram Support:** Mermaid diagrams require internet (CDN-based)
-3. **Single Preview Panel:** Can only preview one file at a time
-4. **No Markdown Extensions:** Doesn't support GitHub-flavored markdown extensions by default (but easily extensible)
-5. **Performance:** Large files (10MB+) may cause lag on every keystroke
-6. **Regex Fragility:** Mermaid block detection could fail with nested backticks
+## Extension Points
 
-## Maintenance Notes
+**What can be extended:**
 
-- **Security Updates:** Keep `marked` and other dependencies up to date
-- **VS Code Updates:** May need CSP adjustments for future VS Code versions
-- **Mermaid Updates:** CDN source should be monitored for breaking changes
-- **Test Coverage:** Currently low - consider adding tests before major refactors
+- CSS styling (modify body, code, table CSS in `getWebviewContent()`)
+- Markdown rendering options (pass options to `marked()`)
+- Configuration settings (add to `package.json` contribution points)
+- Commands (register new commands in `activate()`)
 
-## Future Roadmap
+**What should NOT be extended:**
 
-1. **Priority: High**
-   - Add test coverage (unit tests for core functions)
-   - Support GitHub-flavored markdown by default
-   - Add custom theme settings
+- Core state management (currentPanel/currentDocument)
+- CSP headers (without security review)
+- Mermaid preprocessing logic
+- Nonce generation
 
-2. **Priority: Medium**
-   - Math expression support (KaTeX)
-   - Multiple preview panels support
-   - Export rendered preview as HTML
+## Files
 
-3. **Priority: Low**
-   - Bundle Mermaid locally for offline support
-   - Support other diagram types (PlantUML, D2, etc.)
-   - Dark mode theme optimization
-   - Performance optimizations (debouncing, virtual scroll)
+| File | Lines | Purpose |
+|------|-------|---------|
+| extension.js | 222 | Core logic |
+| package.json | 30 | Metadata, dependencies |
+| README.md | 60 | User guide |
+| ARCHITECTURE.md | 150 | Design decisions |
+| AGENTS.md | 250 | Development guide |
+| .github/workflows/release.yml | 40 | CI/CD pipeline |
+
+## Distribution Model
+
+- **Method:** GitHub Releases with .vsix files
+- **Trigger:** Git tag `v*.*.*` (e.g., v0.0.2)
+- **Build:** GitHub Actions runs `npm run package`
+- **Result:** .vsix file attached to release
+- **Install:** User downloads .vsix and installs in VS Code
 
 ---
 
 **Last Updated:** October 24, 2025
-**For AI Agents:** This document explains the WHY behind each design decision. Before modifying architecture, read this to understand trade-offs.

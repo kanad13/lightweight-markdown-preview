@@ -1,365 +1,188 @@
 # Guide for AI Agents
 
-This document is written specifically for AI agents (LLMs, code assistants) working on this codebase. It provides the context and instructions needed to extend, maintain, and modify the extension effectively.
+Quick guide for extending and maintaining this codebase.
 
 ## Quick Context
 
-**Project:** Lightweight Markdown Viewer - A VS Code extension for real-time markdown preview with Mermaid diagram support.
+- **Project:** VS Code markdown preview with Mermaid support
+- **Main file:** `extension.js` (222 lines)
+- **Tech:** VS Code API, marked, Mermaid v11
+- **Package size:** ~180KB (includes node_modules)
 
-**Tech Stack:**
-- VS Code API (JavaScript)
-- Marked (markdown parser)
-- Mermaid v11 (diagram rendering)
+## Start Here
 
-**Key File:** `extension.js` (222 lines) - contains all logic
+1. Read ARCHITECTURE.md (design decisions)
+2. Read README.md (user-facing features)
+3. Review extension.js (implementation)
 
-**Size:** ~180KB packaged (includes node_modules)
+## Making Changes
 
-## Before You Start
+### Add a Feature
 
-1. **Read ARCHITECTURE.md** - Explains all design decisions
-2. **Read README.md** - Explains what the extension does
-3. **Look at package.json** - Understand dependencies
-4. **Review extension.js** - Main code (well-commented)
+1. Understand the flow in extension.js
+2. Make code changes
+3. Test: `npm run lint` then `F5` in VS Code
+4. Update README.md if user-facing
+5. Update CHANGELOG.md with entry
+6. Commit with clear message
 
-## How to Make Changes
+### Fix a Bug
 
-### Adding a New Feature
+1. Locate issue in extension.js
+2. Debug: Open Extension Development Host (F5), check Output panel
+3. Fix with minimal changes
+4. Test thoroughly
+5. Update CHANGELOG.md
+6. Commit with reference to issue
 
-**Example: Add inline code rendering customization**
+### Add a Dependency
 
-1. **Understand Current Flow:**
-   - Look at `getWebviewContent()` function
-   - Find where CSS is defined for `code` elements
-   - Understand where to add new styling
+⚠️ **Keep minimal.** Current: `marked` only.
 
-2. **Make Your Changes:**
-   - Modify the CSS in `getWebviewContent()`
-   - Or add new preprocessing in `updateWebviewContent()`
-   - Test locally: `npm run lint` then `F5` in VS Code
+Before adding:
 
-3. **Update Documentation:**
-   - Add to README.md under "Features"
-   - Update ARCHITECTURE.md if design changed
-   - Add comments to extension.js if logic is complex
+- Is it necessary?
+- Can we use CDN instead (like Mermaid)?
+- What's the size impact?
 
-4. **Test Thoroughly:**
-   - Test with various markdown files
-   - Test with mermaid diagrams
-   - Test with edge cases
-
-5. **Commit with Clear Message:**
-   ```
-   feat: Add inline code rendering customization
-   
-   - Modified CSS for code elements in getWebviewContent()
-   - Tested with various markdown files
-   - See ARCHITECTURE.md for styling extension points
-   ```
-
-### Fixing a Bug
-
-**Example: Mermaid diagrams not rendering in some cases**
-
-1. **Locate the Issue:**
-   - Check `updateWebviewContent()` - handles mermaid extraction
-   - Check `getWebviewContent()` - handles rendering setup
-   - Check the regex pattern for mermaid blocks in the code
-
-2. **Debug:**
-   - Add error logging: `console.error()` for visibility
-   - Test with the included `test.md`
-   - Use VS Code's debug console (F5 to open Extension Development Host)
-
-3. **Fix and Test:**
-   - Make minimal change
-   - Verify fix doesn't break other features
-   - Run `npm run lint` to check code quality
-
-4. **Document the Fix:**
-   - If it's a known limitation, update ARCHITECTURE.md
-   - Add inline comments explaining the fix
-   - Commit with reference to the issue
-
-### Extending with New Dependencies
-
-⚠️ **Important:** Keep dependencies minimal!
-
-**Current approach:**
-- `marked` for markdown (required)
-- Everything else loads from CDN or is built-in
-
-**Before adding a dependency:**
-1. Check if it's absolutely necessary
-2. Consider CDN alternative (like we do with Mermaid)
-3. Estimate size impact
-4. Document in package.json WHY it's needed
-
-**If you must add:**
-```bash
-npm install your-package --save
-npm run package  # rebuild
-```
-
-Update ARCHITECTURE.md with dependency rationale.
+If needed: `npm install package --save` then `npm run package`
 
 ## Code Organization
 
-### extension.js Structure
-
-```javascript
-// Imports
-const vscode = require("vscode");
-const { marked } = require("marked");
-
-// Main activation function
-function activate(context) {
-  // Command registration
-  // Event listeners
-  // State management
-}
-
-// Helper: Update preview content
-function updateWebviewContent(panel, document) {
-  // Pre-process mermaid blocks
-  // Render markdown
-  // Generate HTML
-}
-
-// Helper: Generate HTML template
-function getWebviewContent(markdownHtml, nonce) {
-  // Return complete HTML with CSS and scripts
-}
-
-// Helper: Generate nonce for CSP
-function getNonce() {
-  // Generate random string
-}
-
-// Deactivation
-function deactivate() {}
-
-module.exports = { activate, deactivate };
+```
+extension.js:
+- activate(context)         - Entry point, registers commands
+- updateWebviewContent()    - Renders markdown + processes mermaid
+- getWebviewContent()       - Generates HTML/CSS/JS
+- getNonce()                - Generates CSP nonce
+- deactivate()              - Cleanup
 ```
 
-### Key Functions to Understand
-
-| Function | Purpose | Modifiable? |
-|----------|---------|------------|
-| `activate()` | Called when extension loads. Registers commands and listeners | Yes, but carefully |
-| `updateWebviewContent()` | Core logic: processes markdown and updates preview | Yes, good place to extend |
-| `getWebviewContent()` | Generates the HTML + CSS + JavaScript for preview | Yes, for styling changes |
-| `getNonce()` | Security: generates random string for CSP | No, working as intended |
-
-## Testing Locally
-
-### Development Mode
+## Testing
 
 ```bash
-cd /Users/kanad/Data/repo/personal/vscode-markdown-preview
-
-# Install dependencies
+# Development mode
 npm install
+code .           # Open in VS Code
+# Press F5 in VS Code to launch Extension Development Host
 
-# Open in VS Code
-code .
+# Linting
+npm run lint
 
-# Press F5 to open Extension Development Host
-# (new VS Code window with extension loaded)
+# Manual testing
+- [ ] Open markdown file
+- [ ] Click preview icon
+- [ ] Preview updates as you type
+- [ ] Mermaid diagrams render
+- [ ] Test with example.md
 ```
 
-In the Extension Development Host:
-- Open `test.md` to see example content
-- Changes to code auto-reload
-- Check "Output" panel for errors (select extension name from dropdown)
+## Common Tasks
 
-### Manual Testing Checklist
+### Change CSS Styling
 
-- [ ] Open any markdown file
-- [ ] Click preview icon (eye icon in editor title)
-- [ ] Verify preview panel opens on right
-- [ ] Type in markdown - preview updates
-- [ ] Check formatting: headings, bold, lists, tables
-- [ ] Open `test.md` - verify Mermaid diagram renders
-- [ ] Try edge cases: very long file, special characters, etc.
+Find `body { ... }` in getWebviewContent() and modify
 
-### Linting
+### Change Markdown Rendering
 
-```bash
-npm run lint  # Check code quality
-```
+Modify the `marked()` call in updateWebviewContent()
 
-## Debugging Tips
+### Add Configuration Setting
 
-### Check Errors in Extension
+Add to package.json:
 
-1. In Extension Development Host, press `Ctrl+Shift+J` to open DevTools
-2. Go to "Output" tab
-3. Select "Lightweight Markdown Viewer" from dropdown
-4. Look for error messages
-
-### Log Information
-
-Add to extension.js:
-```javascript
-console.log("Debug message:", variable);
-```
-
-This appears in the Output panel.
-
-### Common Issues
-
-| Issue | Cause | Solution |
-|-------|-------|----------|
-| Command not found | Extension didn't activate | Open a markdown file to trigger activation |
-| Preview blank | Rendering failed | Check Output tab for error message |
-| Mermaid not rendering | Diagram syntax error | Test diagram at mermaid.live |
-| Package won't install | Missing dependency | Run `npm install` |
-
-## Making a Release
-
-When ready to release:
-
-```bash
-# 1. Update version in package.json
-# 2. Commit changes
-git add .
-git commit -m "Release v0.0.2"
-
-# 3. Create tag (triggers GitHub Actions build)
-git tag v0.0.2
-git push origin main --tags
-
-# GitHub Actions automatically builds and creates release
-# Check: https://github.com/kanad13/vscode-markdown-preview/actions
-```
-
-**Important:** Tag format MUST be `v*.*.*` (e.g., v0.0.2, v1.2.3)
-
-## File Guide
-
-| File | Purpose | Edit Frequency |
-|------|---------|-----------------|
-| `extension.js` | Main extension code | Often |
-| `package.json` | Metadata & dependencies | Rarely |
-| `README.md` | User documentation | Sometimes |
-| `ARCHITECTURE.md` | Design decisions (this repo) | Sometimes |
-| `.vscodeignore` | Packaging config | Rarely |
-| `.github/workflows/release.yml` | Build automation | Rarely |
-| `test.md` | Example markdown for testing | Sometimes |
-
-## Common Modifications
-
-### Add a Configuration Setting
-
-1. Add to package.json:
 ```json
 "configuration": {
-  "title": "Lightweight Markdown Viewer",
   "properties": {
-    "lightweightMarkdownViewer.theme": {
+    "lightweightMarkdownViewer.setting": {
       "type": "string",
-      "default": "default",
-      "description": "Preview theme"
+      "default": "value"
     }
   }
 }
 ```
 
-2. Read in extension.js:
-```javascript
-const theme = vscode.workspace.getConfiguration('lightweightMarkdownViewer').get('theme');
-```
+Read in extension.js: `vscode.workspace.getConfiguration('lightweightMarkdownViewer').get('setting')`
 
-3. Use in rendering logic
+### Debug
 
-### Change CSS Styling
+In Extension Development Host:
 
-Find this in `getWebviewContent()`:
-```javascript
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', ...;
-  // Modify here
-}
-```
+- Press `Ctrl+Shift+J` for DevTools
+- Go to Output tab
+- Select "Lightweight Markdown Viewer"
+- Look for errors
 
-### Add New Markdown Feature
+## Release Checklist
 
-1. Check if `marked` supports it (most markdown does)
-2. If not, preprocess in `updateWebviewContent()` like we do for Mermaid
-3. Add test cases to `test.md`
+When releasing a new version:
 
-## Performance Considerations
+1. **Update version** in package.json (semantic versioning: major.minor.patch)
+2. **Update CHANGELOG.md** with changes
+3. **Test locally:** `npm run lint` and `npm run package`
+4. **Commit:** `git add . && git commit -m "Release v0.x.x"`
+5. **Tag:** `git tag v0.x.x && git push origin main --tags`
+6. **GitHub Actions** builds and creates release automatically
+7. **Verify** at https://github.com/kanad13/vscode-markdown-preview/releases
 
-**Current bottlenecks:**
-- Large files might lag on each keystroke
-- Mermaid rendering adds latency (especially complex diagrams)
-- CDN latency for Mermaid on first render
+## Files
 
-**If performance becomes an issue:**
-1. Add debouncing to `onDidChangeTextDocument` listener
-2. Implement rendering cache
-3. Profile with Chrome DevTools (F12 in Extension Development Host)
+| File            | Purpose                | Edit Frequency |
+| --------------- | ---------------------- | -------------- |
+| extension.js    | Main code              | Often          |
+| package.json    | Metadata, dependencies | Rarely         |
+| README.md       | User docs              | Sometimes      |
+| ARCHITECTURE.md | Design decisions       | Sometimes      |
+| CHANGELOG.md    | Release history        | Every release  |
+| .vscodeignore   | Packaging              | Rarely         |
+| example.md      | Test file              | Sometimes      |
 
-## Standards & Conventions
+## Standards
 
-### Code Style
-- Use semicolons (required by eslint)
-- Use `const` for constants, `let` for variables
-- Comments explain WHY, not WHAT
-- Max line length: ~100 characters
+**Code Style:**
 
-### Comments
-```javascript
-// Good: explains design decision
-// Pre-process mermaid before marked to avoid escaping issues
+- Use semicolons, `const`/`let`, explain WHY not WHAT
+- Max ~100 char lines
 
-// Bad: explains obvious code
-const foo = bar; // Set foo to bar
-```
+**JSDoc:**
 
-### Variable Naming
-- `currentPanel` - the active webview
-- `currentDocument` - the document being previewed
-- `nonce` - security token for CSP
-- `disposable` - cleanup functions registered with VS Code
-
-### JSDoc Format
 ```javascript
 /**
- * Short description
- * @param {type} paramName - Description
+ * Description
+ * @param {type} name - Description
  * @returns {type} Description
  */
-function myFunction(paramName) { ... }
 ```
 
-## Useful Resources
+**Variables:**
 
-- **VS Code API:** https://code.visualstudio.com/api
-- **Marked Documentation:** https://marked.js.org/
-- **Mermaid Documentation:** https://mermaid.js.org/
-- **CSP Documentation:** https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP
-- **VS Code Extension Best Practices:** https://code.visualstudio.com/api/references/extension-guidelines
+- `currentPanel` - active webview
+- `currentDocument` - document being previewed
+- `nonce` - CSP security token
 
-## What NOT to Do
+**Do's:**
 
-❌ Don't modify core state management without understanding implications
-❌ Don't add large dependencies without justification
-❌ Don't skip testing before committing
-❌ Don't modify the CSP without security review
-❌ Don't change `package.json` version manually (handled in release process)
-❌ Don't commit the `.vsix` file to git (it's built automatically)
+- ✅ Keep dependencies minimal
+- ✅ Test before committing
+- ✅ Update docs when changing behavior
+- ✅ Use meaningful commit messages
 
-## Emergency Contacts / Resources
+**Don'ts:**
 
-- **Bug Reports:** Open GitHub issues with error messages
-- **Questions:** Check existing issues and ARCHITECTURE.md
-- **Contributing:** Follow the guidelines in README.md
+- ❌ Modify state management carelessly
+- ❌ Add large dependencies without justification
+- ❌ Change CSP without security review
+- ❌ Skip testing
+- ❌ Commit .vsix files
+
+## Resources
+
+- VS Code API: https://code.visualstudio.com/api
+- Marked: https://marked.js.org/
+- Mermaid: https://mermaid.js.org/
+- CSP: https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP
 
 ---
 
 **Last Updated:** October 24, 2025
-**Audience:** AI Agents, Contributors, Maintainers
-
-**If you follow this guide, you will successfully extend this codebase!**
+**For:** AI Agents & Contributors
