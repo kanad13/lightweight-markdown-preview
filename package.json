@@ -3,7 +3,7 @@
 	"displayName": "Lightweight Markdown Viewer",
 	"description": "A simple Markdown preview extension for VS Code with Mermaid diagram support.",
 	"version": "0.0.1",
-	"publisher": "your-name",
+	"publisher": "kanad13",
 	"engines": {
 		"vscode": "^1.85.0",
 		"node": ">=18.0.0"
@@ -26,7 +26,11 @@
 			{
 				"command": "lightweightMarkdownViewer.showPreview",
 				"title": "Show Lightweight Markdown Preview",
-				"category": "Markdown"
+				"category": "Markdown",
+				"icon": {
+					"light": "icon-eye.svg",
+					"dark": "icon-eye.svg"
+				}
 			}
 		],
 		"menus": {
@@ -34,12 +38,7 @@
 				{
 					"command": "lightweightMarkdownViewer.showPreview",
 					"when": "resourceLangId == markdown",
-					"group": "navigation@99",
-					"icon": {
-						"light": "./icon-eye.svg",
-						"dark": "./icon-eye.svg"
-					},
-					"alt": "Lightweight Markdown Preview"
+					"group": "navigation"
 				}
 			]
 		}
@@ -47,7 +46,9 @@
 	"scripts": {
 		"lint": "eslint .",
 		"pretest": "npm run lint",
-		"test": "node ./test/runTest.js"
+		"test": "node ./test/runTest.js",
+		"package": "vsce package",
+		"publish": "vsce publish"
 	},
 	"dependencies": {
 		"marked": "^9.0.0"
@@ -56,11 +57,12 @@
 		"@types/node": "^18.0.0",
 		"@types/vscode": "^1.85.0",
 		"@vscode/test-electron": "^2.3.0",
-		"eslint": "^8.50.0"
+		"eslint": "^8.50.0",
+		"@vscode/vsce": "^2.22.0"
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/your-username/vscode-markdown-preview.git"
+		"url": "https://github.com/kanad13/vscode-markdown-preview.git"
 	},
 	"license": "MIT"
 }

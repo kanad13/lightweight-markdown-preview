@@ -14,7 +14,42 @@ A modern Visual Studio Code extension for previewing Markdown files with full su
 - **Security:** Implements Content Security Policy (CSP) for safe rendering
 - **Error Handling:** Displays clear error messages for invalid content
 
-## Usage
+## Installation
+
+### Option 1: Install from Release (Recommended)
+
+1. Go to [Releases](https://github.com/kanad13/vscode-markdown-preview/releases) on GitHub
+2. Download the latest `.vsix` file
+3. In VS Code, open the Extensions view (`Cmd+Shift+X`)
+4. Click the "..." menu in the top-right and select **"Install from VSIX..."**
+5. Select the downloaded `.vsix` file
+
+### Option 2: Install from Source
+
+```bash
+# Clone the repository
+git clone https://github.com/kanad13/vscode-markdown-preview.git
+cd vscode-markdown-preview
+
+# Install dependencies
+npm install
+
+# Package the extension
+npm run package
+```
+
+This creates a `.vsix` file that you can install as described above.
+
+### Option 3: Development Mode
+
+```bash
+# Clone and install
+git clone https://github.com/kanad13/vscode-markdown-preview.git
+cd vscode-markdown-preview
+npm install
+
+# Open in VS Code and press F5 to launch Extension Development Host
+```
 
 1. Open any Markdown (`.md`) file in VS Code
 2. Run the command **"Markdown: Show Markdown Preview"** from the Command Palette (`Cmd+Shift+P` on macOS or `Ctrl+Shift+P` on Windows/Linux)
