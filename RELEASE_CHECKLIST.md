@@ -30,8 +30,8 @@
 - [x] Git status clean
 
 ## 📦 Package Information
-- **Name:** lightweight-markdown-viewer
-- **Version:** 0.1.0
+- **Name:** lightweight-markdown-preview
+- **Version:** 0.2.0
 - **Publisher:** kanad13
 - **Size:** ~194 KB (.vsix)
 - **Dependencies:** marked@^9.0.0
