@@ -1,7 +1,6 @@
 .git
 .gitignore
 .eslintrc.json
-node_modules
 test.md
 test/
 .vscode-test/
