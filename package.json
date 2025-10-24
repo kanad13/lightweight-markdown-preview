@@ -1,6 +1,6 @@
 {
-	"name": "markdown-preview-basic",
-	"displayName": "Markdown Preview Basic",
+	"name": "lightweight-markdown-viewer",
+	"displayName": "Lightweight Markdown Viewer",
 	"description": "A simple Markdown preview extension for VS Code with Mermaid diagram support.",
 	"version": "0.0.1",
 	"publisher": "your-name",
@@ -17,16 +17,32 @@
 		"mermaid",
 		"diagrams"
 	],
-	"activationEvents": [],
+	"activationEvents": [
+		"onLanguage:markdown"
+	],
 	"main": "./extension.js",
 	"contributes": {
 		"commands": [
 			{
-				"command": "markdownPreviewBasic.showPreview",
-				"title": "Show Markdown Preview",
+				"command": "lightweightMarkdownViewer.showPreview",
+				"title": "Show Lightweight Markdown Preview",
 				"category": "Markdown"
 			}
-		]
+		],
+		"menus": {
+			"editor/title": [
+				{
+					"command": "lightweightMarkdownViewer.showPreview",
+					"when": "resourceLangId == markdown",
+					"group": "navigation@99",
+					"icon": {
+						"light": "./icon-eye.svg",
+						"dark": "./icon-eye.svg"
+					},
+					"alt": "Lightweight Markdown Preview"
+				}
+			]
+		}
 	},
 	"scripts": {
 		"lint": "eslint .",

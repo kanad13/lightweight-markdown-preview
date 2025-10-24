@@ -10,7 +10,7 @@ function activate(context) {
 	let currentDocument = undefined;
 
 	const disposable = vscode.commands.registerCommand(
-		"markdownPreviewBasic.showPreview",
+		"lightweightMarkdownViewer.showPreview",
 		function () {
 			const editor = vscode.window.activeTextEditor;
 			if (!editor) {
