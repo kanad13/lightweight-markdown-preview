@@ -1,4 +1,3 @@
-````markdown
 # Sample Markdown File
 
 This file contains all typical elements found in a Markdown document. Like:
