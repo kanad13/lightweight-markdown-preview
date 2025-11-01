@@ -91,14 +91,16 @@ function activate(context) {
  *
  * This is the core rendering pipeline:
  * 1. Extract mermaid diagram blocks (before markdown parsing)
- * 2. Convert markdown to HTML using marked library
- * 3. Wrap extracted mermaid code in <pre class="mermaid">
- * 4. Inject HTML into webview with proper CSP and styling
+ * 2. Extract math expressions - both inline ($...$) and block ($$...$$)
+ * 3. Convert markdown to HTML using marked library
+ * 4. Restore mermaid and math blocks with preservation markers
+ * 5. Inject HTML into webview with proper CSP and styling
  *
- * Why mermaid extraction happens first:
- * - marked parser would escape backticks in mermaid syntax
- * - Pre-processing preserves mermaid code integrity
+ * Why extraction happens first:
+ * - marked parser would escape backticks/delimiters in mermaid & math syntax
+ * - Pre-processing preserves code and math integrity
  * - Mermaid v11 renders elements with class="mermaid"
+ * - MathJax processes restored math delimiters correctly
  *
  * @param {vscode.WebviewPanel} panel - The webview to update
  * @param {vscode.TextDocument} document - The markdown document to render
@@ -106,17 +108,45 @@ function activate(context) {
 function updateWebviewContent(panel, document) {
 	try {
 		let raw = document.getText();
+		const preservedBlocks = [];
+
+		// Extract block math ($$...$$) - must come before inline math
+		raw = raw.replace(/\$\$\s*\n([\s\S]*?)\$\$/g, (_, code) => {
+			preservedBlocks.push({ type: 'math-block', content: `$$\n${code}$$` });
+			return `<!--PRESERVED_${preservedBlocks.length - 1}-->`;
+		});
+
+		// Extract inline math ($...$) - protect from marked escaping
+		raw = raw.replace(/\$([^\$\n]+)\$/g, (_, code) => {
+			preservedBlocks.push({ type: 'math-inline', content: `$${code}$` });
+			return `<!--PRESERVED_${preservedBlocks.length - 1}-->`;
+		});
 
 		// Replace mermaid code blocks with <pre class="mermaid">...</pre>
 		// Process this BEFORE marked to avoid markdown escaping issues
-		// Regex: Find ```mermaid, capture content, find closing ```
 		raw = raw.replace(
 			/```mermaid\s*\n([\s\S]*?)```/g,
-			(match, code) => `<pre class="mermaid">${code.trim()}</pre>`
+			(match, code) => {
+				preservedBlocks.push({ type: 'mermaid', content: `<pre class="mermaid">${code.trim()}</pre>` });
+				return `<!--PRESERVED_${preservedBlocks.length - 1}-->`;
+			}
 		);
 
 		// Render markdown to HTML
-		const html = marked(raw);
+		let html = marked(raw);
+
+		// Restore preserved blocks
+		html = html.replace(/<!--PRESERVED_(\d+)-->/g, (match, index) => {
+			const block = preservedBlocks[parseInt(index)];
+			if (block.type === 'mermaid') {
+				return block.content;
+			} else if (block.type === 'math-block') {
+				return block.content;
+			} else if (block.type === 'math-inline') {
+				return block.content;
+			}
+			return match;
+		});
 
 		// Generate nonce for CSP
 		const nonce = getNonce();
@@ -165,6 +195,7 @@ function getWebviewContent(markdownHtml, nonce) {
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data:; script-src 'nonce-${nonce}' https://cdn.jsdelivr.net; style-src 'unsafe-inline' https://cdn.jsdelivr.net; font-src https: data:;">
 	<title>Markdown Preview</title>
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/atom-one-light.min.css">
 	<style>
 		body {
 			font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
@@ -174,21 +205,23 @@ function getWebviewContent(markdownHtml, nonce) {
 			margin: 0 auto;
 		}
 		pre {
-			background-color: #f4f4f4;
-			border: 1px solid #ddd;
+			background-color: #f5f5f5;
+			border: 1px solid #e0e0e0;
 			border-radius: 4px;
-			padding: 10px;
+			padding: 12px;
 			overflow-x: auto;
 		}
 		code {
-			background-color: #f4f4f4;
+			background-color: #f5f5f5;
 			padding: 2px 4px;
 			border-radius: 3px;
 			font-family: 'Courier New', Courier, monospace;
+			font-size: 0.9em;
 		}
 		pre code {
 			background-color: transparent;
 			padding: 0;
+			font-family: 'Courier New', Courier, monospace;
 		}
 		blockquote {
 			border-left: 4px solid #ddd;
@@ -223,8 +256,19 @@ function getWebviewContent(markdownHtml, nonce) {
 <body>
 	${markdownHtml}
 	<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" nonce="${nonce}"></script>
+	<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js" nonce="${nonce}"></script>
 	<script type="module" nonce="${nonce}">
 		import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+
+		// Initialize highlight.js for syntax highlighting
+		try {
+			// Apply syntax highlighting to all code blocks
+			document.querySelectorAll('pre code').forEach((block) => {
+				hljs.highlightElement(block);
+			});
+		} catch (error) {
+			console.error('Syntax highlighting failed:', error);
+		}
 
 		// Initialize Mermaid with modern API
 		mermaid.initialize({

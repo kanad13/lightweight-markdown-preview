@@ -74,8 +74,9 @@ graph TD;
 
 ## Mathematical expressions
 
-- Inline math: $E=mc^2$
-- Block math:
+- Inline Mathematical Expression Not supported right now - $E = mc^2$
+
+- Block Mathematical Expression Supported:
 
 $$
 \int_0^\infty e^{-x^2} dx = \frac{\sqrt{\pi}}{2}
