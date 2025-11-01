@@ -52,7 +52,7 @@ npm install
 ```
 
 1. Open any Markdown (`.md`) file in VS Code
-2. Run the command **"Markdown: Show Markdown Preview"** from the Command Palette (`Cmd+Shift+P` on macOS or `Ctrl+Shift+P` on Windows/Linux)
+2. Run the command **"Markdown: Show Lightweight Markdown Preview"** from the Command Palette (`Cmd+Shift+P` on macOS or `Ctrl+Shift+P` on Windows/Linux)
 3. A side panel will open with the rendered preview
 4. The preview updates automatically as you edit the file
 
@@ -61,7 +61,7 @@ npm install
 To test all features including Mermaid diagrams:
 
 1. Open the included `test.md` file in VS Code
-2. Run the command **"Markdown: Show Markdown Preview"** from the Command Palette
+2. Run the command **"Markdown: Show Lightweight Markdown Preview"** from the Command Palette
 3. Verify that:
    - All text formatting appears correctly (headings, bold, italic, lists)
    - Tables render properly
