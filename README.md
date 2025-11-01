@@ -1,19 +1,21 @@
 # Lightweight Markdown Preview
 
-A minimal VS Code extension for previewing Markdown with Mermaid diagram support. **No bloat. No configuration. Just markdown.**
+A minimal VS Code extension for previewing Markdown with Mermaid diagrams and MathJax support. **No bloat. No configuration. Just markdown.**
 
 ## Why This Extension?
 
-- **Lightweight:** 16.9 KB packaged (no massive dependencies)
-- **Simple:** 222 lines of code, easy to understand and maintain
+- **Lightweight:** ~19 KB packaged (no massive dependencies)
+- **Privacy-Friendly:** No tracking, no analytics, no data collection. Your markdown stays on your machine
+- **Simple:** ~260 lines of code, easy to understand and maintain
 - **Fast:** Live preview updates as you type
 - **Secure:** Content Security Policy, nonce-based script execution
-- **One Job:** Previews Markdown. That's it. No themes, no plugins, no decorations.
+- **One Job:** Previews Markdown. That's it. No themes, no plugins, no bloat.
 
 ## Features
 
 - Real-time Markdown preview in a side panel
 - Full Mermaid diagram support (flowcharts, sequences, state diagrams, etc.)
+- MathJax support for LaTeX equations (inline and display)
 - All standard Markdown elements (headings, lists, tables, code blocks, images, etc.)
 - Syntax highlighting in code blocks
 - Keyboard shortcut: `Cmd+Shift+M` (macOS) or `Ctrl+Shift+M` (Windows/Linux)
@@ -56,9 +58,9 @@ Open `examples/test.md` and run the preview command. You should see:
 
 ## Limitations
 
-- **Math:** LaTeX/MathJax not supported
-- **Offline:** Mermaid diagrams require internet (CDN-based)
+- **Offline:** Mermaid diagrams and MathJax require internet (CDN-based)
 - **Single Panel:** One preview per window
+- **Theming:** Uses default light/dark theme, no custom themes
 
 ## Development
 

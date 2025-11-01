@@ -4,9 +4,9 @@ For AI agents and developers maintaining this extension.
 
 ## Codebase Overview
 
-- **Main code:** `src/extension.js` (222 lines)
-- **Tech:** VS Code API, marked (v9.0.0), Mermaid v11 (CDN)
-- **Package size:** 16.9 KB
+- **Main code:** `src/extension.js` (~260 lines)
+- **Tech:** VS Code API, marked (v9.0.0), Mermaid v11 (CDN), MathJax v3 (CDN)
+- **Package size:** ~19 KB
 - **Dependencies:** marked only
 
 ## Code Structure
@@ -71,6 +71,7 @@ Then test in VS Code:
    - Code blocks show syntax highlighting
    - Images display
    - Mermaid diagram renders as flowchart
+   - MathJax equations render (inline and display math)
    - Live preview updates as you type
 
 ### CI/CD
@@ -190,10 +191,11 @@ Verify at: https://marketplace.visualstudio.com/items?itemName=kanad13.lightweig
 
 ## Design Decisions
 
-**Why CDN for Mermaid, NPM for Markdown?**
+**Why CDN for Mermaid and MathJax, NPM for Markdown?**
 - Mermaid is 100KB+, changes frequently, only used in webview
+- MathJax is 150KB+, changes frequently, only used in webview
 - `marked` is small and stable, used at parse time
-- Keeps package tiny (16.9 KB)
+- Keeps package tiny (~19 KB)
 
 **Why one preview panel per window?**
 - Simpler state management
@@ -216,7 +218,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for full security model.
 
 ```
 lightweight-markdown-preview/
-├── src/extension.js              # Main code (222 lines)
+├── src/extension.js              # Main code (~260 lines)
 ├── assets/                       # Icons
 ├── examples/                     # Test files
 ├── docs/                         # Documentation

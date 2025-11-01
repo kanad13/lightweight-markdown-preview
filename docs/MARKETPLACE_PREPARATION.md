@@ -116,10 +116,9 @@ After successful marketplace publication:
 
 These are acceptable for v0.x:
 
-1. **Math expressions not supported** - Documented in README
-2. **Mermaid requires internet** - CDN-based, documented
-3. **Single preview panel** - Design decision
-4. **No offline mode** - Related to Mermaid CDN
+1. **CDN-based rendering** - Mermaid and MathJax require internet connection
+2. **Single preview panel** - Design decision for lightweight footprint
+3. **No custom theming** - Uses VS Code's default light/dark themes
 
 ---
 

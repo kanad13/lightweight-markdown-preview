@@ -4,7 +4,7 @@ const { marked } = require("marked");
 /**
  * Activation function - called when the extension loads
  *
- * This extension provides a lightweight Markdown preview with Mermaid diagram support.
+ * This extension provides a lightweight Markdown preview with Mermaid diagram and MathJax support.
  * It maintains a single webview panel that reuses across different markdown files.
  *
  * State managed:
@@ -135,18 +135,23 @@ function updateWebviewContent(panel, document) {
  * This function creates a sandboxed HTML environment with:
  * - Security: Content Security Policy with nonce-based scripts
  * - Styling: Clean, minimal design that works in light and dark themes
- * - Interactivity: Mermaid diagrams rendered via CDN
+ * - Interactivity: Mermaid diagrams and MathJax equations rendered via CDN
  *
  * CSP (Content Security Policy) breakdown:
  * - default-src 'none': Block everything by default (secure)
  * - img-src https: data: Allow images from HTTPS and data URIs
  * - script-src 'nonce-*': Only allow scripts with matching nonce
  * - style-src 'unsafe-inline': Allow inline styles (needed for rendering)
+ * - font-src https: data: Allow fonts from HTTPS and data URIs (for MathJax)
  *
  * Mermaid Configuration:
  * - startOnLoad: false - We call mermaid.run() explicitly
  * - securityLevel: loose - Allows all diagram types
  * - CDN: jsDelivr for reliability and caching
+ *
+ * MathJax Configuration:
+ * - Loads tex-mml-chtml renderer from CDN
+ * - Supports inline ($...$) and display ($$...$$) math notation
  *
  * @param {string} markdownHtml - Already-rendered HTML from marked
  * @param {string} nonce - Security token for CSP (random string)
@@ -158,7 +163,7 @@ function getWebviewContent(markdownHtml, nonce) {
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data:; script-src 'nonce-${nonce}' https://cdn.jsdelivr.net; style-src 'unsafe-inline' https://cdn.jsdelivr.net;">
+	<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data:; script-src 'nonce-${nonce}' https://cdn.jsdelivr.net; style-src 'unsafe-inline' https://cdn.jsdelivr.net; font-src https: data:;">
 	<title>Markdown Preview</title>
 	<style>
 		body {
@@ -217,6 +222,7 @@ function getWebviewContent(markdownHtml, nonce) {
 </head>
 <body>
 	${markdownHtml}
+	<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" nonce="${nonce}"></script>
 	<script type="module" nonce="${nonce}">
 		import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
 
@@ -234,6 +240,15 @@ function getWebviewContent(markdownHtml, nonce) {
 			});
 		} catch (error) {
 			console.error('Mermaid rendering failed:', error);
+		}
+
+		// Trigger MathJax processing if loaded
+		if (window.MathJax) {
+			try {
+				window.MathJax.typesetPromise().catch(err => console.error('MathJax rendering failed:', err));
+			} catch (error) {
+				console.error('MathJax initialization failed:', error);
+			}
 		}
 	</script>
 </body>

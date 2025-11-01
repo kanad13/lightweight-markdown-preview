@@ -26,10 +26,15 @@ Reference document explaining WHY the extension is designed this way.
 
 **Implementation:** Regex finds ` ```mermaid...``` `, stores in array, parses markdown, reinserts blocks with Mermaid script tags.
 
-### CDN for Mermaid, NPM for Markdown
+### CDN for Mermaid & MathJax, NPM for Markdown
 
 **Mermaid (CDN):**
 - 100KB+ uncompressed
+- Changes frequently
+- Only needed in preview (not at build time)
+
+**MathJax (CDN):**
+- 150KB+ uncompressed
 - Changes frequently
 - Only needed in preview (not at build time)
 
@@ -38,7 +43,7 @@ Reference document explaining WHY the extension is designed this way.
 - Used at parse time
 - Must be bundled
 
-**Result:** Keeps packaged extension to 16.9 KB.
+**Result:** Keeps packaged extension to ~19 KB.
 
 ### Content Security Policy (CSP) with Nonces
 
@@ -104,7 +109,7 @@ Currently, performance is acceptable for typical use cases.
 1. **Script Sandboxing:** Webview runs in restricted VS Code context
 2. **CSP:** Only allow:
    - Output from `marked` parser (plain HTML)
-   - Mermaid CDN script (trusted source)
+   - Mermaid and MathJax CDN scripts (trusted sources)
    - Nonce-verified inline scripts (our own only)
 3. **No DOM manipulation:** Never use `innerHTML` or `eval()`
 4. **Input handling:** User's markdown is parsed, not executed
@@ -118,7 +123,7 @@ Currently, performance is acceptable for typical use cases.
 
 | File | Purpose |
 |------|---------|
-| `src/extension.js` | Core extension logic (222 lines) |
+| `src/extension.js` | Core extension logic (~260 lines) |
 | `package.json` | VS Code manifest & metadata |
 | `README.md` | User guide |
 | `DEVELOPMENT.md` | For developers/agents working on code |
@@ -147,4 +152,4 @@ This is intentional: the extension does one thing well. Don't add features.
 
 ---
 
-**Last Updated:** November 1, 2025 (v0.2.0)
+**Last Updated:** November 1, 2025 (v0.3.0 - Added MathJax support)
