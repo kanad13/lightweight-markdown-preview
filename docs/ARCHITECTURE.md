@@ -1,4 +1,6 @@
-# Architecture
+# Architecture & Design Decisions
+
+Reference document explaining WHY the extension is designed this way.
 
 ## Design Decisions
 
@@ -6,165 +8,142 @@
 
 **Decision:** One preview panel per window, not per document.
 
-**Why:** Simpler state management, lower memory footprint, consistent behavior with VS Code's built-in preview.
+**Why:** Simpler state management, lower memory footprint, matches VS Code's built-in preview behavior.
 
-**Tradeoff:** Can't preview two documents simultaneously.
+**Tradeoff:** Can't preview two documents simultaneously (acceptable for a lightweight extension).
 
-### Markdown → HTML → Webview
+### Markdown → HTML → Webview Flow
 
-**Flow:** User types → `onDidChangeTextDocument` → `updateWebviewContent()` → Render HTML → Display
+**Process:** User types → `onDidChangeTextDocument` → `updateWebviewContent()` → Render HTML → Display
 
-**Why:** Real-time preview feedback. No file save required.
+**Why:** Provides real-time feedback without requiring file save.
 
-### Mermaid Pre-processing
+### Mermaid Preprocessing
 
-**Approach:** Extract mermaid blocks before markdown parsing.
+**Problem:** `marked` library escapes mermaid syntax, breaking diagrams.
 
-**Why:** `marked` would escape mermaid syntax, breaking diagrams. Pre-extraction preserves syntax.
+**Solution:** Extract mermaid blocks before markdown parsing, store separately, reparse markdown, then reinsert diagrams with Mermaid script.
 
-**Pattern:** Regex finds ` ```mermaid...``` `, stores separately, parses markdown, reinserts with Mermaid script.
+**Implementation:** Regex finds ` ```mermaid...``` `, stores in array, parses markdown, reinserts blocks with Mermaid script tags.
 
 ### CDN for Mermaid, NPM for Markdown
 
-**Why:** Mermaid is large (100KB+), changes frequently, only needed in previews. `marked` is small, stable, used at parse time.
+**Mermaid (CDN):**
+- 100KB+ uncompressed
+- Changes frequently
+- Only needed in preview (not at build time)
 
-**Benefit:** Keep package size minimal (~180KB with marked), avoid build complexity.
+**Marked (NPM):**
+- 20KB, stable
+- Used at parse time
+- Must be bundled
+
+**Result:** Keeps packaged extension to 16.9 KB.
 
 ### Content Security Policy (CSP) with Nonces
 
-**How:** CSP header restricts script execution. Nonces allow only trusted inline scripts.
+**Problem:** Webviews execute arbitrary content from user's markdown files. Risk of injection attacks.
 
-**Why:** Webviews can execute arbitrary content. Nonce prevents injection attacks.
+**Solution:** CSP header restricts script execution. Nonces allow only specifically-trusted inline scripts.
 
-**Implementation:** Generate random nonce per render, include in CSP header and script tags.
+**Implementation:**
+- Generate random nonce per render
+- Include in CSP meta tag: `<meta http-equiv="Content-Security-Policy" content="script-src 'nonce-${nonce}';">`
+- Include in all inline scripts: `<script nonce="${nonce}">`
+- Regenerate nonce on every update (different each time)
+
+**Security Model:** User's markdown content is rendered as HTML but cannot execute code.
 
 ## State Management
 
 ```
-Extension Activation
+Extension loads
     ↓
-commands.registerCommand() registers "markdown.preview" command
+User clicks preview icon or runs command
     ↓
-User clicks preview icon
+createWebviewPanel() → currentPanel = panel
+currentDocument = active editor's document
     ↓
-currentPanel = createWebviewPanel()
-currentDocument = activeTextEditor.document
+Register onDidChangeTextDocument listener
     ↓
-onDidChangeTextDocument listener
+Document changes → updateWebviewContent() → re-render HTML
     ↓
-updateWebviewContent() if document matches currentDocument
+User switches document → updateWebviewContent() updates preview
     ↓
-Panel disposed → cleanup listeners
+User closes panel → cleanup listener, currentPanel = null
 ```
 
 **Key Variables:**
-
-- `currentPanel`: Active webview or null
-- `currentDocument`: Document being previewed
-- `nonce`: CSP security token (changes each render)
+- `currentPanel` - Active webview panel or null
+- `currentDocument` - Document being previewed
+- `nonce` - CSP security token (changes each render)
 
 **No external state:** Everything stored in closure variables.
 
-## Guardrails
+## Performance Characteristics
 
-### Do's ✅
+- **Render time:** ~50ms for typical markdown files
+- **Bottlenecks:**
+  - Large files (>10,000 lines) may lag due to marked parsing
+  - Mermaid rendering for complex diagrams
+  - CDN latency on first mermaid load
 
-- Keep dependencies minimal (only essential)
-- Test with `npm run lint` before committing
-- Update README.md for user-facing changes
-- Include JSDoc comments explaining WHY
-- Use CSP nonces for all inline scripts
-- Test mermaid diagrams at mermaid.live
-- Update CHANGELOG.md for each release
-- Use semantic versioning (major.minor.patch)
+- **Optimization opportunities (if needed):**
+  1. Debounce `onDidChangeTextDocument` listener
+  2. Implement mermaid caching
+  3. Profile with DevTools
 
-### Don'ts ❌
+Currently, performance is acceptable for typical use cases.
 
-- Add large dependencies without justification
-- Modify CSP headers without security review
-- Change state management carelessly
-- Skip testing before committing
-- Store user data without explicit consent
-- Commit .vsix files to git
-- Change nonce generation logic without review
+## Security Threat Model
 
-## Security Model
+**Threat:** Malicious markdown file with embedded scripts or XSS attempts
 
-**Threat Model:** Untrusted markdown content in VS Code
+**Defenses:**
 
-**Mitigations:**
-
-1. **Script Sandboxing:** Webview runs in restricted context
-2. **CSP:** Only allow marked output + Mermaid CDN + nonce scripts
-3. **No Access to:** User files, extension data, VS Code API (blocked by default)
-4. **Input:** No user input exposed to HTML (only rendered markdown)
+1. **Script Sandboxing:** Webview runs in restricted VS Code context
+2. **CSP:** Only allow:
+   - Output from `marked` parser (plain HTML)
+   - Mermaid CDN script (trusted source)
+   - Nonce-verified inline scripts (our own only)
+3. **No DOM manipulation:** Never use `innerHTML` or `eval()`
+4. **Input handling:** User's markdown is parsed, not executed
 
 **If adding new scripts:**
+- Must include nonce: `<script nonce="${nonce}">`
+- Test CSP violations in DevTools (they should fail)
+- Never evaluate user input
 
-- Include nonce: `<script nonce="${nonce}">`
-- Never use `eval()` or `innerHTML` with user content
-- Test CSP violations in DevTools
+## Files & Organization
 
-## Performance
-
-**Current:** Real-time updates with ~50ms render time
-
-**Bottlenecks:**
-
-- Large files (>10,000 lines) may lag
-- Mermaid rendering for complex diagrams
-- CDN latency on first load
-
-**If optimization needed:**
-
-1. Debounce `onDidChangeTextDocument` listener
-2. Implement render cache
-3. Profile with DevTools (F12 in Extension Dev Host)
+| File | Purpose |
+|------|---------|
+| `src/extension.js` | Core extension logic (222 lines) |
+| `package.json` | VS Code manifest & metadata |
+| `README.md` | User guide |
+| `DEVELOPMENT.md` | For developers/agents working on code |
+| `docs/ARCHITECTURE.md` | This file (design decisions) |
+| `docs/CHANGELOG.md` | Version history |
+| `examples/test.md` | Comprehensive test file |
+| `.github/workflows/ci.yml` | CI/CD pipeline |
+| `assets/` | Icons and visual assets |
+| `.vscodeignore` | Packaging exclusions |
 
 ## Extension Points
 
-**What can be extended:**
-
-- CSS styling (modify body, code, table CSS in `getWebviewContent()`)
+**What CAN be extended safely:**
+- CSS styling (modify body, code, table CSS)
 - Markdown rendering options (pass options to `marked()`)
-- Configuration settings (add to `package.json` contribution points)
-- Commands (register new commands in `activate()`)
+- VS Code configuration settings
+- Commands
 
 **What should NOT be extended:**
-
 - Core state management (currentPanel/currentDocument)
 - CSP headers (without security review)
 - Mermaid preprocessing logic
 - Nonce generation
 
-## Files
-
-| File | Purpose |
-|------|---------|
-| src/extension.js | Core extension logic (222 lines) |
-| package.json | Metadata, dependencies, marketplace config |
-| README.md | User guide and installation instructions |
-| docs/ARCHITECTURE.md | Design decisions and guardrails |
-| docs/AGENTS.md | Development guide for contributors |
-| docs/CHANGELOG.md | Version history and features |
-| docs/RELEASE_CHECKLIST.md | Publication and release procedures |
-| .github/workflows/ci.yml | PR quality checks and linting |
-| assets/ | Icons and visual assets |
-| examples/ | Example and test markdown files |
-
-## Distribution Model
-
-**Primary:** VSCode Marketplace (recommended for end users)
-- Published via: `vsce publish` command
-- Versions: Semantic versioning (major.minor.patch)
-- See RELEASE_CHECKLIST.md for pre-publication steps
-
-**Alternative:** Direct .vsix installation
-- Build: `npm run package`
-- Install: VS Code Extensions → ... menu → Install from VSIX
-- Use case: Pre-release testing or offline installation
-
-**Development:** F5 in VS Code (Extension Development Host)
+This is intentional: the extension does one thing well. Don't add features.
 
 ---
 

@@ -1,9 +1,9 @@
-# VSCode Marketplace Publication - Checklist
+# Marketplace Publication - First Release (v0.2.0)
 
-**Status:** Ready for Pre-Publication Verification  
-**Current Version:** 0.2.0  
-**Target:** First Marketplace Release  
-**Last Updated:** 2025-11-01  
+**Status:** COMPLETED ✓
+**Release Date:** 2025-11-01
+
+**Note:** This document records the one-time setup and tasks completed for the first marketplace release. For ongoing releases, see [DEVELOPMENT.md](../DEVELOPMENT.md).  
 
 ---
 
