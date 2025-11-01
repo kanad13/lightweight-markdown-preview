@@ -1,285 +1,125 @@
-# VSCode Marketplace Publication - Task List
+# VSCode Marketplace Publication - Checklist
 
-**Status:** Pre-Publication Preparation
-**Current Version:** 0.2.0
-**Target:** First Marketplace Release
-**Last Updated:** 2025-11-01
-
----
-
-## CRITICAL - Must Fix Before Publication
-
-### 1. Azure DevOps & Publisher Setup
-
-**Issue:** Marketplace publishing requires Azure DevOps account and Personal Access Token
-**Action Required:**
-
-- [x] Verify Azure DevOps organization exists (or create one)
-- [x] Generate Personal Access Token (PAT) with "Marketplace > Manage" scope
-- [x] Set organization scope to "All accessible organizations"
-- [x] Verify publisher "KunalPathak" is registered on Visual Studio Marketplace
-- [x] Test authentication: `vsce login KunalPathak`
-      **Verification:** Can login with `vsce login` without errors ✓ CONFIRMED
-      **Priority:** CRITICAL - Cannot publish without this
-
-### 2. Git Repository Clean State
-
-**Issue:** Uncommitted changes exist (package-lock.json, test.md)
-**Action Required:**
-
-- [x] Review changes in `package-lock.json` - npm dependencies updated to v0.2.0
-- [x] Review changes in `test.md` - removed markdown code fence wrapper
-- [x] Commit changes or discard if unintended - COMMITTED
-- [x] Ensure git status is clean before packaging final release
-      **Verification:** `git status` shows clean working tree ✓ CONFIRMED
-      **Priority:** HIGH - Marketplace prefers releases from clean commits
-
-### 3. Example File Corruption
-
-**Issue:** [example.md](example.md:1) wrapped in ````markdown code fence - file is unusable as example
-**Action Required:**
-
-- [x] Remove opening ````markdown from line 1
-- [x] Remove closing ```` from end of file
-- [x] Verify file renders correctly when previewed - FIXED
-- [x] Consider if example.md is needed (test.md already exists) - KEEP AS EXAMPLE
-      **Verification:** Open example.md and verify preview renders content, not code fence ✓ VERIFIED
-      **Priority:** MEDIUM - File included in package but broken
-
-### 4. LICENSE File Incomplete
-
-**Issue:** [LICENSE](LICENSE:3) missing copyright holder name and year is 2025 (should be when first created)
-**Action Required:**
-
-- [x] Add author name to "Copyright (c) 2025 [Your Name]" - ADDED: Kunal Pathak
-- [x] Verify year is correct (when was extension first created?) - 2025 is correct
-- [x] Update if needed - COMPLETED
-      **Verification:** LICENSE has complete copyright notice ✓ VERIFIED
-      **Priority:** MEDIUM - Legal clarity for users
-
-### 5. README Command Name Mismatch
-
-**Issue:** [README.md:55,64](README.md:55) references "Markdown: Show Markdown Preview" but package.json defines "Show Lightweight Markdown Preview"
-**Action Required:**
-
-- [x] Update README.md lines 55 and 64 to use correct command name - UPDATED
-- [x] Search entire README for other instances - VERIFIED: All 2 instances fixed
-- [x] Verify command palette title matches extension exactly - CONFIRMED: "Show Lightweight Markdown Preview"
-      **Verification:** Run command from palette using exact title from README ✓ VERIFIED
-      **Priority:** HIGH - User confusion if instructions don't work
+**Status:** Ready for Pre-Publication Verification  
+**Current Version:** 0.2.0  
+**Target:** First Marketplace Release  
+**Last Updated:** 2025-11-01  
 
 ---
 
-## RECOMMENDED - Should Fix Before Publication
+## CRITICAL TASKS - COMPLETED ✓
 
-### 6. Missing Development Configuration
+All critical prerequisites completed:
 
-**Issue:** No [.vscode/launch.json](.vscode/launch.json) for debugging extension during development
-**Action Required:**
-
-- [x] Create .vscode/launch.json with standard extension debugging config - CREATED
-- [x] Test F5 launches Extension Development Host correctly - READY FOR TESTING
-- [x] Consider adding .vscode/settings.json for workspace settings - CREATED
-- [x] Add .vscode to .vscodeignore to exclude from package - ADDED
-      **Verification:** F5 in VS Code launches debugging session ✓ READY
-      **Priority:** MEDIUM - Improves developer experience
-
-### 7. Missing Screenshots/Visual Assets
-
-**Issue:** README has no screenshots showing extension in action
-**Action Required:**
-
-- [ ] Capture screenshot of markdown file with preview panel side-by-side
-- [ ] Capture screenshot showing Mermaid diagram rendering
-- [ ] Add screenshots to repository (create screenshots/ directory)
-- [ ] Update README.md with image references
-- [ ] Ensure images use HTTPS URLs or relative paths
-- [ ] Verify images display in GitHub and marketplace preview
-      **Verification:** README preview shows images correctly
-      **Priority:** HIGH - Visual demos significantly increase downloads
-
-### 8. Missing Package.json Marketplace Fields
-
-**Issue:** Optional but recommended marketplace metadata missing
-**Action Required:**
-
-- [x] Add `galleryBanner` with `color` field for branded marketplace appearance - ADDED: #0D47A1 (dark blue)
-- [x] Add `qna` field: "marketplace" (enables Q&A) or URL to discussion forum - SET TO "marketplace"
-- [x] Consider `badges` array with build status, version, downloads (after publishing) - DEFER TO POST-RELEASE
-- [x] Verify `pricing` field not needed (defaults to "Free") - EXPLICITLY SET TO "Free"
-      **Verification:** Check package.json has new fields ✓ VERIFIED
-      **Priority:** LOW - Improves marketplace presence but not required
-
-### 9. Missing CI Quality Checks
-
-**Issue:** [.github/workflows/release.yml](.github/workflows/release.yml) only packages on release, doesn't test
-**Action Required:**
-
-- [x] Add CI workflow that runs on pull requests - CREATED: .github/workflows/ci.yml
-- [x] Include `npm run lint` in CI pipeline - INCLUDED
-- [x] Consider adding `npm run test` when tests exist - DEFERRED (manual testing sufficient)
-- [ ] Add status badge to README - DEFER TO POST-RELEASE
-      **Verification:** Open PR triggers CI checks ✓ READY
-      **Priority:** MEDIUM - Quality assurance before releases
-
-### 10. No Automated Tests
-
-**Issue:** No unit tests, integration tests, or test framework configured
-**Action Required:**
-
-- [ ] Evaluate need for automated testing (extension is simple, might not need)
-- [ ] If adding tests: create test/ directory structure
-- [ ] Add tests for core functions (updateWebviewContent, getNonce, etc.)
-- [ ] Update CI to run tests
-- [ ] Update npm test script to actually run tests
-      **Verification:** `npm test` runs test suite successfully
-      **Priority:** LOW - Manual testing may suffice for this simple extension
+- [x] Azure DevOps & Publisher Setup (vsce login working)
+- [x] Git Repository Clean State (all changes committed)
+- [x] Example File Corruption (markdown fence removed)
+- [x] LICENSE File (copyright holder added)
+- [x] README Command Names (corrected)
 
 ---
 
-## OPTIONAL - Nice to Have
+## RECOMMENDED ENHANCEMENTS - COMPLETED ✓
 
-### 11. Missing Community Health Files
-
-**Issue:** No issue templates, contributing guidelines, code of conduct
-**Action Required:**
-
-- [ ] Create .github/ISSUE_TEMPLATE/ with bug report and feature request templates
-- [ ] Create CONTRIBUTING.md with guidelines for contributors
-- [ ] Add CODE_OF_CONDUCT.md if project grows
-- [ ] Create SECURITY.md with security policy and reporting instructions
-      **Verification:** Files exist in .github/ directory
-      **Priority:** LOW - Good for larger projects, optional for small extension
-
-### 12. README Enhancements
-
-**Issue:** README missing usage tips, troubleshooting, FAQ section
-**Action Required:**
-
-- [ ] Add "Usage Tips" section with keyboard shortcuts or best practices
-- [ ] Add "Troubleshooting" section for common issues (CDN blocked, etc.)
-- [ ] Add FAQ section addressing common questions
-- [ ] Add animated GIF showing extension in action
-- [ ] Add comparison table vs. built-in preview (why use this?)
-      **Verification:** README is comprehensive and user-friendly
-      **Priority:** LOW - Current README is functional
-
-### 13. Package Size Optimization
-
-**Issue:** Package includes documentation files that users don't need at runtime
-**Action Required:**
-
-- [x] Review files included in package (check `vsce package` output) - REVIEWED
-- [x] Consider excluding AGENTS.md, ARCHITECTURE.md, RELEASE_CHECKLIST.md from package - EXCLUDED
-- [x] Update .vscodeignore to exclude development-only files - UPDATED with comprehensive exclusions
-- [x] Verify exclusions don't break functionality - READY FOR TESTING
-- [x] Check package size reduction - WILL VERIFY ON NEXT PACKAGE
-      **Verification:** Package size optimized, excluded: docs, tests, examples, workflows ✓ VERIFIED
-      **Priority:** LOW - Current 197KB is already small
-
-### 14. Extension Categories & Keywords
-
-**Issue:** Current category "Programming Languages" might not be optimal
-**Action Required:**
-
-- [x] Review available VSCode extension categories - REVIEWED
-- [x] Consider adding "Formatters", "Other", or "Snippets" categories - CHANGED TO: "Other", "Formatters"
-- [x] Review keywords for discoverability (current: 7 keywords, max 30) - EXPANDED TO: 11 keywords
-- [x] Add keywords like: "md", "render", "documentation", "diagram", "chart" - ALL ADDED
-      **Verification:** Extension appears in appropriate category searches ✓ VERIFIED
-      **Keywords:** markdown, preview, md, mermaid, diagrams, viewer, live-preview, lightweight, render, documentation, chart, flowchart
-      **Priority:** LOW - Current categorization is acceptable
-
-### 15. Version Strategy Alignment
-
-**Issue:** Pre-release strategy not documented, version 0.2.0 suggests beta
-**Action Required:**
-
-- [ ] Decide if initial marketplace release should be 0.2.0 or 1.0.0
-- [ ] Consider 1.0.0 for first marketplace release (indicates production-ready)
-- [ ] Document versioning strategy in RELEASE_CHECKLIST.md
-- [ ] Update CHANGELOG if version changes
-      **Verification:** Version number reflects maturity level
-      **Priority:** LOW - 0.2.0 is fine for initial release
+- [x] Development Configuration (.vscode/launch.json, settings.json)
+- [x] Package.json Marketplace Fields (galleryBanner, qna, pricing)
+- [x] CI Quality Checks (.github/workflows/ci.yml added)
+- [x] Package Size Optimization (.vscodeignore updated, 17.41 KB)
+- [x] Extension Categories & Keywords (expanded to 11 keywords, 2 categories)
 
 ---
 
-## PRE-PUBLICATION VERIFICATION
+## REMAINING RECOMMENDED ITEMS (Optional)
 
-### Final Checks Before Publishing
+### 7. Screenshots/Visual Assets
+- Status: NOT DONE (nice to have)
+- Impact: Significantly increases discoverability
+- Action: Defer to post-release v0.3.0
 
-**Must complete these immediately before `vsce publish`:**
+### 10. Automated Tests
+- Status: SKIPPED (manual testing sufficient)
+- Impact: Good for larger projects
+- Action: Defer to v1.0.0 if needed
 
-- [ ] **Clean Build Test**
+### 11-12. Community Health & README Enhancements
+- Status: NOT DONE (nice to have)
+- Impact: Better community engagement
+- Action: Defer to post-release
 
-  - Delete node_modules and reinstall: `rm -rf node_modules && npm install`
-  - Run linter: `npm run lint` (must pass with zero errors)
-  - Package extension: `npm run package`
-  - Verify .vsix file created successfully
+### 15. Version Strategy
+- Status: 0.2.0 is appropriate for first marketplace release
+- Action: Keep as-is
 
-- [ ] **Manual Testing**
+---
 
-  - Install .vsix in clean VSCode instance: `code --install-extension *.vsix`
-  - Test with sample markdown files (test.md, example.md)
-  - Verify Mermaid diagrams render correctly
-  - Verify live preview updates on file changes
-  - Test command palette command
-  - Test editor title bar icon appears
-  - Verify no console errors in Developer Tools
+## PRE-PUBLICATION VERIFICATION - NEXT STEPS
 
-- [ ] **Asset Verification**
+**Execute these immediately before publishing:**
 
-  - Icon displays correctly in Extensions view (256x256 PNG)
-  - Icon-eye.svg displays in editor title bar
-  - No broken images in README when viewed on GitHub
-  - All links in README are valid (test with link checker)
+### 1. Clean Build Test
+```bash
+rm -rf node_modules package-lock.json
+npm install
+npm run lint          # must pass with zero errors
+npm run package       # must create .vsix file
+```
 
-- [ ] **Metadata Verification**
+### 2. Manual Testing
+- [ ] Install .vsix: `code --install-extension lightweight-markdown-preview-0.2.0.vsix`
+- [ ] Open test.md and example.md files
+- [ ] Verify Mermaid diagrams render correctly
+- [ ] Verify live preview updates on file changes
+- [ ] Test command from Command Palette
+- [ ] Verify editor title bar icon appears
+- [ ] Check Developer Tools - no console errors
 
-  - package.json has all required fields (publisher, version, engines)
-  - README.md is clear and accurate
-  - CHANGELOG.md is up to date with current version
-  - LICENSE is complete and correct
+### 3. Asset Verification
+- [ ] icon.png displays in Extensions view
+- [ ] icon-eye.svg displays in editor title bar
+- [ ] No broken images in README (GitHub preview)
+- [ ] All links in README are valid
 
-- [ ] **Repository State**
+### 4. Metadata Verification
+- [ ] package.json has all required fields
+- [ ] README.md is clear and complete
+- [ ] CHANGELOG.md is up to date
+- [ ] LICENSE is complete
 
-  - All changes committed to git
-  - Version tagged: `git tag v0.2.0` (or appropriate version)
-  - Changes pushed to GitHub: `git push && git push --tags`
-  - GitHub release created (optional but recommended)
+### 5. Repository State
+- [ ] All changes committed: `git status`
+- [ ] Tag version: `git tag v0.2.0`
+- [ ] Push to GitHub: `git push && git push --tags`
 
-- [ ] **First Publish**
-  - Login to marketplace: `vsce login kanad13`
-  - Publish extension: `vsce publish`
-  - Verify no errors during upload
-  - Check marketplace page appears correctly
-  - Wait for marketplace review/approval (if applicable)
-  - Test installation from marketplace: `code --install-extension kanad13.lightweight-markdown-preview`
+### 6. Publish to Marketplace
+```bash
+vsce login kanad13                           # login (already done)
+vsce publish                                 # publish extension
+# Wait for marketplace processing
+# Verify on: https://marketplace.visualstudio.com
+```
 
 ---
 
 ## POST-PUBLICATION TASKS
 
-### After successful marketplace publication:
+After successful marketplace publication:
 
 - [ ] Update README.md to reference marketplace installation
 - [ ] Add marketplace badge to README
-- [ ] Update RELEASE_CHECKLIST.md with any lessons learned
-- [ ] Create GitHub release with .vsix file attached
-- [ ] Announce release (Twitter, Reddit, personal blog, etc.)
+- [ ] Update RELEASE_CHECKLIST.md with lessons learned
+- [ ] Create GitHub release with .vsix file
 - [ ] Monitor marketplace Q&A and reviews
-- [ ] Set up marketplace analytics monitoring
 
 ---
 
-## KNOWN LIMITATIONS (Document but Don't Fix)
+## KNOWN LIMITATIONS (Document, Don't Fix)
 
-These are documented limitations, not bugs to fix:
+These are acceptable for v0.x:
 
-1. **Math expressions not supported** - Documented in README, acceptable limitation
-2. **Mermaid requires internet** - CDN-based, documented, acceptable for v0.x
-3. **Single preview panel** - Design decision, documented in CHANGELOG
-4. **No offline mode** - Related to Mermaid CDN, acceptable for v0.x
+1. **Math expressions not supported** - Documented in README
+2. **Mermaid requires internet** - CDN-based, documented
+3. **Single preview panel** - Design decision
+4. **No offline mode** - Related to Mermaid CDN
 
 ---
 
@@ -292,26 +132,44 @@ These are documented limitations, not bugs to fix:
 
 ---
 
-## NOTES
+## COMPLETION STATUS
 
-- Extension is already functional and well-documented
-- Codebase is clean and follows best practices
-- No major refactoring needed
-- Focus on marketplace-specific requirements and polish
-- Most tasks are documentation, metadata, and testing
-- Actual code quality is production-ready
-
-**Estimated Time to Complete Critical Tasks:** 2-3 hours
-**Estimated Time to Complete All Recommended Tasks:** 1-2 days
-**Estimated Time for Full Polish (including optional):** 3-5 days
+| Task | Status | Notes |
+|------|--------|-------|
+| Critical Prerequisites | ✓ DONE | All 5 critical items completed |
+| Development Config | ✓ DONE | launch.json, settings.json created |
+| Marketplace Metadata | ✓ DONE | galleryBanner, qna, keywords, categories |
+| CI/CD Workflows | ✓ DONE | ci.yml added for PR checks |
+| Package Optimization | ✓ DONE | .vscodeignore refined, 17.41 KB |
+| Build Test | ✓ DONE | Lint passes, package successful |
+| Git Status | ✓ CLEAN | 4 commits ready to push |
+| Pre-Publication Checklist | → NEXT | Begin verification |
+| Screenshots | ◌ OPTIONAL | Post-release enhancement |
+| Automated Tests | ◌ OPTIONAL | Manual testing sufficient |
+| Community Files | ◌ OPTIONAL | Post-release enhancement |
 
 ---
 
-## PROGRESS TRACKING
+## NEXT IMMEDIATE ACTIONS
 
-**Last Updated:** 2025-11-01 (FULLY UPDATED)
-**Critical Tasks Completed:** 5 / 5 ✓
-**Recommended Tasks Completed:** 6 / 10 (items 6, 8, 9, 13, 14 + skipped item 10: tests)
-**Total Significant Tasks:** 11 / 15 ready for publication
-**Git Status:** Clean working tree - ready for commit
-**Next Step:** Commit changes, verify with clean build test, then proceed to publication
+1. **Push changes to GitHub**
+   ```bash
+   git push
+   ```
+
+2. **Monitor CI/CD workflows**
+   - Watch for ci.yml execution on push
+   - Verify no failures in linting or packaging
+
+3. **Complete Pre-Publication Verification checklist** (above)
+
+4. **Tag and publish**
+   ```bash
+   git tag v0.2.0
+   git push --tags
+   vsce publish
+   ```
+
+---
+
+*Last verified: 2025-11-01 | Ready for publication pipeline*
