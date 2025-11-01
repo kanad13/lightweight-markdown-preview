@@ -15,17 +15,28 @@
 		"node": ">=18.0.0"
 	},
 	"categories": [
-		"Programming Languages"
+		"Other",
+		"Formatters"
 	],
 	"keywords": [
 		"markdown",
 		"preview",
+		"md",
 		"mermaid",
 		"diagrams",
 		"viewer",
 		"live-preview",
-		"lightweight"
+		"lightweight",
+		"render",
+		"documentation",
+		"chart",
+		"flowchart"
 	],
+	"qna": "marketplace",
+	"galleryBanner": {
+		"color": "#0D47A1",
+		"theme": "dark"
+	},
 	"activationEvents": [
 		"onLanguage:markdown"
 	],
@@ -72,5 +83,6 @@
 		"type": "git",
 		"url": "https://github.com/kanad13/lightweight-markdown-preview.git"
 	},
-	"license": "MIT"
+	"license": "MIT",
+	"pricing": "Free"
 }

@@ -1,6 +1,17 @@
 .git
 .gitignore
 .eslintrc.json
+.vscode/
 .vscode-test/
+.claude/
 *.vsix
 *.log
+test/
+test.md
+example.md
+AGENTS.md
+ARCHITECTURE.md
+RELEASE_CHECKLIST.md
+MARKETPLACE_PREPARATION.md
+CHANGELOG.md
+node_modules/
