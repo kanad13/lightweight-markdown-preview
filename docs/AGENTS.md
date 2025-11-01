@@ -5,9 +5,9 @@ Quick guide for extending and maintaining this codebase.
 ## Quick Context
 
 - **Project:** VS Code markdown preview with Mermaid support
-- **Main file:** `extension.js` (222 lines)
-- **Tech:** VS Code API, marked, Mermaid v11
-- **Package size:** ~180KB (includes node_modules)
+- **Main file:** `src/extension.js` (222 lines)
+- **Tech:** VS Code API, marked (v9.0.0), Mermaid v11 (CDN)
+- **Package size:** ~17.4KB optimized (node_modules, dev files excluded per .vscodeignore)
 
 ## Start Here
 
@@ -50,12 +50,12 @@ If needed: `npm install package --save` then `npm run package`
 ## Code Organization
 
 ```
-extension.js:
+src/extension.js:
 - activate(context)         - Entry point, registers commands
 - updateWebviewContent()    - Renders markdown + processes mermaid
 - getWebviewContent()       - Generates HTML/CSS/JS
 - getNonce()                - Generates CSP nonce
-- deactivate()              - Cleanup
+- deactivate()              - Cleanup (handles panel disposal)
 ```
 
 ## Testing
@@ -89,12 +89,12 @@ Modify the `marked()` call in updateWebviewContent()
 
 ### Add Configuration Setting
 
-Add to package.json:
+Add to package.json in `contributes.configuration`:
 
 ```json
 "configuration": {
   "properties": {
-    "lightweightMarkdownViewer.setting": {
+    "lightweightMarkdownPreview.setting": {
       "type": "string",
       "default": "value"
     }
@@ -102,7 +102,7 @@ Add to package.json:
 }
 ```
 
-Read in extension.js: `vscode.workspace.getConfiguration('lightweightMarkdownViewer').get('setting')`
+Read in extension.js: `vscode.workspace.getConfiguration('lightweightMarkdownPreview').get('setting')`
 
 ### Debug
 
@@ -110,32 +110,35 @@ In Extension Development Host:
 
 - Press `Ctrl+Shift+J` for DevTools
 - Go to Output tab
-- Select "Lightweight Markdown Viewer"
+- Select "Lightweight Markdown Preview"
 - Look for errors
 
 ## Release Checklist
 
-When releasing a new version:
+See [RELEASE_CHECKLIST.md](./docs/RELEASE_CHECKLIST.md) for complete pre-publication verification and release procedures.
 
+Quick summary:
 1. **Update version** in package.json (semantic versioning: major.minor.patch)
 2. **Update CHANGELOG.md** with changes
 3. **Test locally:** `npm run lint` and `npm run package`
-4. **Commit:** `git add . && git commit -m "Release v0.x.x"`
-5. **Tag:** `git tag v0.x.x && git push origin main --tags`
-6. **GitHub Actions** builds and creates release automatically
-7. **Verify** at https://github.com/kanad13/lightweight-markdown-preview/releases
+4. **Commit and tag:** `git add . && git commit -m "Release v0.x.x" && git tag v0.x.x`
+5. **Push:** `git push origin main --tags`
+6. **Verify build** passes CI checks at https://github.com/kanad13/lightweight-markdown-preview
 
 ## Files
 
-| File            | Purpose                | Edit Frequency |
-| --------------- | ---------------------- | -------------- |
-| extension.js    | Main code              | Often          |
-| package.json    | Metadata, dependencies | Rarely         |
-| README.md       | User docs              | Sometimes      |
-| ARCHITECTURE.md | Design decisions       | Sometimes      |
-| CHANGELOG.md    | Release history        | Every release  |
-| .vscodeignore   | Packaging              | Rarely         |
-| example.md      | Test file              | Sometimes      |
+| File                 | Purpose                      | Edit Frequency |
+| -------------------- | ---------------------------- | -------------- |
+| src/extension.js     | Main code                    | Often          |
+| package.json         | Metadata, dependencies       | Rarely         |
+| README.md            | User docs                    | Sometimes      |
+| docs/ARCHITECTURE.md | Design decisions             | Sometimes      |
+| docs/CHANGELOG.md    | Release history              | Every release  |
+| docs/AGENTS.md       | Development guide            | Sometimes      |
+| examples/example.md  | Example markdown file        | Sometimes      |
+| examples/test.md     | Test file with all features  | Sometimes      |
+| .vscodeignore        | Packaging exclusions         | Rarely         |
+| .github/workflows/   | CI/CD pipeline               | Rarely         |
 
 ## Standards
 
@@ -184,5 +187,5 @@ When releasing a new version:
 
 ---
 
-**Last Updated:** October 24, 2025
+**Last Updated:** November 1, 2025 (v0.2.0)
 **For:** AI Agents & Contributors

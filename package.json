@@ -3,7 +3,7 @@
 	"displayName": "Lightweight Markdown Preview",
 	"description": "A simple Markdown preview extension for VS Code with Mermaid diagram support.",
 	"version": "0.2.0",
-	"icon": "icon.png",
+	"icon": "assets/icon.png",
 	"publisher": "kanad13",
 	"author": "kanad13",
 	"homepage": "https://github.com/kanad13/lightweight-markdown-preview",
@@ -40,7 +40,7 @@
 	"activationEvents": [
 		"onLanguage:markdown"
 	],
-	"main": "./extension.js",
+	"main": "./src/extension.js",
 	"contributes": {
 		"commands": [
 			{
@@ -48,8 +48,8 @@
 				"title": "Show Lightweight Markdown Preview",
 				"category": "Markdown",
 				"icon": {
-					"light": "icon-eye.svg",
-					"dark": "icon-eye.svg"
+					"light": "assets/icon-eye.svg",
+					"dark": "assets/icon-eye.svg"
 				}
 			}
 		],

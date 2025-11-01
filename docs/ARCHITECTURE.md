@@ -139,23 +139,33 @@ Panel disposed → cleanup listeners
 
 ## Files
 
-| File | Lines | Purpose |
-|------|-------|---------|
-| extension.js | 222 | Core logic |
-| package.json | 30 | Metadata, dependencies |
-| README.md | 60 | User guide |
-| ARCHITECTURE.md | 150 | Design decisions |
-| AGENTS.md | 250 | Development guide |
-| .github/workflows/release.yml | 40 | CI/CD pipeline |
+| File | Purpose |
+|------|---------|
+| src/extension.js | Core extension logic (222 lines) |
+| package.json | Metadata, dependencies, marketplace config |
+| README.md | User guide and installation instructions |
+| docs/ARCHITECTURE.md | Design decisions and guardrails |
+| docs/AGENTS.md | Development guide for contributors |
+| docs/CHANGELOG.md | Version history and features |
+| docs/RELEASE_CHECKLIST.md | Publication and release procedures |
+| .github/workflows/ci.yml | PR quality checks and linting |
+| assets/ | Icons and visual assets |
+| examples/ | Example and test markdown files |
 
 ## Distribution Model
 
-- **Method:** GitHub Releases with .vsix files
-- **Trigger:** Git tag `v*.*.*` (e.g., v0.0.2)
-- **Build:** GitHub Actions runs `npm run package`
-- **Result:** .vsix file attached to release
-- **Install:** User downloads .vsix and installs in VS Code
+**Primary:** VSCode Marketplace (recommended for end users)
+- Published via: `vsce publish` command
+- Versions: Semantic versioning (major.minor.patch)
+- See RELEASE_CHECKLIST.md for pre-publication steps
+
+**Alternative:** Direct .vsix installation
+- Build: `npm run package`
+- Install: VS Code Extensions → ... menu → Install from VSIX
+- Use case: Pre-release testing or offline installation
+
+**Development:** F5 in VS Code (Extension Development Host)
 
 ---
 
-**Last Updated:** October 24, 2025
+**Last Updated:** November 1, 2025 (v0.2.0)

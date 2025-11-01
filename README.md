@@ -60,7 +60,7 @@ npm install
 
 To test all features including Mermaid diagrams:
 
-1. Open the included `test.md` file in VS Code
+1. Open the included `examples/test.md` file in VS Code (or any Markdown file)
 2. Run the command **"Markdown: Show Lightweight Markdown Preview"** from the Command Palette
 3. Verify that:
    - All text formatting appears correctly (headings, bold, italic, lists)
@@ -79,6 +79,14 @@ To test all features including Mermaid diagrams:
   - Proper script enablement
   - Document change listeners for live updates
   - Panel disposal handling
+
+### Development Documentation
+
+For detailed development information, see:
+- [ARCHITECTURE.md](docs/ARCHITECTURE.md) - Design decisions and security model
+- [AGENTS.md](docs/AGENTS.md) - Guide for AI agents and contributors
+- [CHANGELOG.md](docs/CHANGELOG.md) - Version history and features
+- [RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) - Publication procedures
 
 ### Development Setup
 
@@ -106,6 +114,36 @@ npm run lint
 - **Math Support:** Mathematical expressions (LaTeX/MathJax) are not currently supported and will display as plain text
 - **Offline Mode:** Mermaid diagrams require internet connection (CDN-based)
 
+## Project Structure
+
+```
+lightweight-markdown-preview/
+├── src/
+│   └── extension.js              # Main extension code
+├── assets/
+│   ├── icon.png                  # Extension icon (displayed in VS Code)
+│   └── icon-eye.svg              # Editor command icon
+├── examples/
+│   ├── test.md                   # Comprehensive test file with all features
+│   └── example.md                # Example markdown file
+├── docs/
+│   ├── ARCHITECTURE.md           # Design decisions and security model
+│   ├── AGENTS.md                 # Development guide for contributors
+│   ├── CHANGELOG.md              # Version history
+│   ├── RELEASE_CHECKLIST.md      # Pre-publication verification steps
+│   └── MARKETPLACE_PREPARATION.md # Marketplace submission checklist
+├── .github/
+│   └── workflows/
+│       └── ci.yml                # CI/CD pipeline for PR checks
+├── .vscode/
+│   ├── launch.json               # Extension debugging configuration
+│   └── settings.json             # ESLint configuration
+├── package.json                  # Extension manifest and dependencies
+├── README.md                      # This file
+├── LICENSE                        # MIT License
+└── .vscodeignore                 # Files excluded from package
+```
+
 ## Contributing
 
 Pull requests are welcome! Areas for improvement:
@@ -114,6 +152,8 @@ Pull requests are welcome! Areas for improvement:
 - Bundle Mermaid locally for offline support
 - Add custom themes for preview
 - Support for other diagram types
+
+Before contributing, read [ARCHITECTURE.md](docs/ARCHITECTURE.md) and [AGENTS.md](docs/AGENTS.md) for development guidelines.
 
 ## License
 
