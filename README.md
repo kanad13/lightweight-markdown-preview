@@ -4,9 +4,9 @@ A minimal VS Code extension for previewing Markdown with Mermaid diagrams and Ma
 
 ## Why This Extension?
 
-- **Lightweight:** ~19 KB packaged (no massive dependencies)
+- **Lightweight:** ~38 KB packaged (no massive dependencies)
 - **Privacy-Friendly:** No tracking, no analytics, no data collection. Your markdown stays on your machine
-- **Simple:** ~260 lines of code, easy to understand and maintain
+- **Simple:** ~300 lines of code, easy to understand and maintain
 - **Fast:** Live preview updates as you type
 - **Secure:** Content Security Policy, nonce-based script execution
 - **One Job:** Previews Markdown. That's it. No themes, no plugins, no bloat.
@@ -20,29 +20,11 @@ A minimal VS Code extension for previewing Markdown with Mermaid diagrams and Ma
 
 ## Install
 
-### From Marketplace (Recommended)
-
 1. Open VS Code
-2. Go to Extensions (`Cmd+Shift+X` / `Ctrl+Shift+X`)
+2. Go to Extensions
 3. Search for "Lightweight Markdown Preview"
 4. Click Install
-
-### From .vsix File
-
-1. Download `.vsix` from [Releases](https://github.com/kanad13/lightweight-markdown-preview/releases)
-2. In VS Code: Extensions → ... menu → Install from VSIX
-3. Select the file
-
-## Usage
-
-1. Open any Markdown file (`.md`)
-2. Run command: `Markdown: Show Lightweight Markdown Preview` (Cmd+Shift+P)
-3. Or click the eye icon in the editor title bar
-4. Preview updates as you edit
-
-## Test It
-
-Open [examples/test.md](/examples/test.md) and run the preview command to verify all Markdown elements, Mermaid diagrams, and code highlighting render correctly.
+5. Start previewing your Markdown file by clicking the "Eye" icon in the top-right corner or using the Command Palette (`Ctrl+Shift+P` > `Markdown: Show Lightweight Markdown Preview`)
 
 ## Technical Details
 
@@ -52,7 +34,3 @@ Open [examples/test.md](/examples/test.md) and run the preview command to verify
 - See [ARCHITECTURE.md](/docs/architecture.md) for:
 	- In-depth explanation of the extension's architecture
 	- Key design patterns and decisions
-
-## License
-
-MIT
