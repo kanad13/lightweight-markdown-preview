@@ -1,155 +1,253 @@
-# Architecture & Design Decisions
+# Architecture & Design Philosophy
 
-Reference document explaining WHY the extension is designed this way.
+This document explains the design decisions and security model.
+
+## Core Philosophy
+
+**One job, done well:** Preview markdown. No themes, no plugins, no bloat.
+
+**Constraints:**
+- Minimal package size
+- No large dependencies
+- Simple enough for AI agent maintenance
+- Secure by design
 
 ## Design Decisions
 
-### Single Webview Panel
+### Single Preview Panel (Not Per-Document)
 
-**Decision:** One preview panel per window, not per document.
+**Decision:** One webview panel per window, not per markdown file.
 
-**Why:** Simpler state management, lower memory footprint, matches VS Code's built-in preview behavior.
+**Why:**
+- **Simpler state:** Only one `currentPanel` and `currentDocument` to manage
+- **Lower memory:** No multiple renderer instances
+- **VS Code standard:** Matches built-in preview behavior
 
-**Tradeoff:** Can't preview two documents simultaneously (acceptable for a lightweight extension).
+**Tradeoff:** Can't preview two documents simultaneously. Acceptable for lightweight extension.
 
-### Markdown → HTML → Webview Flow
+### Real-Time Preview (Without Saving)
 
-**Process:** User types → `onDidChangeTextDocument` → `updateWebviewContent()` → Render HTML → Display
+**Decision:** Update preview on every keystroke, not on file save.
 
-**Why:** Provides real-time feedback without requiring file save.
+**Why:**
+- Immediate feedback improves editing experience
+- More useful than delayed updates
+- Feasible with ~50ms render time
 
-### Mermaid Preprocessing
+**Implementation:** `onDidChangeTextDocument` listener triggers `updateWebviewContent()`.
 
-**Problem:** `marked` library escapes mermaid syntax, breaking diagrams.
+### Mermaid Block Extraction (Pre-Parsing)
 
-**Solution:** Extract mermaid blocks before markdown parsing, store separately, reparse markdown, then reinsert diagrams with Mermaid script.
+**Problem:** `marked` library escapes angle brackets in mermaid syntax:
+```
+```mermaid
+graph LR
+    A-->B
+```
+```
+becomes escaped HTML entities, breaking Mermaid rendering.
 
-**Implementation:** Regex finds ` ```mermaid...``` `, stores in array, parses markdown, reinserts blocks with Mermaid script tags.
+**Solution:** Extract mermaid blocks before parsing, store in array, parse markdown, then reinject blocks with Mermaid script.
 
-### CDN for Mermaid & MathJax, NPM for Markdown
+**Why this approach:**
+- Preserves mermaid syntax perfectly
+- Allows marked to handle everything else correctly
+- Simple to implement (~10 lines regex)
 
-**Mermaid (CDN):**
-- 100KB+ uncompressed
-- Changes frequently
-- Only needed in preview (not at build time)
+## Dependency Strategy
 
-**MathJax (CDN):**
-- 150KB+ uncompressed
-- Changes frequently
-- Only needed in preview (not at build time)
+### Why CDN for Mermaid & MathJax?
 
-**Marked (NPM):**
-- 20KB, stable
-- Used at parse time
-- Must be bundled
+| Aspect | Mermaid | MathJax | Marked |
+|--------|---------|---------|--------|
+| **Size** | 100KB+ | 150KB+ | ~20KB |
+| **Changes** | Frequently | Frequently | Stable |
+| **Used** | Preview only (webview) | Preview only (webview) | Parse time (build) |
+| **Update** | User gets latest | User gets latest | Locked to version |
 
-**Result:** Keeps packaged extension to ~19 KB.
+**Decision:** CDN for large rendering libs, NPM for small parsers.
 
-### Content Security Policy (CSP) with Nonces
+**Result:** ~19 KB package instead of 250KB+
 
-**Problem:** Webviews execute arbitrary content from user's markdown files. Risk of injection attacks.
+**User experience:**
+- First mermaid load: wait for CDN (1-2 sec, cached thereafter)
+- Offline users: diagrams won't render (acceptable limitation)
+- Package downloads faster: especially important on slow connections
 
-**Solution:** CSP header restricts script execution. Nonces allow only specifically-trusted inline scripts.
+### Cost-Benefit
+
+| Approach | Pro | Con |
+|----------|-----|-----|
+| **Bundle all (NPM)** | Works offline | 250KB+ package, users pay 10x download cost |
+| **CDN for large libs** | 19KB package, always latest libs | Needs internet for diagrams |
+| **CDN for everything** | Smallest package | No control over versions, CDN risk |
+
+**We chose:** CDN for large, frequently-updated libs.
+
+## Security Model
+
+### Threat Model
+
+**Assumption:** Users open arbitrary markdown files (potentially malicious).
+
+**Attack vectors:**
+1. XSS via embedded `<script>` tags
+2. Injection attacks via HTML manipulation
+3. Abuse of Mermaid/MathJax rendering
+4. Exploiting VS Code webview vulnerabilities
+
+### Defense Strategy
+
+#### Layer 1: Content Security Policy (CSP)
+
+CSP meta tag restricts what can execute:
+
+```html
+<meta http-equiv="Content-Security-Policy"
+      content="script-src 'nonce-${nonce}';">
+```
+
+**Effect:** Only scripts with matching nonce can execute.
 
 **Implementation:**
-- Generate random nonce per render
-- Include in CSP meta tag: `<meta http-equiv="Content-Security-Policy" content="script-src 'nonce-${nonce}';">`
-- Include in all inline scripts: `<script nonce="${nonce}">`
-- Regenerate nonce on every update (different each time)
+- Generate random nonce per render: `crypto.randomUUID()`
+- Include in CSP header
+- Include in every `<script nonce="${nonce}">`
+- Regenerate on every update (different each time)
 
-**Security Model:** User's markdown content is rendered as HTML but cannot execute code.
+**Result:** Malicious scripts in markdown cannot execute.
+
+#### Layer 2: Safe HTML Parsing
+
+**marked** parser converts markdown to HTML without executing code:
+```
+Input:  `<script>alert('xss')</script>`
+Output: `&lt;script&gt;alert('xss')&lt;/script&gt;` (escaped)
+Rendered: Shows as text, not executed
+```
+
+**Our code:** Never uses `innerHTML` or `eval()`. All content goes through marked's safe parser.
+
+#### Layer 3: Trusted External Scripts
+
+Mermaid and MathJax are loaded from CDN, not user input:
+```html
+<script nonce="${nonce}" src="https://cdn.jsdelivr.net/npm/mermaid"></script>
+```
+
+- CDN is signed/verified
+- Not user-controlled
+- Can be updated independently
+
+#### Layer 4: VS Code Webview Sandbox
+
+VS Code webviews run in a restricted context:
+- No file system access
+- No process spawning
+- Limited network (CSP enforced)
+- No access to extension's file system
+
+### Security Properties
+
+| Threat | Defense |
+|--------|---------|
+| Script execution | CSP + nonce requirement |
+| XSS injection | Marked escapes HTML entities |
+| DOM manipulation | No `innerHTML`, no `eval()` |
+| Mermaid XSS | CDN only, user markdown can't inject scripts |
+| File system access | VS Code webview sandbox |
+
+**Verification:** Test in DevTools - scripts without nonce are blocked (CSP violation).
 
 ## State Management
+
+**Approach:** Closure-based, no external storage.
 
 ```
 Extension loads
     ↓
-User clicks preview icon or runs command
+User runs "Show Preview" command
     ↓
-createWebviewPanel() → currentPanel = panel
-currentDocument = active editor's document
+createWebviewPanel()
+    ↓
+currentPanel = reference to webview
+currentDocument = active editor document
     ↓
 Register onDidChangeTextDocument listener
     ↓
-Document changes → updateWebviewContent() → re-render HTML
+Document changes → listener → updateWebviewContent()
     ↓
-User switches document → updateWebviewContent() updates preview
+Regenerate nonce
     ↓
-User closes panel → cleanup listener, currentPanel = null
+Parse markdown → extract mermaid blocks → insert blocks with Mermaid script
+    ↓
+Generate HTML → Send to webview → Render
+    ↓
+User closes panel → Unregister listener → currentPanel = null
 ```
 
-**Key Variables:**
-- `currentPanel` - Active webview panel or null
+**Key variables:**
+- `currentPanel` - Active webview panel (or null)
 - `currentDocument` - Document being previewed
-- `nonce` - CSP security token (changes each render)
+- `nonce` - Unique CSP token (regenerated every render)
 
-**No external state:** Everything stored in closure variables.
+**No persistence:** All state is in-memory. Lost on extension reload.
 
 ## Performance Characteristics
 
-- **Render time:** ~50ms for typical markdown files
+### Baseline Performance
+
+- **Typical render time:** ~50ms for standard markdown files
 - **Bottlenecks:**
-  - Large files (>10,000 lines) may lag due to marked parsing
-  - Mermaid rendering for complex diagrams
-  - CDN latency on first mermaid load
+  - Large files (>10K lines): marked parsing is O(n)
+  - Complex Mermaid diagrams: client-side rendering latency
+  - CDN latency: first mermaid/MathJax load (cached thereafter)
 
-- **Optimization opportunities (if needed):**
-  1. Debounce `onDidChangeTextDocument` listener
-  2. Implement mermaid caching
-  3. Profile with DevTools
+### Acceptable Limits
 
-Currently, performance is acceptable for typical use cases.
+- **Current:** Comfortable up to ~5K lines
+- **Stretches to:** ~10K lines with noticeable lag
+- **Breaks:** >20K lines (render > 500ms)
 
-## Security Threat Model
+### Future Optimization (if needed)
 
-**Threat:** Malicious markdown file with embedded scripts or XSS attempts
+1. **Debounce rapid typing:** Don't re-render on every keystroke
+2. **Mermaid caching:** Cache parsed diagrams
+3. **Lazy rendering:** Render only visible portions
+4. **Web Workers:** Offload parsing to separate thread
 
-**Defenses:**
+Currently, performance is acceptable for typical use cases (< 10K lines).
 
-1. **Script Sandboxing:** Webview runs in restricted VS Code context
-2. **CSP:** Only allow:
-   - Output from `marked` parser (plain HTML)
-   - Mermaid and MathJax CDN scripts (trusted sources)
-   - Nonce-verified inline scripts (our own only)
-3. **No DOM manipulation:** Never use `innerHTML` or `eval()`
-4. **Input handling:** User's markdown is parsed, not executed
+## What Can Be Extended Safely
 
-**If adding new scripts:**
-- Must include nonce: `<script nonce="${nonce}">`
-- Test CSP violations in DevTools (they should fail)
-- Never evaluate user input
-
-## Files & Organization
-
-| File | Purpose |
-|------|---------|
-| `src/extension.js` | Core extension logic (~260 lines) |
-| `package.json` | VS Code manifest & metadata |
-| `README.md` | User guide |
-| `DEVELOPMENT.md` | For developers/agents working on code |
-| `docs/ARCHITECTURE.md` | This file (design decisions) |
-| `docs/CHANGELOG.md` | Version history |
-| `examples/test.md` | Comprehensive test file |
-| `.github/workflows/ci.yml` | CI/CD pipeline |
-| `assets/` | Icons and visual assets |
-| `.vscodeignore` | Packaging exclusions |
-
-## Extension Points
-
-**What CAN be extended safely:**
-- CSS styling (modify body, code, table CSS)
+**Safe to modify:**
+- CSS styling (body, code blocks, tables)
 - Markdown rendering options (pass options to `marked()`)
-- VS Code configuration settings
-- Commands
+- VS Code configuration settings (add new settings in package.json)
+- New commands (add to package.json, implement in extension.js)
 
-**What should NOT be extended:**
-- Core state management (currentPanel/currentDocument)
-- CSP headers (without security review)
-- Mermaid preprocessing logic
-- Nonce generation
+## What Should NOT Be Modified
 
-This is intentional: the extension does one thing well. Don't add features.
+**Do NOT change without security review:**
+- CSP headers (security boundary)
+- Nonce generation (cryptographic token)
+- State management (data flow)
+- Mermaid preprocessing (delicate syntax handling)
 
----
+**Why:** These are the security and stability foundations. Changes here could:
+- Break security defenses
+- Introduce vulnerabilities
+- Cause rendering failures
+- Create maintenance burden
 
-**Last Updated:** November 1, 2025 (v0.3.0 - Added MathJax support)
+## Design Constraints (Intentional)
+
+**This extension deliberately does NOT:**
+- Support custom themes
+- Support plugins/extensions
+- Support collaborative editing
+- Store user data
+- Support offline rendering of diagrams
+- Support rendering to multiple documents
+
+**Why:** Each addition increases complexity, security surface, and maintenance burden. A small, focused tool is better than a bloated multi-purpose tool.

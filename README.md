@@ -23,24 +23,17 @@ A minimal VS Code extension for previewing Markdown with Mermaid diagrams and Ma
 ## Install
 
 ### From Marketplace (Recommended)
+
 1. Open VS Code
 2. Go to Extensions (`Cmd+Shift+X` / `Ctrl+Shift+X`)
 3. Search for "Lightweight Markdown Preview"
 4. Click Install
 
 ### From .vsix File
+
 1. Download `.vsix` from [Releases](https://github.com/kanad13/lightweight-markdown-preview/releases)
 2. In VS Code: Extensions → ... menu → Install from VSIX
 3. Select the file
-
-### Development Mode
-```bash
-git clone https://github.com/kanad13/lightweight-markdown-preview.git
-cd lightweight-markdown-preview
-npm install
-code .
-# Press F5 to launch Extension Development Host
-```
 
 ## Usage
 
@@ -51,28 +44,14 @@ code .
 
 ## Test It
 
-Open `examples/test.md` and run the preview command. You should see:
-- All Markdown elements rendered correctly
-- Mermaid flowchart rendering
-- Code block syntax highlighting
+Open `examples/test.md` and run the preview command to verify all Markdown elements, Mermaid diagrams, and code highlighting render correctly.
 
-## Limitations
+## For Developers
 
-- **Offline:** Mermaid diagrams and MathJax require internet (CDN-based)
-- **Single Panel:** One preview per window
-- **Theming:** Uses default light/dark theme, no custom themes
+See [DEVELOPMENT.md](docs/development.md) for:
 
-## Development
-
-This extension is designed for **AI agent maintenance.** See [DEVELOPMENT.md](DEVELOPMENT.md) for:
-- Code structure and how to make changes
-- Testing procedures
-- How to build and release new versions
-- What to avoid
-
-## Architecture Notes
-
-For curious developers: [ARCHITECTURE.md](docs/ARCHITECTURE.md) contains design decisions and security model.
+- How to develop, test, and release
+- Architecture and design decisions
 
 ## License
 

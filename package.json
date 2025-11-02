@@ -40,6 +40,9 @@
 		"color": "#0D47A1",
 		"theme": "dark"
 	},
+	"activationEvents": [
+		"onCommand:lightweightMarkdownViewer.showPreview"
+	],
 	"main": "./src/extension.js",
 	"contributes": {
 		"commands": [
