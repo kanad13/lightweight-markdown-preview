@@ -75,18 +75,19 @@ _Continuous Integration (CI) via GitHub Actions automatically runs `npm install`
 
 ### Step 1: Update Version & Changelog
 
-1.  Increment the `version` in `package.json` (e.g., `0.2.0` -> `0.3.0`).
+1.  Increment the `version` in `package.json` (e.g., `0.3.0` -> `0.4.0`).
 2.  Add a new entry in `docs/CHANGELOG.md` detailing the changes.
 
 ### Step 2: Build and Commit
 
-````bash
+```bash
 # Ensure the package builds successfully
 npm run package
 
 # Commit the version update
 git add package.json docs/CHANGELOG.md
-git commit -m "Release v0.3.0: [Brief description of changes]"```
+git commit -m "Release v0.4.0: [Brief description of changes]"
+```
 
 ### Step 3: Tag and Push
 
@@ -94,11 +95,11 @@ Creating and pushing a tag triggers the release action.
 
 ```bash
 # Create a tag that matches the package version
-git tag v0.3.0
+git tag v0.4.0
 
 # Push the commit and the new tag
 git push origin main --tags
-````
+```
 
 ### Step 4: Publish
 
