@@ -16,6 +16,7 @@ const { marked } = require("marked");
  * @param {vscode.ExtensionContext} context - Extension context provided by VS Code
  */
 function activate(context) {
+	console.log("lightweightMarkdownViewer extension activated");
 	// Keep track of current panel to avoid duplicates and enable updates
 	let currentPanel = undefined;
 	let currentDocument = undefined;
@@ -112,13 +113,13 @@ function updateWebviewContent(panel, document) {
 
 		// Extract block math ($$...$$) - must come before inline math
 		raw = raw.replace(/\$\$\s*\n([\s\S]*?)\$\$/g, (_, code) => {
-			preservedBlocks.push({ type: 'math-block', content: `$$\n${code}$$` });
+			preservedBlocks.push({ type: "math-block", content: `$$\n${code}$$` });
 			return `<!--PRESERVED_${preservedBlocks.length - 1}-->`;
 		});
 
 		// Extract inline math ($...$) - protect from marked escaping
-		raw = raw.replace(/\$([^\$\n]+)\$/g, (_, code) => {
-			preservedBlocks.push({ type: 'math-inline', content: `$${code}$` });
+		raw = raw.replace(/\$([^$\n]+)\$/g, (_, code) => {
+			preservedBlocks.push({ type: "math-inline", content: `$${code}$` });
 			return `<!--PRESERVED_${preservedBlocks.length - 1}-->`;
 		});
 
@@ -127,7 +128,7 @@ function updateWebviewContent(panel, document) {
 		raw = raw.replace(
 			/```mermaid\s*\n([\s\S]*?)```/g,
 			(match, code) => {
-				preservedBlocks.push({ type: 'mermaid', content: `<pre class="mermaid">${code.trim()}</pre>` });
+				preservedBlocks.push({ type: "mermaid", content: `<pre class="mermaid">${code.trim()}</pre>` });
 				return `<!--PRESERVED_${preservedBlocks.length - 1}-->`;
 			}
 		);
@@ -138,11 +139,11 @@ function updateWebviewContent(panel, document) {
 		// Restore preserved blocks
 		html = html.replace(/<!--PRESERVED_(\d+)-->/g, (match, index) => {
 			const block = preservedBlocks[parseInt(index)];
-			if (block.type === 'mermaid') {
+			if (block.type === "mermaid") {
 				return block.content;
-			} else if (block.type === 'math-block') {
+			} else if (block.type === "math-block") {
 				return block.content;
-			} else if (block.type === 'math-inline') {
+			} else if (block.type === "math-inline") {
 				return block.content;
 			}
 			return match;

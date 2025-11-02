@@ -41,7 +41,8 @@
 		"theme": "dark"
 	},
 	"activationEvents": [
-		"onLanguage:markdown"
+		"onLanguage:markdown",
+		"onStartupFinished"
 	],
 	"main": "./src/extension.js",
 	"contributes": {
