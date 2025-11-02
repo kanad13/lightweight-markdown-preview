@@ -43,7 +43,7 @@
 	"activationEvents": [
 		"onCommand:lightweightMarkdownViewer.showPreview"
 	],
-	"main": "./src/extension.js",
+	"main": "./dist/extension.js",
 	"contributes": {
 		"commands": [
 			{
@@ -67,20 +67,26 @@
 		}
 	},
 	"scripts": {
+		"build": "webpack",
 		"lint": "eslint .",
 		"test": "npm run lint",
-		"package": "vsce package",
-		"publish": "vsce publish"
+		"package": "npm run build && vsce package",
+		"publish": "npm run build && vsce publish"
 	},
 	"dependencies": {
 		"marked": "^16.4.1"
 	},
 	"devDependencies": {
+		"@babel/core": "^7.25.0",
+		"@babel/preset-env": "^7.25.0",
 		"@types/node": "^24.9.2",
 		"@types/vscode": "^1.85.0",
 		"@vscode/test-electron": "^2.4.6",
+		"@vscode/vsce": "^3.6.2",
+		"babel-loader": "^10.0.0",
 		"eslint": "^9.39.0",
-		"@vscode/vsce": "^3.6.2"
+		"webpack": "^5.92.0",
+		"webpack-cli": "^6.0.1"
 	},
 	"repository": {
 		"type": "git",
