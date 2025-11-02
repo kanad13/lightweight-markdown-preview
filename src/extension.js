@@ -43,13 +43,21 @@ function activate(context) {
 				updateWebviewContent(currentPanel, doc);
 			} else {
 				// Create new panel with proper options
+				const workspaceFolders = vscode.workspace.workspaceFolders;
+				const localResourceRoots = [context.extensionUri];
+
+				// Add workspace folder(s) to allow access to markdown files and images
+				if (workspaceFolders) {
+					localResourceRoots.push(...workspaceFolders.map(folder => folder.uri));
+				}
+
 				currentPanel = vscode.window.createWebviewPanel(
 					"markdownPreviewBasic",
 					"Markdown Preview",
 					vscode.ViewColumn.Beside,
 					{
 						enableScripts: true, // Required for Mermaid to work
-						localResourceRoots: [context.extensionUri],
+						localResourceRoots: localResourceRoots,
 						retainContextWhenHidden: true,
 					}
 				);
@@ -88,6 +96,53 @@ function activate(context) {
 }
 
 /**
+ * Resolves and converts image paths to webview-accessible URIs
+ *
+ * Handles:
+ * - Relative paths: Resolved relative to the markdown file's directory
+ * - Absolute file paths: Converted to webview-accessible URIs
+ * - HTTPS URLs: Passed through unchanged
+ * - Data URIs: Passed through unchanged
+ *
+ * @param {string} imagePath - The image path from markdown
+ * @param {vscode.TextDocument} document - The markdown document
+ * @param {vscode.WebviewPanel} panel - The webview panel for URI conversion
+ * @returns {string} The converted image path or original if not a local file
+ */
+function resolveImagePath(imagePath, document, panel) {
+	// Skip external URLs and data URIs
+	if (imagePath.startsWith("http://") || imagePath.startsWith("https://") || imagePath.startsWith("data:")) {
+		return imagePath;
+	}
+
+	try {
+		const documentPath = document.uri;
+		const documentDir = documentPath.with({ path: documentPath.path.substring(0, documentPath.path.lastIndexOf("/")) });
+
+		// Resolve relative path against document directory
+		let imagePath_parsed;
+		if (imagePath.startsWith("/")) {
+			// Absolute path - treat as workspace-relative
+			const workspaceFolders = vscode.workspace.workspaceFolders;
+			if (workspaceFolders && workspaceFolders.length > 0) {
+				imagePath_parsed = vscode.Uri.joinPath(workspaceFolders[0].uri, imagePath);
+			} else {
+				return imagePath;
+			}
+		} else {
+			// Relative path - resolve against document directory
+			imagePath_parsed = vscode.Uri.joinPath(documentDir, imagePath);
+		}
+
+		// Convert to webview-accessible URI
+		return panel.webview.asWebviewUri(imagePath_parsed).toString();
+	} catch (error) {
+		console.error(`Failed to resolve image path: ${imagePath}`, error);
+		return imagePath; // Return original if resolution fails
+	}
+}
+
+/**
  * Updates the webview content with rendered markdown
  *
  * This is the core rendering pipeline:
@@ -95,7 +150,8 @@ function activate(context) {
  * 2. Extract math expressions - both inline ($...$) and block ($$...$$)
  * 3. Convert markdown to HTML using marked library
  * 4. Restore mermaid and math blocks with preservation markers
- * 5. Inject HTML into webview with proper CSP and styling
+ * 5. Process image paths to resolve relative paths to webview URIs
+ * 6. Inject HTML into webview with proper CSP and styling
  *
  * Why extraction happens first:
  * - marked parser would escape backticks/delimiters in mermaid & math syntax
@@ -149,6 +205,12 @@ function updateWebviewContent(panel, document) {
 			return match;
 		});
 
+		// Process image paths to resolve relative paths
+		html = html.replace(/<img\s+src="([^"]+)"/g, (match, imagePath) => {
+			const resolvedPath = resolveImagePath(imagePath, document, panel);
+			return `<img src="${resolvedPath}"`;
+		});
+
 		// Generate nonce for CSP
 		const nonce = getNonce();
 
@@ -170,7 +232,7 @@ function updateWebviewContent(panel, document) {
  *
  * CSP (Content Security Policy) breakdown:
  * - default-src 'none': Block everything by default (secure)
- * - img-src https: data: Allow images from HTTPS and data URIs
+ * - img-src https: data: vscode-resource: Allow images from HTTPS, data URIs, and local files
  * - script-src 'nonce-*': Only allow scripts with matching nonce
  * - style-src 'unsafe-inline': Allow inline styles (needed for rendering)
  * - font-src https: data: Allow fonts from HTTPS and data URIs (for MathJax)
@@ -194,7 +256,7 @@ function getWebviewContent(markdownHtml, nonce) {
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data:; script-src 'nonce-${nonce}' https://cdn.jsdelivr.net; style-src 'unsafe-inline' https://cdn.jsdelivr.net; font-src https: data:;">
+	<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data: vscode-resource:; script-src 'nonce-${nonce}' https://cdn.jsdelivr.net; style-src 'unsafe-inline' https://cdn.jsdelivr.net; font-src https: data:;">
 	<title>Markdown Preview</title>
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/atom-one-light.min.css">
 	<style>

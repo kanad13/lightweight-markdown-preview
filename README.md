@@ -11,6 +11,8 @@ A minimal VS Code extension for previewing Markdown with Mermaid diagrams and Ma
 - **Secure:** Content Security Policy, nonce-based script execution
 - **One Job:** Previews Markdown. That's it. No themes, no plugins, no bloat.
 
+![Lightweight Markdown Preview Screenshot](./docs/markdown-preview.png)
+
 ## Features
 
 - Real-time Markdown preview in a side panel

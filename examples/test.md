@@ -1,5 +1,9 @@
 # Sample Markdown File
 
+![Lightweight Markdown Preview Screenshot](../docs/markdown-preview.png)
+
+
+
 This file contains all typical elements found in a Markdown document. Like:
 
 - Headings
@@ -11,7 +15,20 @@ This file contains all typical elements found in a Markdown document. Like:
 - Tables
 - Mermaid diagrams
 - Mathematical expressions
+# Lightweight Markdown Preview
 
+A minimal VS Code extension for previewing Markdown with Mermaid diagrams and MathJax support. **No bloat. No configuration. Just markdown.**
+
+## Why This Extension?
+
+- **Lightweight:** ~38 KB packaged (no massive dependencies)
+- **Privacy-Friendly:** No tracking, no analytics, no data collection. Your markdown stays on your machine
+- **Simple:** ~300 lines of code, easy to understand and maintain
+- **Fast:** Live preview updates as you type
+- **Secure:** Content Security Policy, nonce-based script execution
+- **One Job:** Previews Markdown. That's it. No themes, no plugins, no bloat.
+
+![Lightweight Markdown Preview Screenshot](./docs/markdown-preview.png)
 ---
 
 ## Headings
@@ -68,7 +85,7 @@ print("Hello, World!")
 graph TD;
     A-->B;
     A-->C;
-    B-->D; 
+    B-->D;
     C-->D;
 ```
 
