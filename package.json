@@ -2,7 +2,7 @@
 	"name": "lightweight-markdown-preview",
 	"displayName": "Lightweight Markdown Preview",
 	"description": "Lightweight, privacy-friendly Markdown preview with Mermaid diagrams and MathJax equations. No bloat, no tracking.",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"icon": "assets/icon.png",
 	"publisher": "KunalPathak",
 	"author": "Kunal Pathak",
