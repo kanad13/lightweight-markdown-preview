@@ -14,11 +14,9 @@ A minimal VS Code extension for previewing Markdown with Mermaid diagrams and Ma
 ## Features
 
 - Real-time Markdown preview in a side panel
-- Full Mermaid diagram support (flowcharts, sequences, state diagrams, etc.)
-- MathJax support for LaTeX equations (inline and display)
 - All standard Markdown elements (headings, lists, tables, code blocks, images, etc.)
-- Syntax highlighting in code blocks
-- Keyboard shortcut: `Cmd+Shift+M` (macOS) or `Ctrl+Shift+M` (Windows/Linux)
+- Full Mermaid diagram support (flowcharts, sequences, state diagrams, etc.)
+- MathJax support for LaTeX equations
 
 ## Install
 
@@ -44,14 +42,16 @@ A minimal VS Code extension for previewing Markdown with Mermaid diagrams and Ma
 
 ## Test It
 
-Open `examples/test.md` and run the preview command to verify all Markdown elements, Mermaid diagrams, and code highlighting render correctly.
+Open [examples/test.md](/examples/test.md) and run the preview command to verify all Markdown elements, Mermaid diagrams, and code highlighting render correctly.
 
-## For Developers
+## Technical Details
 
-See [DEVELOPMENT.md](docs/development.md) for:
-
-- How to develop, test, and release
-- Architecture and design decisions
+- See [DEVELOPMENT.md](/docs/development.md) for:
+	- How to develop, test, and release
+	- Architecture and design decisions
+- See [ARCHITECTURE.md](/docs/architecture.md) for:
+	- In-depth explanation of the extension's architecture
+	- Key design patterns and decisions
 
 ## License
 
