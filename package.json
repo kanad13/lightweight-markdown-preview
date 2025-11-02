@@ -40,10 +40,6 @@
 		"color": "#0D47A1",
 		"theme": "dark"
 	},
-	"activationEvents": [
-		"onLanguage:markdown",
-		"onStartupFinished"
-	],
 	"main": "./src/extension.js",
 	"contributes": {
 		"commands": [
@@ -74,14 +70,14 @@
 		"publish": "vsce publish"
 	},
 	"dependencies": {
-		"marked": "^9.0.0"
+		"marked": "^16.4.1"
 	},
 	"devDependencies": {
-		"@types/node": "^18.0.0",
+		"@types/node": "^24.9.2",
 		"@types/vscode": "^1.85.0",
-		"@vscode/test-electron": "^2.3.0",
-		"eslint": "^8.50.0",
-		"@vscode/vsce": "^2.22.0"
+		"@vscode/test-electron": "^2.4.6",
+		"eslint": "^9.39.0",
+		"@vscode/vsce": "^3.6.2"
 	},
 	"repository": {
 		"type": "git",
