@@ -143,6 +143,34 @@ function resolveImagePath(imagePath, document, panel) {
 }
 
 /**
+ * Extracts headings from markdown raw text
+ *
+ * Parses markdown headings and returns a nested structure
+ * for generating a table of contents.
+ *
+ * @param {string} raw - The raw markdown text
+ * @returns {Array} Array of heading objects with level, text, and id
+ */
+function extractHeadings(raw) {
+	const headings = [];
+	const lines = raw.split("\n");
+
+	lines.forEach((line, index) => {
+		const match = line.match(/^(#{1,6})\s+(.+)$/);
+		if (match) {
+			const level = match[1].length;
+			const text = match[2].trim();
+			// Create a URL-friendly ID from heading text
+			const id = `heading-${text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-')}-${index}`;
+
+			headings.push({ level, text, id, lineIndex: index });
+		}
+	});
+
+	return headings;
+}
+
+/**
  * Updates the webview content with rendered markdown
  *
  * This is the core rendering pipeline:
@@ -166,6 +194,9 @@ function updateWebviewContent(panel, document) {
 	try {
 		let raw = document.getText();
 		const preservedBlocks = [];
+
+		// Extract headings for TOC
+		const headings = extractHeadings(raw);
 
 		// Extract block math ($$...$$) - must come before inline math
 		raw = raw.replace(/\$\$\s*\n([\s\S]*?)\$\$/g, (_, code) => {
@@ -192,6 +223,13 @@ function updateWebviewContent(panel, document) {
 		// Render markdown to HTML
 		let html = marked(raw);
 
+		// Add IDs to headings for anchor linking
+		headings.forEach(heading => {
+			const headingTag = `<h${heading.level}>`;
+			const headingTagWithId = `<h${heading.level} id="${heading.id}">`;
+			html = html.replace(headingTag, headingTagWithId);
+		});
+
 		// Restore preserved blocks
 		html = html.replace(/<!--PRESERVED_(\d+)-->/g, (match, index) => {
 			const block = preservedBlocks[parseInt(index)];
@@ -214,12 +252,54 @@ function updateWebviewContent(panel, document) {
 		// Generate nonce for CSP
 		const nonce = getNonce();
 
-		panel.webview.html = getWebviewContent(html, nonce);
+		panel.webview.html = getWebviewContent(html, nonce, headings);
 	} catch (error) {
 		vscode.window.showErrorMessage(
 			`Failed to render markdown: ${error.message}`
 		);
 	}
+}
+
+/**
+ * Generates nested TOC HTML from headings array
+ *
+ * @param {Array} headings - Array of heading objects with level, text, id
+ * @returns {string} HTML for the nested TOC list
+ */
+function generateTOC(headings) {
+	if (headings.length === 0) return '<p style="font-size: 0.9em; color: #888;">No headings found</p>';
+
+	let tocHtml = '<ul class="toc-list">';
+	let currentLevel = 0;
+
+	headings.forEach((heading) => {
+		// Close deeper levels
+		while (currentLevel >= heading.level) {
+			tocHtml += '</ul>';
+			currentLevel--;
+		}
+
+		// Open new levels
+		while (currentLevel < heading.level - 1) {
+			tocHtml += '<ul class="toc-list">';
+			currentLevel++;
+		}
+
+		if (currentLevel < heading.level) {
+			tocHtml += '<ul class="toc-list">';
+			currentLevel++;
+		}
+
+		tocHtml += `<li class="toc-item toc-level-${heading.level}"><a href="#${heading.id}" class="toc-link">${heading.text}</a></li>`;
+	});
+
+	// Close all open levels
+	while (currentLevel > 0) {
+		tocHtml += '</ul>';
+		currentLevel--;
+	}
+
+	return tocHtml;
 }
 
 /**
@@ -229,6 +309,7 @@ function updateWebviewContent(panel, document) {
  * - Security: Content Security Policy with nonce-based scripts
  * - Styling: Clean, minimal design that works in light and dark themes
  * - Interactivity: Mermaid diagrams and MathJax equations rendered via CDN
+ * - Navigation: Collapsible TOC sidebar for document outline
  *
  * CSP (Content Security Policy) breakdown:
  * - default-src 'none': Block everything by default (secure)
@@ -248,9 +329,12 @@ function updateWebviewContent(panel, document) {
  *
  * @param {string} markdownHtml - Already-rendered HTML from marked
  * @param {string} nonce - Security token for CSP (random string)
+ * @param {Array} headings - Array of heading objects for TOC generation
  * @returns {string} Complete HTML page
  */
-function getWebviewContent(markdownHtml, nonce) {
+function getWebviewContent(markdownHtml, nonce, headings = []) {
+	const tocHtml = generateTOC(headings);
+
 	return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -260,13 +344,109 @@ function getWebviewContent(markdownHtml, nonce) {
 	<title>Markdown Preview</title>
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/atom-one-light.min.css">
 	<style>
+		* {
+			box-sizing: border-box;
+		}
+
 		body {
 			font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
 			line-height: 1.6;
+			margin: 0;
+			padding: 0;
+			display: flex;
+			background: #fff;
+		}
+
+		.toc-sidebar {
+			position: fixed;
+			left: 0;
+			top: 0;
+			height: 100vh;
+			width: 280px;
+			background: #f9f9f9;
+			border-right: 1px solid #e0e0e0;
+			overflow-y: auto;
+			padding: 20px;
+			font-size: 0.95em;
+		}
+
+		.toc-header {
+			font-size: 0.85em;
+			font-weight: 600;
+			text-transform: uppercase;
+			letter-spacing: 0.5px;
+			color: #666;
+			margin-bottom: 12px;
+			padding-bottom: 8px;
+			border-bottom: 1px solid #e0e0e0;
+		}
+
+		.toc-list {
+			list-style: none;
+			margin: 0;
+			padding: 0;
+		}
+
+		.toc-list ul {
+			list-style: none;
+			margin: 0;
+			padding-left: 12px;
+			margin-top: 2px;
+		}
+
+		.toc-item {
+			margin: 4px 0;
+		}
+
+		.toc-link {
+			display: block;
+			padding: 4px 8px;
+			text-decoration: none;
+			color: #0066cc;
+			border-radius: 3px;
+			transition: all 0.15s ease;
+		}
+
+		.toc-link:hover {
+			background: #e8f0ff;
+			color: #0052a3;
+		}
+
+		.toc-link.active {
+			background: #0066cc;
+			color: white;
+			font-weight: 500;
+		}
+
+		.toc-level-2 .toc-link {
+			font-size: 0.95em;
+		}
+
+		.toc-level-3 .toc-link {
+			font-size: 0.9em;
+		}
+
+		.toc-level-4 .toc-link,
+		.toc-level-5 .toc-link,
+		.toc-level-6 .toc-link {
+			font-size: 0.85em;
+			color: #666;
+		}
+
+		.toc-level-4 .toc-link:hover,
+		.toc-level-5 .toc-link:hover,
+		.toc-level-6 .toc-link:hover {
+			background: #f0f0f0;
+			color: #0066cc;
+		}
+
+		.content {
+			margin-left: 280px;
+			flex: 1;
 			padding: 20px;
 			max-width: 900px;
-			margin: 0 auto;
 		}
+
 		pre {
 			background-color: #f5f5f5;
 			border: 1px solid #e0e0e0;
@@ -274,6 +454,7 @@ function getWebviewContent(markdownHtml, nonce) {
 			padding: 12px;
 			overflow-x: auto;
 		}
+
 		code {
 			background-color: #f5f5f5;
 			padding: 2px 4px;
@@ -281,43 +462,77 @@ function getWebviewContent(markdownHtml, nonce) {
 			font-family: 'Courier New', Courier, monospace;
 			font-size: 0.9em;
 		}
+
 		pre code {
 			background-color: transparent;
 			padding: 0;
 			font-family: 'Courier New', Courier, monospace;
 		}
+
 		blockquote {
 			border-left: 4px solid #ddd;
 			margin: 0;
 			padding-left: 16px;
 			color: #666;
 		}
+
 		table {
 			border-collapse: collapse;
 			width: 100%;
 			margin: 16px 0;
 		}
+
 		th, td {
 			border: 1px solid #ddd;
 			padding: 8px;
 			text-align: left;
 		}
+
 		th {
 			background-color: #f4f4f4;
 		}
+
 		img {
 			max-width: 100%;
 			height: auto;
 		}
+
 		.mermaid {
 			background-color: transparent;
 			border: none;
 			text-align: center;
 		}
+
+		h1, h2, h3, h4, h5, h6 {
+			scroll-margin-top: 20px;
+		}
+
+		/* Mobile responsiveness */
+		@media (max-width: 768px) {
+			.toc-sidebar {
+				width: 100%;
+				height: auto;
+				position: static;
+				border-right: none;
+				border-bottom: 1px solid #e0e0e0;
+				overflow-y: visible;
+			}
+
+			.content {
+				margin-left: 0;
+				padding: 20px;
+			}
+		}
 	</style>
 </head>
 <body>
-	${markdownHtml}
+	<aside class="toc-sidebar">
+		<div class="toc-header">Contents</div>
+		${tocHtml}
+	</aside>
+	<main class="content">
+		${markdownHtml}
+	</main>
 	<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" nonce="${nonce}"></script>
 	<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js" nonce="${nonce}"></script>
 	<script type="module" nonce="${nonce}">
@@ -325,7 +540,6 @@ function getWebviewContent(markdownHtml, nonce) {
 
 		// Initialize highlight.js for syntax highlighting
 		try {
-			// Apply syntax highlighting to all code blocks
 			document.querySelectorAll('pre code').forEach((block) => {
 				hljs.highlightElement(block);
 			});
@@ -357,6 +571,54 @@ function getWebviewContent(markdownHtml, nonce) {
 				console.error('MathJax initialization failed:', error);
 			}
 		}
+
+		// TOC scroll tracking and smooth navigation
+		const tocLinks = document.querySelectorAll('.toc-link');
+		const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
+
+		// Handle TOC link clicks for smooth scrolling
+		tocLinks.forEach(link => {
+			link.addEventListener('click', (e) => {
+				e.preventDefault();
+				const id = link.getAttribute('href').substring(1);
+				const target = document.getElementById(id);
+				if (target) {
+					target.scrollIntoView({ behavior: 'smooth' });
+					updateActiveTOC(id);
+				}
+			});
+		});
+
+		// Update active TOC link based on scroll position
+		function updateActiveTOC(activeId) {
+			tocLinks.forEach(link => {
+				link.classList.remove('active');
+				if (link.getAttribute('href') === '#' + activeId) {
+					link.classList.add('active');
+				}
+			});
+		}
+
+		// Track which heading is in view as user scrolls
+		const observerOptions = {
+			root: null,
+			rootMargin: '-50% 0px -50% 0px',
+			threshold: 0
+		};
+
+		const observer = new IntersectionObserver((entries) => {
+			entries.forEach(entry => {
+				if (entry.isIntersecting && entry.target.id) {
+					updateActiveTOC(entry.target.id);
+				}
+			});
+		}, observerOptions);
+
+		headings.forEach(heading => {
+			if (heading.id) {
+				observer.observe(heading);
+			}
+		});
 	</script>
 </body>
 </html>`;
