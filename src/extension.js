@@ -369,6 +369,7 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 			padding: 20px;
 			font-size: 0.95em;
 			transition: transform 0.3s ease, width 0.3s ease;
+			z-index: 999;
 		}
 
 		.toc-sidebar.collapsed {
@@ -385,28 +386,36 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 			margin-bottom: 12px;
 			padding-bottom: 8px;
 			border-bottom: 1px solid #e0e0e0;
-			display: flex;
-			justify-content: space-between;
-			align-items: center;
 		}
 
 		.toc-toggle {
-			background: none;
-			border: none;
+			position: fixed;
+			left: 12px;
+			top: 12px;
+			background: #f9f9f9;
+			border: 1px solid #e0e0e0;
 			color: #666;
 			cursor: pointer;
 			font-size: 1.2em;
-			padding: 0;
-			width: 24px;
-			height: 24px;
+			padding: 4px;
+			width: 32px;
+			height: 32px;
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			transition: color 0.15s ease;
+			transition: all 0.15s ease;
+			border-radius: 4px;
+			z-index: 1000;
 		}
 
 		.toc-toggle:hover {
 			color: #0066cc;
+			border-color: #0066cc;
+			background: #e8f0ff;
+		}
+
+		.toc-sidebar.collapsed .toc-toggle {
+			left: 8px;
 		}
 
 		.toc-list {
@@ -559,11 +568,9 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 	</style>
 </head>
 <body>
+	<button class="toc-toggle" id="tocToggle" aria-label="Toggle table of contents" title="Toggle TOC">×</button>
 	<aside class="toc-sidebar" id="tocSidebar">
-		<div class="toc-header">
-			<span>Contents</span>
-			<button class="toc-toggle" id="tocToggle" aria-label="Toggle table of contents">×</button>
-		</div>
+		<div class="toc-header">Contents</div>
 		${tocHtml}
 	</aside>
 	<main class="content">
