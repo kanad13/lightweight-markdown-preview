@@ -368,13 +368,7 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 			overflow-y: auto;
 			padding: 20px;
 			font-size: 0.95em;
-			transition: transform 0.3s ease, width 0.3s ease;
 			z-index: 999;
-		}
-
-		.toc-sidebar.collapsed {
-			transform: translateX(-280px);
-			width: 280px;
 		}
 
 		.toc-header {
@@ -388,35 +382,6 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 			border-bottom: 1px solid #e0e0e0;
 		}
 
-		.toc-toggle {
-			position: fixed;
-			left: 12px;
-			top: 12px;
-			background: #f9f9f9;
-			border: 1px solid #e0e0e0;
-			color: #666;
-			cursor: pointer;
-			font-size: 1.2em;
-			padding: 4px;
-			width: 32px;
-			height: 32px;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			transition: all 0.15s ease;
-			border-radius: 4px;
-			z-index: 1000;
-		}
-
-		.toc-toggle:hover {
-			color: #0066cc;
-			border-color: #0066cc;
-			background: #e8f0ff;
-		}
-
-		.toc-sidebar.collapsed .toc-toggle {
-			left: 8px;
-		}
 
 		.toc-list {
 			list-style: none;
@@ -482,11 +447,6 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 			flex: 1;
 			padding: 20px;
 			max-width: 900px;
-			transition: margin-left 0.3s ease;
-		}
-
-		.toc-sidebar.collapsed ~ .content {
-			margin-left: 0;
 		}
 
 		pre {
@@ -568,8 +528,7 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 	</style>
 </head>
 <body>
-	<button class="toc-toggle" id="tocToggle" aria-label="Toggle table of contents" title="Toggle TOC">×</button>
-	<aside class="toc-sidebar" id="tocSidebar">
+	<aside class="toc-sidebar">
 		<div class="toc-header">Contents</div>
 		${tocHtml}
 	</aside>
@@ -615,27 +574,6 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 			}
 		}
 
-		// TOC toggle functionality
-		const tocSidebar = document.getElementById('tocSidebar');
-		const tocToggle = document.getElementById('tocToggle');
-		let tocCollapsed = localStorage.getItem('tocCollapsed') === 'true';
-
-		// Apply saved state on load
-		if (tocCollapsed) {
-			tocSidebar.classList.add('collapsed');
-			tocToggle.textContent = '→';
-		} else {
-			tocToggle.textContent = '×';
-		}
-
-		// Toggle TOC on button click
-		tocToggle.addEventListener('click', () => {
-			tocCollapsed = !tocCollapsed;
-			localStorage.setItem('tocCollapsed', tocCollapsed);
-			tocSidebar.classList.toggle('collapsed');
-			tocToggle.textContent = tocCollapsed ? '→' : '×';
-		});
-
 		// TOC scroll tracking and smooth navigation
 		const tocLinks = document.querySelectorAll('.toc-link');
 		const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
@@ -655,13 +593,13 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 
 		// Update active TOC link based on scroll position and scroll TOC to show it
 		function updateActiveTOC(activeId) {
+			const sidebar = document.querySelector('.toc-sidebar');
 			tocLinks.forEach(link => {
 				link.classList.remove('active');
 				if (link.getAttribute('href') === '#' + activeId) {
 					link.classList.add('active');
 					// Scroll the TOC sidebar to make the active link visible
 					const activeLink = link;
-					const sidebar = tocSidebar;
 					const linkTop = activeLink.offsetTop;
 					const linkBottom = linkTop + activeLink.offsetHeight;
 					const sidebarScrollTop = sidebar.scrollTop;
