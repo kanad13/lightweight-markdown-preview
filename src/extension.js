@@ -161,7 +161,7 @@ function extractHeadings(raw) {
 			const level = match[1].length;
 			const text = match[2].trim();
 			// Create a URL-friendly ID from heading text
-			const id = `heading-${text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-')}-${index}`;
+			const id = `heading-${text.toLowerCase().replace(/[^\w\s-]/g, "").replace(/\s+/g, "-")}-${index}`;
 
 			headings.push({ level, text, id, lineIndex: index });
 		}
@@ -267,26 +267,26 @@ function updateWebviewContent(panel, document) {
  * @returns {string} HTML for the nested TOC list
  */
 function generateTOC(headings) {
-	if (headings.length === 0) return '<p style="font-size: 0.9em; color: #888;">No headings found</p>';
+	if (headings.length === 0) return "<p style=\"font-size: 0.9em; color: #888;\">No headings found</p>";
 
-	let tocHtml = '<ul class="toc-list">';
+	let tocHtml = "<ul class=\"toc-list\">";
 	let currentLevel = 0;
 
 	headings.forEach((heading) => {
 		// Close deeper levels
 		while (currentLevel >= heading.level) {
-			tocHtml += '</ul>';
+			tocHtml += "</ul>";
 			currentLevel--;
 		}
 
 		// Open new levels
 		while (currentLevel < heading.level - 1) {
-			tocHtml += '<ul class="toc-list">';
+			tocHtml += "<ul class=\"toc-list\">";
 			currentLevel++;
 		}
 
 		if (currentLevel < heading.level) {
-			tocHtml += '<ul class="toc-list">';
+			tocHtml += "<ul class=\"toc-list\">";
 			currentLevel++;
 		}
 
@@ -295,7 +295,7 @@ function generateTOC(headings) {
 
 	// Close all open levels
 	while (currentLevel > 0) {
-		tocHtml += '</ul>';
+		tocHtml += "</ul>";
 		currentLevel--;
 	}
 
@@ -368,6 +368,12 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 			overflow-y: auto;
 			padding: 20px;
 			font-size: 0.95em;
+			transition: transform 0.3s ease, width 0.3s ease;
+		}
+
+		.toc-sidebar.collapsed {
+			transform: translateX(-280px);
+			width: 280px;
 		}
 
 		.toc-header {
@@ -379,6 +385,28 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 			margin-bottom: 12px;
 			padding-bottom: 8px;
 			border-bottom: 1px solid #e0e0e0;
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+		}
+
+		.toc-toggle {
+			background: none;
+			border: none;
+			color: #666;
+			cursor: pointer;
+			font-size: 1.2em;
+			padding: 0;
+			width: 24px;
+			height: 24px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			transition: color 0.15s ease;
+		}
+
+		.toc-toggle:hover {
+			color: #0066cc;
 		}
 
 		.toc-list {
@@ -445,6 +473,11 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 			flex: 1;
 			padding: 20px;
 			max-width: 900px;
+			transition: margin-left 0.3s ease;
+		}
+
+		.toc-sidebar.collapsed ~ .content {
+			margin-left: 0;
 		}
 
 		pre {
@@ -526,8 +559,11 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 	</style>
 </head>
 <body>
-	<aside class="toc-sidebar">
-		<div class="toc-header">Contents</div>
+	<aside class="toc-sidebar" id="tocSidebar">
+		<div class="toc-header">
+			<span>Contents</span>
+			<button class="toc-toggle" id="tocToggle" aria-label="Toggle table of contents">×</button>
+		</div>
 		${tocHtml}
 	</aside>
 	<main class="content">
@@ -572,6 +608,27 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 			}
 		}
 
+		// TOC toggle functionality
+		const tocSidebar = document.getElementById('tocSidebar');
+		const tocToggle = document.getElementById('tocToggle');
+		let tocCollapsed = localStorage.getItem('tocCollapsed') === 'true';
+
+		// Apply saved state on load
+		if (tocCollapsed) {
+			tocSidebar.classList.add('collapsed');
+			tocToggle.textContent = '→';
+		} else {
+			tocToggle.textContent = '×';
+		}
+
+		// Toggle TOC on button click
+		tocToggle.addEventListener('click', () => {
+			tocCollapsed = !tocCollapsed;
+			localStorage.setItem('tocCollapsed', tocCollapsed);
+			tocSidebar.classList.toggle('collapsed');
+			tocToggle.textContent = tocCollapsed ? '→' : '×';
+		});
+
 		// TOC scroll tracking and smooth navigation
 		const tocLinks = document.querySelectorAll('.toc-link');
 		const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
@@ -589,12 +646,29 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 			});
 		});
 
-		// Update active TOC link based on scroll position
+		// Update active TOC link based on scroll position and scroll TOC to show it
 		function updateActiveTOC(activeId) {
 			tocLinks.forEach(link => {
 				link.classList.remove('active');
 				if (link.getAttribute('href') === '#' + activeId) {
 					link.classList.add('active');
+					// Scroll the TOC sidebar to make the active link visible
+					const activeLink = link;
+					const sidebar = tocSidebar;
+					const linkTop = activeLink.offsetTop;
+					const linkBottom = linkTop + activeLink.offsetHeight;
+					const sidebarScrollTop = sidebar.scrollTop;
+					const sidebarHeight = sidebar.clientHeight;
+					const sidebarBottom = sidebarScrollTop + sidebarHeight;
+
+					// If link is above visible area, scroll up
+					if (linkTop < sidebarScrollTop) {
+						sidebar.scrollTop = linkTop - 50;
+					}
+					// If link is below visible area, scroll down
+					else if (linkBottom > sidebarBottom) {
+						sidebar.scrollTop = linkBottom - sidebarHeight + 50;
+					}
 				}
 			});
 		}
