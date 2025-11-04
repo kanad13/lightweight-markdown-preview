@@ -25,9 +25,9 @@ A minimal VS Code extension for previewing Markdown with Mermaid diagrams and Ma
 
 ## Install
 
-1. Open VS Code
+1. Open VS Code (Insiders, Cursor, Windsurf or any other VS Code-based editor)
 2. Go to Extensions
-3. Search for "Lightweight Markdown Preview"
+3. Search for "Lightweight Markdown Preview" or explicitly for `KunalPathak.lightweight-markdown-preview`
 4. Click Install
 5. Start previewing your Markdown file by clicking the "Eye" icon in the top-right corner or using the Command Palette (`Ctrl+Shift+P` > `Markdown: Show Lightweight Markdown Preview`)
 
@@ -36,6 +36,6 @@ A minimal VS Code extension for previewing Markdown with Mermaid diagrams and Ma
 - See [DEVELOPMENT.md](/docs/development.md) for:
 	- How to develop, test, and release
 	- Architecture and design decisions
-- See [ARCHITECTURE.md](/docs/architecture.md) for:
+- See [ARCHITECTURE.md](/docs/ARCHITECTURE.md) for:
 	- In-depth explanation of the extension's architecture
 	- Key design patterns and decisions
