@@ -31,11 +31,25 @@ A minimal VS Code extension for previewing Markdown with Mermaid diagrams and Ma
 4. Click Install
 5. Start previewing your Markdown file by clicking the "Eye" icon in the top-right corner or using the Command Palette (`Ctrl+Shift+P` > `Markdown: Show Lightweight Markdown Preview`)
 
-## Technical Details
+## Documentation Guide
 
-- See [development.md](docs/development.md) for:
-	- How to develop, test, and release
-	- Architecture and design decisions
-- See [architecture.md](docs/architecture.md) for:
-	- In-depth explanation of the extension's architecture
-	- Key design patterns and decisions
+### For Users
+This README is all you need to install and use the extension.
+
+### For Developers
+
+**Before making any code changes:**
+1. Read [architecture.md](docs/architecture.md) - understand design decisions, security model, and why things are structured as they are
+2. This ensures changes align with the existing design and don't introduce security issues
+
+**While developing and releasing:**
+1. Follow [development.md](docs/development.md) for the complete workflow:
+   - **Section 1:** Local setup and verification
+   - **Section 2:** Feature development workflow (creating branches, making changes, testing, merging)
+   - **Section 3:** Release to marketplace (version bumps, tagging, publishing)
+   - **Section 4 & 5:** Code quality checklist and common pitfalls to avoid
+
+**At a glance:**
+- `architecture.md` - WHY design decisions were made
+- `development.md` - HOW to develop and release code
+- `CHANGELOG.md` - WHAT changed in each version

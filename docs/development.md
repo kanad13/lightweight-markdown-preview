@@ -151,92 +151,201 @@ After pushing, verify that:
 
 **Only release from `main` branch after all features are merged and tested.**
 
+Follow these steps precisely in order. Each step is required and builds on the previous one.
+
 ### Pre-Release Checklist
 
+Before starting:
+
+```
 - [ ] All features merged to `main`
 - [ ] GitHub Actions build passes
-- [ ] No uncommitted changes (`git status` shows clean)
-- [ ] Version bump planned
-- [ ] CHANGELOG.md prepared
-
-### Step 1: Update Version & Changelog
-
-```bash
-# Edit package.json - increment version (e.g., 1.0.1 -> 1.0.2)
-# Follow semantic versioning: MAJOR.MINOR.PATCH
-
-# Edit CHANGELOG.md with new version entry
-# Format:
-# ## [1.0.2] - YYYY-MM-DD
-#
-# ### Added
-# - Feature description
-#
-# ### Changed
-# - Enhancement description
-#
-# ### Fixed
-# - Bug fix description
+- [ ] `git status` shows no uncommitted changes
+- [ ] Decide version bump (MAJOR.MINOR.PATCH per semantic versioning)
+- [ ] Identify all user-facing changes since last release
 ```
 
-### Step 2: Build and Verify
+### Step 1: Update Version Numbers
+
+**Edit package.json** - update the version field only:
+
+```json
+"version": "1.0.4"
+```
+
+**Edit package-lock.json** - update ALL occurrences of version (use search & replace):
+
+```
+"version": "1.0.4"
+```
+
+Verify with:
 
 ```bash
-# Ensure clean build
+grep '"version": "1.0.4"' package.json package-lock.json | wc -l
+# Should output: 2 (one from each file)
+```
+
+### Step 2: Update CHANGELOG.md
+
+Add entry at the **very top** (after the header) in this exact format:
+
+```markdown
+## [1.0.4] - 2025-11-07
+
+### Added
+- New feature description (if any)
+
+### Changed
+- Enhancement description (if any)
+
+### Fixed
+- Bug fix description (if any)
+```
+
+**Important notes:**
+- Use the actual date (YYYY-MM-DD format)
+- Only include **user-facing changes**
+- Do NOT include: dependency updates (unless security fix), internal refactoring, test improvements, or build process changes
+- Each section (Added/Changed/Fixed) is optional - only include sections with content
+
+### Step 3: Run Tests
+
+```bash
+# Install dependencies if needed
+npm install
+
+# Run linting
 npm run lint
-npm run package
 
-# Verify the .vsix file was created
-ls -lh *.vsix
+# Verify no errors
+echo $?  # Should output: 0
 ```
 
-### Step 3: Commit Version Update
+### Step 4: Build Package
 
 ```bash
-# Stage version and changelog
-git add package.json CHANGELOG.md
+# Build the extension
+npm run build
 
-# Commit (don't include build artifacts)
-git commit -m "docs: update documentation and changelog for v1.0.2 release"
+# Verify files updated
+ls -lh dist/extension.js dist/extension.js.map
 
-# Push to main
+# Verify no errors in output
+```
+
+### Step 5: Commit Version Update + CHANGELOG
+
+**Stage only these three files:**
+
+```bash
+git add package.json package-lock.json CHANGELOG.md
+```
+
+**Verify staged files:**
+
+```bash
+git status
+```
+
+**Commit with descriptive message:**
+
+```bash
+git commit -m "chore: bump version to 1.0.4
+
+- Update package.json version
+- Update package-lock.json version
+- Add CHANGELOG entry for v1.0.4"
+```
+
+**Verify commit:**
+
+```bash
+git log -1 --oneline  # Should show your commit
+```
+
+### Step 6: Create Git Tag
+
+**Create annotated tag (required, not lightweight):**
+
+```bash
+git tag -a v1.0.4 -m "Release version 1.0.4"
+```
+
+**Verify tag points to correct commit:**
+
+```bash
+git show v1.0.4 --quiet  # Should show your version bump commit
+```
+
+### Step 7: Push to GitHub
+
+**Push main branch:**
+
+```bash
 git push origin main
 ```
 
-### Step 4: Create Git Tag and Release
+**Push tag:**
 
 ```bash
-# Create annotated tag
-git tag -a v1.0.2 -m "Add feature X, fix Y, and improve Z"
-
-# Push tag to GitHub
-git push origin v1.0.2
-
-# Create GitHub Release
-gh release create v1.0.2 --title "v1.0.2" --notes "Describe the release here"
+git push origin v1.0.4
 ```
 
-### Step 5: Publish to VS Code Marketplace
+**Verify both pushed:**
 
 ```bash
-# Log in (one-time setup, stores token)
-vsce login KunalPathak
+git log -1 origin/main --oneline  # Should show your commit
+git ls-remote origin refs/tags/v1.0.4  # Should return tag SHA
+```
 
-# Publish the version
+### Step 8: Publish to VS Code Marketplace
+
+```bash
+# Build one final time (vsce will run this anyway)
+npm run build
+
+# Publish (also builds automatically)
 npm run publish
 ```
 
-This command:
-1. Runs `npm run build` to bundle the extension
-2. Runs `vsce publish` to push to the marketplace
+Wait for confirmation: `DONE  Published KunalPathak.lightweight-markdown-preview v1.0.4.`
 
-The update appears on the [Marketplace](https://marketplace.visualstudio.com/items?itemName=KunalPathak.lightweight-markdown-preview) within ~1 hour.
+If you get version-already-published error, verify package.json has the correct new version.
 
-### Step 6: Verify Release
+### Step 9: Verify Release Complete
 
-- Check VS Code Marketplace to confirm version appears
-- Check GitHub Releases page to confirm release is published
-- Verify CHANGELOG.md and package.json are correct on main branch
+```bash
+# Check GitHub main updated
+git log origin/main -3 --oneline
+
+# Check GitHub tag exists
+git ls-remote origin refs/tags/v1.0.4
+
+# Check marketplace (may take 5-10 minutes to appear)
+# https://marketplace.visualstudio.com/items?itemName=KunalPathak.lightweight-markdown-preview
+```
+
+### Troubleshooting
+
+**Tag already exists:**
+```bash
+git tag -d v1.0.4                      # Delete local
+git push origin :refs/tags/v1.0.4      # Delete remote
+git tag -a v1.0.4 -m "Release v1.0.4"  # Recreate
+git push origin v1.0.4                 # Push new
+```
+
+**Version already on marketplace:**
+- Verify package.json has NEW version (not old)
+- If correct, marketplace API cached old data; wait 10 minutes and refresh
+
+**Tag points to wrong commit:**
+```bash
+git show v1.0.4 --quiet | head -3  # Check what tag points to
+git log -1 --oneline               # Check current commit
+# If different: follow "Tag already exists" steps above
+```
 
 ## 4. Code Quality Checklist
 
