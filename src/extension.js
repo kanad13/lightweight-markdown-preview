@@ -653,11 +653,23 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 		tocLinks.forEach(link => {
 			link.addEventListener('click', (e) => {
 				e.preventDefault();
+				e.stopPropagation(); // Prevent summary from toggling when clicking the link
 				const id = link.getAttribute('href').substring(1);
 				const target = document.getElementById(id);
 				if (target) {
 					target.scrollIntoView({ behavior: 'smooth' });
 					updateActiveTOC(id);
+				}
+			});
+		});
+
+		// Prevent details toggle from affecting link navigation
+		// Click only the chevron to collapse/expand, click the text to navigate
+		document.querySelectorAll('summary').forEach(summary => {
+			summary.addEventListener('click', (e) => {
+				// If clicking on the link inside summary, don't toggle details
+				if (e.target.classList.contains('toc-link') || e.target.closest('.toc-link')) {
+					e.preventDefault(); // Prevent details toggle
 				}
 			});
 		});
