@@ -4,9 +4,9 @@ A minimal VS Code extension for previewing Markdown with Mermaid diagrams and Ma
 
 ## Why This Extension?
 
-- **Lightweight:** ~51 KB packaged (no massive dependencies)
+- **Lightweight:** ~53 KB packaged (no massive dependencies)
 - **Privacy-Friendly:** No tracking, no analytics, no data collection. Your markdown stays on your machine
-- **Simple:** ~677 lines of code, easy to understand and maintain
+- **Simple:** ~748 lines of code, easy to understand and maintain
 - **Fast:** Live preview updates as you type
 - **Secure:** Content Security Policy, nonce-based script execution
 - **One Job:** Previews Markdown. That's it. No themes, no plugins, no bloat.
@@ -16,7 +16,8 @@ A minimal VS Code extension for previewing Markdown with Mermaid diagrams and Ma
 ## Features
 
 - Real-time Markdown preview in a side panel
-- Interactive table of contents sidebar for easy document navigation
+- Interactive table of contents sidebar with collapsible sections for easy document navigation
+- Collapsible/expandable TOC headings to manage large documents efficiently
 - Auto-scrolling outline that highlights your current section as you read
 - Click-to-scroll navigation in the TOC for quick jumping between sections
 - All standard Markdown elements (headings, lists, tables, code blocks, images, etc.)

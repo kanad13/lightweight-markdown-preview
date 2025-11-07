@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- Collapsible/expandable sections in table of contents sidebar using HTML5 `<details>` elements
+- Native browser-based collapsibility with built-in keyboard navigation and screen reader support
+- Smart hierarchical display: headings with sub-headings are collapsible, leaf headings remain simple links
+- Recursive tree-building algorithm for proper nesting of TOC sections
+
+### Fixed
+- Click event conflicts between TOC links and collapsible sections (chevron now collapses, text navigates)
+- Layout issue where sidebar would overlap content area when toggling sections
+- Active state highlighting now consistent across all TOC heading levels (1-6)
+
+### Changed
+- Simplified TOC styling to use consistent blue color for all heading levels (removed grey color for deeper levels)
+- Improved CSS specificity for active states to ensure proper visual feedback
+- Updated documentation to reflect collapsible TOC feature and implementation details
+- Code size increased from ~677 to ~748 lines (+71 lines for collapsibility feature)
+
 ## [1.0.4] - 2025-11-07
 
 ### Changed
