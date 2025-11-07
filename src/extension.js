@@ -461,6 +461,16 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 			color: #0066cc;
 		}
 
+		/* Ensure active state works properly for all levels including deeper ones */
+		.toc-level-3 .toc-link.active,
+		.toc-level-4 .toc-link.active,
+		.toc-level-5 .toc-link.active,
+		.toc-level-6 .toc-link.active {
+			background: #0066cc;
+			color: white;
+			font-weight: 500;
+		}
+
 		/* Collapsible TOC sections using HTML5 details */
 		details {
 			margin: 0;
