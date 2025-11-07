@@ -279,7 +279,7 @@ function generateTOC(headings) {
 	 * @returns {Object} Object with {html: string, nextIndex: number}
 	 */
 	function buildTree(startIndex, parentLevel) {
-		let html = '';
+		let html = "";
 		let i = startIndex;
 
 		while (i < headings.length) {
@@ -296,21 +296,21 @@ function generateTOC(headings) {
 			if (hasChildren) {
 				// Heading with children: wrap in <details> for collapsibility
 				html += `<li class="toc-item toc-level-${heading.level}">`;
-				html += `<details open>`;
+				html += "<details open>";
 				html += `<summary><a href="#${heading.id}" class="toc-link">${heading.text}</a></summary>`;
-				html += `<ul class="toc-list">`;
+				html += "<ul class=\"toc-list\">";
 
 				// Recursively process children
 				const result = buildTree(i + 1, heading.level);
 				html += result.html;
 				i = result.nextIndex;
 
-				html += `</ul></details></li>`;
+				html += "</ul></details></li>";
 			} else {
 				// Leaf heading: simple link without collapsibility
 				html += `<li class="toc-item toc-level-${heading.level}">`;
 				html += `<a href="#${heading.id}" class="toc-link">${heading.text}</a>`;
-				html += `</li>`;
+				html += "</li>";
 				i++;
 			}
 		}
