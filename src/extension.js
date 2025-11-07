@@ -451,24 +451,6 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 		.toc-level-5 .toc-link,
 		.toc-level-6 .toc-link {
 			font-size: 0.85em;
-			color: #666;
-		}
-
-		.toc-level-4 .toc-link:hover,
-		.toc-level-5 .toc-link:hover,
-		.toc-level-6 .toc-link:hover {
-			background: #f0f0f0;
-			color: #0066cc;
-		}
-
-		/* Ensure active state works properly for all levels including deeper ones */
-		.toc-level-3 .toc-link.active,
-		.toc-level-4 .toc-link.active,
-		.toc-level-5 .toc-link.active,
-		.toc-level-6 .toc-link.active {
-			background: #0066cc;
-			color: white;
-			font-weight: 500;
 		}
 
 		/* Collapsible TOC sections using HTML5 details */
