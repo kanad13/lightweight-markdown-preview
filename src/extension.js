@@ -261,7 +261,10 @@ function updateWebviewContent(panel, document) {
 }
 
 /**
- * Generates nested TOC HTML from headings array
+ * Generates nested TOC HTML from headings array with collapsible sections
+ *
+ * Uses HTML5 <details> elements for native collapsibility.
+ * Headings with children are wrapped in <details open> for expand/collapse behavior.
  *
  * @param {Array} headings - Array of heading objects with level, text, id
  * @returns {string} HTML for the nested TOC list
@@ -269,37 +272,54 @@ function updateWebviewContent(panel, document) {
 function generateTOC(headings) {
 	if (headings.length === 0) return "<p style=\"font-size: 0.9em; color: #888;\">No headings found</p>";
 
-	let tocHtml = "<ul class=\"toc-list\">";
-	let currentLevel = 0;
+	/**
+	 * Recursively builds TOC tree structure with collapsible sections
+	 * @param {number} startIndex - Index to start processing from
+	 * @param {number} parentLevel - Level of the parent heading (0 for root)
+	 * @returns {Object} Object with {html: string, nextIndex: number}
+	 */
+	function buildTree(startIndex, parentLevel) {
+		let html = '';
+		let i = startIndex;
 
-	headings.forEach((heading) => {
-		// Close deeper levels
-		while (currentLevel >= heading.level) {
-			tocHtml += "</ul>";
-			currentLevel--;
+		while (i < headings.length) {
+			const heading = headings[i];
+
+			// Stop if we've returned to parent's level or higher
+			if (heading.level <= parentLevel) {
+				break;
+			}
+
+			// Check if next heading is a child (deeper level)
+			const hasChildren = i + 1 < headings.length && headings[i + 1].level > heading.level;
+
+			if (hasChildren) {
+				// Heading with children: wrap in <details> for collapsibility
+				html += `<li class="toc-item toc-level-${heading.level}">`;
+				html += `<details open>`;
+				html += `<summary><a href="#${heading.id}" class="toc-link">${heading.text}</a></summary>`;
+				html += `<ul class="toc-list">`;
+
+				// Recursively process children
+				const result = buildTree(i + 1, heading.level);
+				html += result.html;
+				i = result.nextIndex;
+
+				html += `</ul></details></li>`;
+			} else {
+				// Leaf heading: simple link without collapsibility
+				html += `<li class="toc-item toc-level-${heading.level}">`;
+				html += `<a href="#${heading.id}" class="toc-link">${heading.text}</a>`;
+				html += `</li>`;
+				i++;
+			}
 		}
 
-		// Open new levels
-		while (currentLevel < heading.level - 1) {
-			tocHtml += "<ul class=\"toc-list\">";
-			currentLevel++;
-		}
-
-		if (currentLevel < heading.level) {
-			tocHtml += "<ul class=\"toc-list\">";
-			currentLevel++;
-		}
-
-		tocHtml += `<li class="toc-item toc-level-${heading.level}"><a href="#${heading.id}" class="toc-link">${heading.text}</a></li>`;
-	});
-
-	// Close all open levels
-	while (currentLevel > 0) {
-		tocHtml += "</ul>";
-		currentLevel--;
+		return { html, nextIndex: i };
 	}
 
-	return tocHtml;
+	const result = buildTree(0, 0);
+	return `<ul class="toc-list">${result.html}</ul>`;
 }
 
 /**
@@ -440,6 +460,57 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 		.toc-level-6 .toc-link:hover {
 			background: #f0f0f0;
 			color: #0066cc;
+		}
+
+		/* Collapsible TOC sections using HTML5 details */
+		details {
+			margin: 0;
+		}
+
+		summary {
+			list-style: none;
+			cursor: pointer;
+			user-select: none;
+			display: flex;
+			align-items: center;
+			position: relative;
+		}
+
+		/* Hide default disclosure triangle */
+		summary::-webkit-details-marker {
+			display: none;
+		}
+
+		/* Custom chevron indicator */
+		summary::before {
+			content: '▶';
+			display: inline-block;
+			width: 16px;
+			height: 16px;
+			margin-right: 4px;
+			font-size: 0.7em;
+			color: #666;
+			transition: transform 0.2s ease;
+			flex-shrink: 0;
+		}
+
+		details[open] > summary::before {
+			transform: rotate(90deg);
+		}
+
+		summary:hover::before {
+			color: #0066cc;
+		}
+
+		/* Make the link inside summary take full width */
+		summary .toc-link {
+			flex: 1;
+			margin-left: -4px;
+		}
+
+		/* Nested lists inside details */
+		details > .toc-list {
+			margin-top: 2px;
 		}
 
 		.content {

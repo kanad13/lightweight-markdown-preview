@@ -4,7 +4,7 @@ This document describes the design decisions and architectural patterns used in 
 
 ## Overview
 
-The extension provides a lightweight, secure markdown preview directly within VS Code. It prioritizes simplicity, security, and performance over feature breadth. The entire implementation is contained in a single extension file (~677 lines) with no external dependencies beyond the `marked` markdown parser.
+The extension provides a lightweight, secure markdown preview directly within VS Code. It prioritizes simplicity, security, and performance over feature breadth. The entire implementation is contained in a single extension file (~748 lines) with no external dependencies beyond the `marked` markdown parser.
 
 ## High-Level Architecture
 
@@ -76,6 +76,29 @@ The extension's state is managed entirely in memory and is reset every time the 
    - Parent directory paths (`../docs/diagram.png`)
    - Workspace-root paths (`/assets/icon.png`)
    - HTTPS URLs and data URIs (unchanged)
+
+## Table of Contents (TOC) Sidebar
+
+### Implementation
+The TOC is auto-generated from markdown headings (H1-H6) and displayed in a fixed sidebar.
+
+**Features:**
+- **Collapsible sections:** Headings with sub-headings are wrapped in HTML5 `<details>` elements for native collapsibility
+- **Smart expansion:** All sections open by default (`<details open>`) for immediate document overview
+- **Active tracking:** IntersectionObserver API highlights the currently visible section
+- **Auto-scroll:** Clicking a TOC link smoothly scrolls to the heading and updates the active state
+
+### Collapsibility Logic
+The `generateTOC()` function uses a recursive algorithm:
+1. For each heading, look ahead to see if the next heading has a deeper level
+2. If yes, wrap in `<details open><summary>link</summary><children></details>`
+3. If no, render as a simple link (leaf node)
+4. Recursively process children, tracking parent levels to properly close nested structures
+
+This approach provides native browser collapsibility without JavaScript dependencies, ensuring:
+- **Accessibility:** Built-in keyboard navigation and screen reader support
+- **Performance:** No JavaScript overhead for expand/collapse operations
+- **Simplicity:** ~50 lines of code, easy to understand and maintain
 
 ## Performance Characteristics
 
