@@ -373,7 +373,6 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 			line-height: 1.6;
 			margin: 0;
 			padding: 0;
-			display: flex;
 			background: #fff;
 		}
 
@@ -515,9 +514,10 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 
 		.content {
 			margin-left: 280px;
-			flex: 1;
 			padding: 20px;
 			max-width: 900px;
+			min-height: 100vh;
+			width: auto;
 		}
 
 		pre {
