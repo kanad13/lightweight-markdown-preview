@@ -4,9 +4,9 @@ A minimal VS Code extension for previewing Markdown with Mermaid diagrams and Ma
 
 ## Why This Extension?
 
-- **Lightweight:** ~38 KB packaged (no massive dependencies)
+- **Lightweight:** ~51 KB packaged (no massive dependencies)
 - **Privacy-Friendly:** No tracking, no analytics, no data collection. Your markdown stays on your machine
-- **Simple:** ~300 lines of code, easy to understand and maintain
+- **Simple:** ~677 lines of code, easy to understand and maintain
 - **Fast:** Live preview updates as you type
 - **Secure:** Content Security Policy, nonce-based script execution
 - **One Job:** Previews Markdown. That's it. No themes, no plugins, no bloat.
@@ -33,9 +33,9 @@ A minimal VS Code extension for previewing Markdown with Mermaid diagrams and Ma
 
 ## Technical Details
 
-- See [DEVELOPMENT.md](/docs/development.md) for:
+- See [development.md](docs/development.md) for:
 	- How to develop, test, and release
 	- Architecture and design decisions
-- See [ARCHITECTURE.md](/docs/ARCHITECTURE.md) for:
+- See [architecture.md](docs/architecture.md) for:
 	- In-depth explanation of the extension's architecture
 	- Key design patterns and decisions

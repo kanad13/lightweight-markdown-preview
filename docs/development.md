@@ -71,10 +71,35 @@ Keep commits atomic and logical. Write commit messages that explain _why_ the ch
 
 ### Code Style
 
-- 2-space indentation
+- **Tab indentation** (enforced by ESLint - see `eslint.config.js`)
 - `const`/`let` only (no `var`)
 - Keep functions simple with clear JSDoc comments
-- No console logs in production code
+- No console logs in production code (unless debugging is explicitly required)
+
+### JSDoc Standards
+
+All exported functions **must** have JSDoc comments describing:
+- Purpose and behavior
+- Parameters with types
+- Return values
+- Side effects (state changes, file I/O, etc.)
+
+**Example:**
+```javascript
+/**
+ * Generates a cryptographic nonce for Content Security Policy.
+ * Used to prevent XSS attacks by allowing only trusted scripts to execute.
+ * @returns {string} A random 32-character hexadecimal nonce
+ */
+function getNonce() {
+	let text = "";
+	const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+	for (let i = 0; i < 32; i++) {
+		text += possible.charAt(Math.floor(Math.random() * possible.length));
+	}
+	return text;
+}
+```
 
 ### Dependencies
 
@@ -82,7 +107,7 @@ Keep commits atomic and logical. Write commit messages that explain _why_ the ch
 1. Justify the need
 2. Check bundle size impact (`npm run package` and review dist/)
 3. Consider using a CDN instead
-4. See `docs/ARCHITECTURE.md` for security considerations
+4. See [architecture.md](architecture.md) for security considerations
 
 ### Step 4: Test Thoroughly
 
@@ -213,7 +238,111 @@ The update appears on the [Marketplace](https://marketplace.visualstudio.com/ite
 - Check GitHub Releases page to confirm release is published
 - Verify CHANGELOG.md and package.json are correct on main branch
 
-## 4. Common Issues & Troubleshooting
+## 4. Code Quality Checklist
+
+Before committing any code, verify:
+
+- [ ] **Linting passes:** `npm run lint` returns no errors
+- [ ] **Build succeeds:** `npm run package` creates .vsix without errors
+- [ ] **JSDoc complete:** All exported functions have comprehensive documentation
+- [ ] **No security regressions:** CSP, nonce generation, and state management unchanged (unless intentional)
+- [ ] **Manual testing:** Test in F5 dev host with `examples/test.md`
+- [ ] **No console logs:** Remove debugging statements (unless required for production diagnostics)
+- [ ] **Metrics updated:** If code size or package size changed significantly, update README.md and architecture.md
+
+## 5. Common Pitfalls
+
+These are **high-risk areas** where mistakes can introduce bugs or security vulnerabilities. Review carefully before making changes.
+
+### Pitfall #1: Modifying Content Security Policy (CSP)
+
+**Problem:** The CSP header controls what scripts can execute in the webview. Loosening it creates XSS vulnerabilities.
+
+**What NOT to do:**
+```javascript
+// ❌ BAD: Allows any script to run
+<meta http-equiv="Content-Security-Policy" content="script-src *;">
+
+// ❌ BAD: Allows inline scripts without nonces
+<meta http-equiv="Content-Security-Policy" content="script-src 'unsafe-inline';">
+```
+
+**Safe approach:**
+- Only allow scripts with the correct nonce: `script-src 'nonce-${nonce}'`
+- Only allow trusted CDNs: `https://cdn.jsdelivr.net`
+- **Always** require a security review before changing CSP
+
+### Pitfall #2: Breaking Nonce Generation
+
+**Problem:** The nonce must be cryptographically random and unique per render. Predictable nonces defeat the entire security model.
+
+**What NOT to do:**
+```javascript
+// ❌ BAD: Predictable nonce
+function getNonce() {
+	return "fixed-nonce-123";
+}
+
+// ❌ BAD: Reusing nonce across renders
+let globalNonce = getNonce();
+function updateWebviewContent() {
+	const html = `<script nonce="${globalNonce}">...</script>`;
+}
+```
+
+**Safe approach:**
+- Generate a **new** nonce for every `updateWebviewContent()` call
+- Use a cryptographically strong random source (not `Math.random()` alone for production crypto, but acceptable here given the threat model)
+
+### Pitfall #3: State Management Race Conditions
+
+**Problem:** The extension uses closure variables (`currentPanel`, `currentDocument`) to track state. Mismanaging these can cause crashes or unexpected behavior.
+
+**What NOT to do:**
+```javascript
+// ❌ BAD: Not checking if panel exists before using it
+currentPanel.webview.html = newHtml; // Crashes if panel was closed
+
+// ❌ BAD: Not disposing listeners
+vscode.workspace.onDidChangeTextDocument(() => { ... }); // Memory leak
+```
+
+**Safe approach:**
+- **Always** check `if (currentPanel)` before accessing
+- **Always** dispose listeners when panel is closed
+- Follow the existing pattern in `extension.js`
+
+### Pitfall #4: Image Path Resolution
+
+**Problem:** Webviews have restricted file access. Image paths must be converted to special `vscode-resource:` URIs.
+
+**What NOT to do:**
+```javascript
+// ❌ BAD: Direct file path won't load
+<img src="./images/photo.png">
+
+// ❌ BAD: Absolute path won't load
+<img src="/home/user/project/images/photo.png">
+```
+
+**Safe approach:**
+```javascript
+// ✅ GOOD: Convert to webview URI
+const imageUri = currentPanel.webview.asWebviewUri(vscode.Uri.file(imagePath));
+html = html.replace(/src="([^"]+)"/, `src="${imageUri}"`);
+```
+
+### Pitfall #5: Ignoring Documentation Updates
+
+**Problem:** Code changes without documentation updates lead to drift and confusion.
+
+**When to update documentation:**
+- **README.md:** Update metrics (~XX KB, ~XX lines) if code size changes significantly
+- **architecture.md:** Update if design patterns or security model changes
+- **development.md:** Update if workflow, tooling, or standards change
+- **CHANGELOG.md:** Update for **every release** with user-facing changes
+
+## 6. Common Issues & Troubleshooting
 
 ### Build Fails with "same case insensitive path"
 

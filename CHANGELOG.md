@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.3] - 2025-11-07
+
+### Fixed
+- Synced package-lock.json version with package.json (was outdated at v0.4.0)
+- Removed duplicate files with case sensitivity issues (ARCHITECTURE.md/architecture.md)
+- Fixed documentation references and link formats across all markdown files
+
+### Changed
+- Updated documentation metrics to reflect actual code size (~51 KB, ~677 lines)
+- Renamed ARCHITECTURE.md to architecture.md for consistency
+- Enhanced development.md with comprehensive code standards, JSDoc guidelines, and common pitfalls section
+- Standardized all documentation links to use lowercase filenames
+- Updated dependencies (marked@16.4.2, eslint@9.39.1, @types/node@24.10.0)
+
 ## [1.0.2] - 2025-11-04
 
 ### Added

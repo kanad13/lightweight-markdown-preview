@@ -4,7 +4,7 @@ This document describes the design decisions and architectural patterns used in 
 
 ## Overview
 
-The extension provides a lightweight, secure markdown preview directly within VS Code. It prioritizes simplicity, security, and performance over feature breadth. The entire implementation is contained in a single extension file (~370 lines) with no external dependencies beyond the `marked` markdown parser.
+The extension provides a lightweight, secure markdown preview directly within VS Code. It prioritizes simplicity, security, and performance over feature breadth. The entire implementation is contained in a single extension file (~677 lines) with no external dependencies beyond the `marked` markdown parser.
 
 ## High-Level Architecture
 
