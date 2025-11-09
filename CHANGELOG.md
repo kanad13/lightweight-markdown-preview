@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.5] - 2025-11-09
+
+### Added
+- Collapsible table of contents sidebar for document outline navigation
+- Hamburger button (☰) at top-right to toggle sidebar visibility
+
+### Changed
+- Sidebar now slides in from right side (improved UX consistency)
+- Simplified TOC link styling (uniform font size, left-border active indicator)
+- Improved button styling for better light/dark theme compatibility
+
+### Fixed
+- Fixed heading extraction to ignore code block comments (# symbols in bash code)
+- Fixed active state conflict when clicking outline items during scroll
+
 ## [1.0.4] - 2025-11-07
 
 ### Changed

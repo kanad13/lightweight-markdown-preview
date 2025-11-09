@@ -91,6 +91,39 @@ For future enhancements with scroll-position syncing or large file support:
 - **Debouncing:** Batch rapid edits to reduce render frequency
 - **Web Worker:** Off-load markdown parsing to a background thread
 
+## UI & Navigation Design
+
+### Table of Contents Sidebar (Collapsible Overlay)
+
+The extension provides an optional table of contents sidebar that users can toggle on-demand. Rather than permanently occupy screen space, the sidebar overlays content when open—similar to mobile hamburger menu patterns familiar to most users.
+
+#### Design Philosophy
+
+**Why Overlay Instead of Fixed Layout:**
+- **Content-first:** Content width remains constant regardless of sidebar state, providing consistent reading experience
+- **Simplicity:** Avoids layout reflow complexity, coordinate system bugs, and animation sync issues
+- **Low maintenance:** Fewer CSS rules and interaction states reduce code fragility
+- **User control:** Users get full screen width for reading when they don't need the outline
+
+**Why Collapsible at All:**
+- Long documents benefit from quick access to structure without scrolling through headings
+- Users can reference the outline while reading without losing scroll position
+- Keyboard users can navigate via Escape key without reaching for mouse
+
+#### Key Interactions
+
+- **Toggle:** Click hamburger button to open/close sidebar
+- **Close:** Click sidebar close button, overlay backdrop, or press Escape key
+- **Navigate:** Click any outline link for smooth scroll to heading
+- **Track:** Current heading highlighted automatically as user scrolls content
+
+#### Performance & Accessibility
+
+- **Animation:** Uses GPU-accelerated `transform` for smooth, jank-free slide transition
+- **No layout shifts:** Overlay pattern means zero reflows during open/close
+- **Keyboard-friendly:** Escape key closes sidebar; semantic HTML enables screen reader navigation
+- **Theme-aware:** Button styling respects light/dark themes without special handling needed
+
 ## Guidelines for Future Changes
 
 To maintain the extension's stability and security, follow these guidelines.
@@ -102,6 +135,7 @@ The following areas are generally safe for modification and extension:
 - **Markdown Options:** Passing new configuration options to the `marked()` parser
 - **VS Code Settings:** Adding new user-configurable settings in `package.json`
 - **New Commands:** Adding new commands in `package.json` and implementing them in `extension.js`
+- **Sidebar Styling:** Adjusting colors, spacing, or hover effects in `.toc-sidebar` or `.toc-link` classes
 
 ### Requires Security Review
 

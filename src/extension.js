@@ -148,22 +148,35 @@ function resolveImagePath(imagePath, document, panel) {
  * Parses markdown headings and returns a nested structure
  * for generating a table of contents.
  *
+ * Importantly, this function ignores headings inside code blocks (```...```)
+ * to avoid including comment lines from code samples in the TOC.
+ *
  * @param {string} raw - The raw markdown text
  * @returns {Array} Array of heading objects with level, text, and id
  */
 function extractHeadings(raw) {
 	const headings = [];
 	const lines = raw.split("\n");
+	let insideCodeBlock = false;
 
 	lines.forEach((line, index) => {
-		const match = line.match(/^(#{1,6})\s+(.+)$/);
-		if (match) {
-			const level = match[1].length;
-			const text = match[2].trim();
-			// Create a URL-friendly ID from heading text
-			const id = `heading-${text.toLowerCase().replace(/[^\w\s-]/g, "").replace(/\s+/g, "-")}-${index}`;
+		// Track if we're entering or exiting a code block
+		if (line.match(/^```/)) {
+			insideCodeBlock = !insideCodeBlock;
+			return; // Don't process code fence lines
+		}
 
-			headings.push({ level, text, id, lineIndex: index });
+		// Only extract headings if we're NOT inside a code block
+		if (!insideCodeBlock) {
+			const match = line.match(/^(#{1,6})\s+(.+)$/);
+			if (match) {
+				const level = match[1].length;
+				const text = match[2].trim();
+				// Create a URL-friendly ID from heading text
+				const id = `heading-${text.toLowerCase().replace(/[^\w\s-]/g, "").replace(/\s+/g, "-")}-${index}`;
+
+				headings.push({ level, text, id, lineIndex: index });
+			}
 		}
 	});
 
@@ -309,7 +322,7 @@ function generateTOC(headings) {
  * - Security: Content Security Policy with nonce-based scripts
  * - Styling: Clean, minimal design that works in light and dark themes
  * - Interactivity: Mermaid diagrams and MathJax equations rendered via CDN
- * - Navigation: Collapsible TOC sidebar for document outline
+ * - Navigation: Collapsible overlay TOC sidebar for document outline (Option 3 pattern)
  *
  * CSP (Content Security Policy) breakdown:
  * - default-src 'none': Block everything by default (secure)
@@ -317,6 +330,13 @@ function generateTOC(headings) {
  * - script-src 'nonce-*': Only allow scripts with matching nonce
  * - style-src 'unsafe-inline': Allow inline styles (needed for rendering)
  * - font-src https: data: Allow fonts from HTTPS and data URIs (for MathJax)
+ *
+ * Sidebar Pattern (Overlay - Option 3):
+ * - Sidebar is hidden by default, slides in from left when opened
+ * - Clicking overlay or close button closes the sidebar
+ * - Escape key also closes the sidebar
+ * - Content width remains consistent (no reflow)
+ * - Uses transform: translateX() for smooth, GPU-accelerated animation
  *
  * Mermaid Configuration:
  * - startOnLoad: false - We call mermaid.run() explicitly
@@ -353,25 +373,81 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 			line-height: 1.6;
 			margin: 0;
 			padding: 0;
-			display: flex;
 			background: #fff;
 		}
 
+		/* Hamburger toggle button */
+		.sidebar-toggle {
+			position: fixed;
+			top: 10px;
+			right: 10px;
+			z-index: 1001;
+			background: transparent;
+			color: #333;
+			border: 1px solid #d0d0d0;
+			padding: 12px 16px;
+			cursor: pointer;
+			border-radius: 4px;
+			font-size: 1.5em;
+			font-weight: normal;
+			transition: background 0.2s ease, border-color 0.2s ease;
+			line-height: 1;
+		}
+
+		.sidebar-toggle:hover {
+			background: #f5f5f5;
+			border-color: #999;
+		}
+
+		.sidebar-toggle:active {
+			background: #e8e8e8;
+		}
+
+		/* Overlay backdrop */
+		.sidebar-overlay {
+			position: fixed;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			background: rgba(0, 0, 0, 0.5);
+			opacity: 0;
+			pointer-events: none;
+			transition: opacity 0.3s ease;
+			z-index: 1000;
+		}
+
+		body.sidebar-open .sidebar-overlay {
+			opacity: 1;
+			pointer-events: auto;
+		}
+
+		/* TOC Sidebar - Overlay pattern */
 		.toc-sidebar {
 			position: fixed;
-			left: 0;
+			right: 0;
 			top: 0;
 			height: 100vh;
 			width: 280px;
 			background: #f9f9f9;
-			border-right: 1px solid #e0e0e0;
+			border-left: 1px solid #e0e0e0;
 			overflow-y: auto;
 			padding: 20px;
-			font-size: 0.95em;
-			z-index: 999;
+			font-size: 0.9em;
+			z-index: 1001;
+			transform: translateX(100%);
+			transition: transform 0.3s ease;
 		}
 
+		body.sidebar-open .toc-sidebar {
+			transform: translateX(0);
+		}
+
+		/* Close button in sidebar header */
 		.toc-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
 			font-size: 0.85em;
 			font-weight: 600;
 			text-transform: uppercase;
@@ -382,6 +458,26 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 			border-bottom: 1px solid #e0e0e0;
 		}
 
+		.toc-close {
+			background: none;
+			border: none;
+			font-size: 1.5em;
+			color: #666;
+			cursor: pointer;
+			padding: 0;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 28px;
+			height: 28px;
+			border-radius: 3px;
+			transition: background 0.2s ease;
+		}
+
+		.toc-close:hover {
+			background: #e8f0ff;
+			color: #0066cc;
+		}
 
 		.toc-list {
 			list-style: none;
@@ -397,56 +493,66 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 		}
 
 		.toc-item {
-			margin: 4px 0;
+			margin: 2px 0;
 		}
 
+		/* Simplified toc-link styling - uniform font/color */
 		.toc-link {
 			display: block;
-			padding: 4px 8px;
+			padding: 8px 12px;
 			text-decoration: none;
 			color: #0066cc;
 			border-radius: 3px;
+			border-left: 3px solid transparent;
 			transition: all 0.15s ease;
 		}
 
 		.toc-link:hover {
-			background: #e8f0ff;
+			background: rgba(0, 102, 204, 0.08);
 			color: #0052a3;
 		}
 
 		.toc-link.active {
-			background: #0066cc;
-			color: white;
+			border-left-color: #0066cc;
+			background: rgba(0, 102, 204, 0.1);
+			color: #0052a3;
 			font-weight: 500;
 		}
 
-		.toc-level-2 .toc-link {
-			font-size: 0.95em;
-		}
-
-		.toc-level-3 .toc-link {
-			font-size: 0.9em;
-		}
-
+		/* Indentation shows hierarchy, no font-size variations */
+		.toc-level-2 .toc-link,
+		.toc-level-3 .toc-link,
 		.toc-level-4 .toc-link,
 		.toc-level-5 .toc-link,
 		.toc-level-6 .toc-link {
-			font-size: 0.85em;
-			color: #666;
-		}
-
-		.toc-level-4 .toc-link:hover,
-		.toc-level-5 .toc-link:hover,
-		.toc-level-6 .toc-link:hover {
-			background: #f0f0f0;
+			font-size: 0.9em;
 			color: #0066cc;
 		}
 
+		.toc-level-2 .toc-link:hover,
+		.toc-level-3 .toc-link:hover,
+		.toc-level-4 .toc-link:hover,
+		.toc-level-5 .toc-link:hover,
+		.toc-level-6 .toc-link:hover {
+			background: rgba(0, 102, 204, 0.08);
+			color: #0052a3;
+		}
+
+		.toc-level-2 .toc-link.active,
+		.toc-level-3 .toc-link.active,
+		.toc-level-4 .toc-link.active,
+		.toc-level-5 .toc-link.active,
+		.toc-level-6 .toc-link.active {
+			border-left-color: #0066cc;
+			background: rgba(0, 102, 204, 0.1);
+		}
+
+		/* Content area - no margin offset needed (sidebar is overlay) */
 		.content {
-			margin-left: 280px;
 			flex: 1;
 			padding: 20px;
 			max-width: 900px;
+			margin: 0 auto;
 		}
 
 		pre {
@@ -511,25 +617,27 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 
 		/* Mobile responsiveness */
 		@media (max-width: 768px) {
-			.toc-sidebar {
-				width: 100%;
-				height: auto;
-				position: static;
-				border-right: none;
-				border-bottom: 1px solid #e0e0e0;
-				overflow-y: visible;
+			.content {
+				padding: 15px;
 			}
 
-			.content {
-				margin-left: 0;
-				padding: 20px;
+			.sidebar-toggle {
+				top: 8px;
+				right: 8px;
+				padding: 10px 14px;
+				font-size: 1.3em;
 			}
 		}
 	</style>
 </head>
 <body>
-	<aside class="toc-sidebar">
-		<div class="toc-header">Contents</div>
+	<button class="sidebar-toggle" aria-label="Toggle outline sidebar" title="Show outline (ESC to close)">☰</button>
+	<div class="sidebar-overlay" aria-hidden="true"></div>
+	<aside class="toc-sidebar" role="navigation" aria-label="Document outline">
+		<div class="toc-header">
+			<span>Contents</span>
+			<button class="toc-close" aria-label="Close sidebar">✕</button>
+		</div>
 		${tocHtml}
 	</aside>
 	<main class="content">
@@ -574,9 +682,37 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 			}
 		}
 
-		// TOC scroll tracking and smooth navigation
+		// Sidebar toggle functionality
+		const toggleBtn = document.querySelector('.sidebar-toggle');
+		const closeBtn = document.querySelector('.toc-close');
+		const overlay = document.querySelector('.sidebar-overlay');
 		const tocLinks = document.querySelectorAll('.toc-link');
 		const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
+
+		// Flag to prevent observer updates immediately after user clicks a link
+		let isUserClicking = false;
+
+		// Open sidebar when toggle button clicked
+		toggleBtn.addEventListener('click', () => {
+			document.body.classList.add('sidebar-open');
+		});
+
+		// Close sidebar when close button clicked
+		closeBtn.addEventListener('click', () => {
+			document.body.classList.remove('sidebar-open');
+		});
+
+		// Close sidebar when overlay clicked
+		overlay.addEventListener('click', () => {
+			document.body.classList.remove('sidebar-open');
+		});
+
+		// Close sidebar on Escape key
+		document.addEventListener('keydown', (e) => {
+			if (e.key === 'Escape') {
+				document.body.classList.remove('sidebar-open');
+			}
+		});
 
 		// Handle TOC link clicks for smooth scrolling
 		tocLinks.forEach(link => {
@@ -585,6 +721,10 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 				const id = link.getAttribute('href').substring(1);
 				const target = document.getElementById(id);
 				if (target) {
+					// Set flag to prevent observer from updating active state during scroll
+					isUserClicking = true;
+					setTimeout(() => { isUserClicking = false; }, 800);
+
 					target.scrollIntoView({ behavior: 'smooth' });
 					updateActiveTOC(id);
 				}
@@ -598,21 +738,24 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 				link.classList.remove('active');
 				if (link.getAttribute('href') === '#' + activeId) {
 					link.classList.add('active');
-					// Scroll the TOC sidebar to make the active link visible
-					const activeLink = link;
-					const linkTop = activeLink.offsetTop;
-					const linkBottom = linkTop + activeLink.offsetHeight;
-					const sidebarScrollTop = sidebar.scrollTop;
-					const sidebarHeight = sidebar.clientHeight;
-					const sidebarBottom = sidebarScrollTop + sidebarHeight;
+					// Only auto-scroll sidebar if it's open
+					if (document.body.classList.contains('sidebar-open')) {
+						// Scroll the TOC sidebar to make the active link visible
+						const activeLink = link;
+						const linkTop = activeLink.offsetTop;
+						const linkBottom = linkTop + activeLink.offsetHeight;
+						const sidebarScrollTop = sidebar.scrollTop;
+						const sidebarHeight = sidebar.clientHeight;
+						const sidebarBottom = sidebarScrollTop + sidebarHeight;
 
-					// If link is above visible area, scroll up
-					if (linkTop < sidebarScrollTop) {
-						sidebar.scrollTop = linkTop - 50;
-					}
-					// If link is below visible area, scroll down
-					else if (linkBottom > sidebarBottom) {
-						sidebar.scrollTop = linkBottom - sidebarHeight + 50;
+						// If link is above visible area, scroll up
+						if (linkTop < sidebarScrollTop) {
+							sidebar.scrollTop = linkTop - 50;
+						}
+						// If link is below visible area, scroll down
+						else if (linkBottom > sidebarBottom) {
+							sidebar.scrollTop = linkBottom - sidebarHeight + 50;
+						}
 					}
 				}
 			});
@@ -627,7 +770,8 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 
 		const observer = new IntersectionObserver((entries) => {
 			entries.forEach(entry => {
-				if (entry.isIntersecting && entry.target.id) {
+				// Only update from scroll observer if user is not actively clicking a link
+				if (entry.isIntersecting && entry.target.id && !isUserClicking) {
 					updateActiveTOC(entry.target.id);
 				}
 			});

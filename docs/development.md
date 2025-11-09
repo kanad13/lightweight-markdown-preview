@@ -85,6 +85,7 @@ All exported functions **must** have JSDoc comments describing:
 - Side effects (state changes, file I/O, etc.)
 
 **Example:**
+
 ```javascript
 /**
  * Generates a cryptographic nonce for Content Security Policy.
