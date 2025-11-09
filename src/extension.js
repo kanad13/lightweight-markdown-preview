@@ -380,19 +380,28 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 		.sidebar-toggle {
 			position: fixed;
 			top: 10px;
-			right: 10px;
+			left: 10px;
 			z-index: 1001;
-			background: #f5f5f5;
-			border: 1px solid #e0e0e0;
-			padding: 8px 12px;
+			background: #0066cc;
+			color: white;
+			border: none;
+			padding: 10px 14px;
 			cursor: pointer;
 			border-radius: 4px;
-			font-size: 1.2em;
-			transition: background 0.2s ease;
+			font-size: 1.3em;
+			font-weight: bold;
+			transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.05s ease;
+			box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 		}
 
 		.sidebar-toggle:hover {
-			background: #e8f0ff;
+			background: #0052a3;
+			box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+		}
+
+		.sidebar-toggle:active {
+			transform: translateY(1px);
+			box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 		}
 
 		/* Overlay backdrop */
@@ -615,9 +624,9 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 
 			.sidebar-toggle {
 				top: 8px;
-				right: 8px;
-				padding: 6px 10px;
-				font-size: 1em;
+				left: 8px;
+				padding: 8px 12px;
+				font-size: 1.1em;
 			}
 		}
 	</style>
@@ -681,6 +690,9 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 		const tocLinks = document.querySelectorAll('.toc-link');
 		const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
 
+		// Flag to prevent observer updates immediately after user clicks a link
+		let isUserClicking = false;
+
 		// Open sidebar when toggle button clicked
 		toggleBtn.addEventListener('click', () => {
 			document.body.classList.add('sidebar-open');
@@ -710,6 +722,10 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 				const id = link.getAttribute('href').substring(1);
 				const target = document.getElementById(id);
 				if (target) {
+					// Set flag to prevent observer from updating active state during scroll
+					isUserClicking = true;
+					setTimeout(() => { isUserClicking = false; }, 800);
+
 					target.scrollIntoView({ behavior: 'smooth' });
 					updateActiveTOC(id);
 				}
@@ -755,7 +771,8 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 
 		const observer = new IntersectionObserver((entries) => {
 			entries.forEach(entry => {
-				if (entry.isIntersecting && entry.target.id) {
+				// Only update from scroll observer if user is not actively clicking a link
+				if (entry.isIntersecting && entry.target.id && !isUserClicking) {
 					updateActiveTOC(entry.target.id);
 				}
 			});
