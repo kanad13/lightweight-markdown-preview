@@ -148,22 +148,35 @@ function resolveImagePath(imagePath, document, panel) {
  * Parses markdown headings and returns a nested structure
  * for generating a table of contents.
  *
+ * Importantly, this function ignores headings inside code blocks (```...```)
+ * to avoid including comment lines from code samples in the TOC.
+ *
  * @param {string} raw - The raw markdown text
  * @returns {Array} Array of heading objects with level, text, and id
  */
 function extractHeadings(raw) {
 	const headings = [];
 	const lines = raw.split("\n");
+	let insideCodeBlock = false;
 
 	lines.forEach((line, index) => {
-		const match = line.match(/^(#{1,6})\s+(.+)$/);
-		if (match) {
-			const level = match[1].length;
-			const text = match[2].trim();
-			// Create a URL-friendly ID from heading text
-			const id = `heading-${text.toLowerCase().replace(/[^\w\s-]/g, "").replace(/\s+/g, "-")}-${index}`;
+		// Track if we're entering or exiting a code block
+		if (line.match(/^```/)) {
+			insideCodeBlock = !insideCodeBlock;
+			return; // Don't process code fence lines
+		}
 
-			headings.push({ level, text, id, lineIndex: index });
+		// Only extract headings if we're NOT inside a code block
+		if (!insideCodeBlock) {
+			const match = line.match(/^(#{1,6})\s+(.+)$/);
+			if (match) {
+				const level = match[1].length;
+				const text = match[2].trim();
+				// Create a URL-friendly ID from heading text
+				const id = `heading-${text.toLowerCase().replace(/[^\w\s-]/g, "").replace(/\s+/g, "-")}-${index}`;
+
+				headings.push({ level, text, id, lineIndex: index });
+			}
 		}
 	});
 
@@ -367,7 +380,7 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 		.sidebar-toggle {
 			position: fixed;
 			top: 10px;
-			left: 10px;
+			right: 10px;
 			z-index: 1001;
 			background: #f5f5f5;
 			border: 1px solid #e0e0e0;
@@ -602,7 +615,7 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 
 			.sidebar-toggle {
 				top: 8px;
-				left: 8px;
+				right: 8px;
 				padding: 6px 10px;
 				font-size: 1em;
 			}
