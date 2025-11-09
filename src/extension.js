@@ -380,28 +380,27 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 		.sidebar-toggle {
 			position: fixed;
 			top: 10px;
-			left: 10px;
+			right: 10px;
 			z-index: 1001;
-			background: #0066cc;
-			color: white;
-			border: none;
-			padding: 10px 14px;
+			background: transparent;
+			color: #333;
+			border: 1px solid #d0d0d0;
+			padding: 12px 16px;
 			cursor: pointer;
 			border-radius: 4px;
-			font-size: 1.3em;
-			font-weight: bold;
-			transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.05s ease;
-			box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+			font-size: 1.5em;
+			font-weight: normal;
+			transition: background 0.2s ease, border-color 0.2s ease;
+			line-height: 1;
 		}
 
 		.sidebar-toggle:hover {
-			background: #0052a3;
-			box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+			background: #f5f5f5;
+			border-color: #999;
 		}
 
 		.sidebar-toggle:active {
-			transform: translateY(1px);
-			box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+			background: #e8e8e8;
 		}
 
 		/* Overlay backdrop */
@@ -426,17 +425,17 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 		/* TOC Sidebar - Overlay pattern */
 		.toc-sidebar {
 			position: fixed;
-			left: 0;
+			right: 0;
 			top: 0;
 			height: 100vh;
 			width: 280px;
 			background: #f9f9f9;
-			border-right: 1px solid #e0e0e0;
+			border-left: 1px solid #e0e0e0;
 			overflow-y: auto;
 			padding: 20px;
 			font-size: 0.9em;
 			z-index: 1001;
-			transform: translateX(-100%);
+			transform: translateX(100%);
 			transition: transform 0.3s ease;
 		}
 
@@ -624,9 +623,9 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 
 			.sidebar-toggle {
 				top: 8px;
-				left: 8px;
-				padding: 8px 12px;
-				font-size: 1.1em;
+				right: 8px;
+				padding: 10px 14px;
+				font-size: 1.3em;
 			}
 		}
 	</style>
