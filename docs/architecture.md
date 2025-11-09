@@ -91,6 +91,73 @@ For future enhancements with scroll-position syncing or large file support:
 - **Debouncing:** Batch rapid edits to reduce render frequency
 - **Web Worker:** Off-load markdown parsing to a background thread
 
+## UI & Navigation Design
+
+### Table of Contents Sidebar (Collapsible Overlay Pattern)
+
+The extension features a collapsible table of contents sidebar implemented as an overlay (Option 3 pattern) for maximum simplicity and reliability.
+
+#### Design Decisions
+
+1. **Overlay Pattern (Not Fixed Layout):**
+   - Sidebar starts hidden and slides in from the left when user clicks the hamburger button (☰)
+   - Content area maintains consistent width (no reflow when sidebar opens/closes)
+   - Reduces code complexity and eliminates edge cases from layout adjustments
+
+2. **Interactions:**
+   - **Open:** Click hamburger button (fixed at top-left)
+   - **Close:** Click close button (✕), overlay backdrop, or press Escape key
+   - **Navigate:** Click any outline link for smooth scroll to heading
+   - **Track:** Active heading is highlighted as user scrolls content
+
+3. **Styling Simplification:**
+   - Uniform font-size for all heading levels (0.9em)
+   - Uniform color for all links (#0066cc)
+   - Indentation alone shows hierarchy (12px per level)
+   - Active state uses left border instead of full background fill
+   - Reduces CSS maintenance burden and visual complexity
+
+4. **Animation Performance:**
+   - Uses GPU-accelerated `transform: translateX()` for sidebar movement
+   - Zero layout shifts during animation (only composite repaints)
+   - Smooth 0.3s transition for visual feedback
+
+5. **Accessibility:**
+   - Semantic HTML5 (`<aside role="navigation">`, `<button>` elements)
+   - ARIA labels for screen readers (`aria-label`, `aria-hidden`)
+   - Keyboard navigation (Escape to close)
+   - High contrast colors meet WCAG AA standards
+
+#### Implementation Details
+
+**HTML Structure:**
+- `<button class="sidebar-toggle">☰</button>` - Always visible, fixed positioning
+- `<div class="sidebar-overlay">` - Transparent backdrop, clickable to close
+- `<aside class="toc-sidebar">` - Sidebar containing table of contents
+- `<button class="toc-close">✕</button>` - Close button in sidebar header
+
+**CSS State Management:**
+- Default state: `.sidebar-overlay` opacity: 0, pointer-events: none (hidden)
+- Default state: `.toc-sidebar` transform: translateX(-100%) (off-screen)
+- Open state (body.sidebar-open): overlay visible, sidebar visible
+- Smooth 0.3s transitions on all state changes
+
+**JavaScript Event Handlers:**
+- Toggle button: Adds `sidebar-open` class to body
+- Close button: Removes `sidebar-open` class from body
+- Overlay click: Removes `sidebar-open` class from body
+- Escape key: Removes `sidebar-open` class from body (document-wide listener)
+- TOC link click: Updates active link, auto-scrolls sidebar only if visible
+- Scroll observer: Tracks visible heading, updates active link (regardless of sidebar state)
+
+#### Rationale for This Design
+
+- **Simplicity:** Fewer CSS rules, fewer interaction states, lower maintenance burden
+- **Reliability:** No layout shift bugs, no coordinate system conflicts, no animation sync issues
+- **Performance:** GPU-accelerated animations, zero reflows, consistent 60 FPS
+- **UX:** Familiar pattern (mobile hamburger menu), user controls screen space
+- **Consistency:** Content width never changes, reading experience unchanged
+
 ## Guidelines for Future Changes
 
 To maintain the extension's stability and security, follow these guidelines.
@@ -102,6 +169,7 @@ The following areas are generally safe for modification and extension:
 - **Markdown Options:** Passing new configuration options to the `marked()` parser
 - **VS Code Settings:** Adding new user-configurable settings in `package.json`
 - **New Commands:** Adding new commands in `package.json` and implementing them in `extension.js`
+- **Sidebar Styling:** Adjusting colors, spacing, or hover effects in `.toc-sidebar` or `.toc-link` classes
 
 ### Requires Security Review
 
