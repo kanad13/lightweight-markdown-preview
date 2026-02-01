@@ -4,7 +4,7 @@ This document describes the design decisions and architectural patterns used in 
 
 ## Overview
 
-The extension provides a lightweight, secure markdown preview directly within VS Code. It prioritizes simplicity, security, and performance over feature breadth. The entire implementation is contained in a single extension file (~677 lines) with no external dependencies beyond the `marked` markdown parser.
+The extension provides a lightweight, secure markdown preview directly within VS Code. It prioritizes simplicity, security, and performance over feature breadth. The entire implementation is contained in a single extension file with no external dependencies beyond the `marked` markdown parser.
 
 ## High-Level Architecture
 
@@ -69,6 +69,7 @@ The extension's state is managed entirely in memory and is reset every time the 
 ## Content Processing Pipeline
 
 1. **Extraction:** Mermaid and math blocks are extracted and preserved before markdown parsing (prevents escaping of special syntax)
+   - Mermaid supports dual syntax: GitHub-style (` ```mermaid `) and Azure DevOps-style (`::: mermaid`)
 2. **Rendering:** `marked` converts markdown to HTML
 3. **Restoration:** Preserved blocks are restored with original delimiters intact
 4. **Path Resolution:** Image `src` attributes are converted to webview-accessible URIs, handling:

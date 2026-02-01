@@ -65,7 +65,7 @@ print("Hello, World!")
 
 ---
 
-## Mermaid diagram
+## Mermaid diagram (GitHub style)
 
 ```mermaid
 graph TD;
@@ -74,6 +74,14 @@ graph TD;
     B-->D;
     C-->D;
 ```
+
+## Mermaid diagram (Azure DevOps style)
+
+::: mermaid
+sequenceDiagram
+    Alice->>Bob: Hello Bob
+    Bob-->>Alice: Hi Alice
+:::
 
 ## Mathematical expressions
 

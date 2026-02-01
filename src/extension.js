@@ -158,16 +158,27 @@ function extractHeadings(raw) {
 	const headings = [];
 	const lines = raw.split("\n");
 	let insideCodeBlock = false;
+	let insideColonBlock = false;
 
 	lines.forEach((line, index) => {
-		// Track if we're entering or exiting a code block
+		// Track if we're entering or exiting a backtick code block
 		if (line.match(/^```/)) {
 			insideCodeBlock = !insideCodeBlock;
 			return; // Don't process code fence lines
 		}
 
-		// Only extract headings if we're NOT inside a code block
-		if (!insideCodeBlock) {
+		// Track triple-colon blocks (Azure DevOps / Fenced Div style)
+		if (line.match(/^:::\s*mermaid/)) {
+			insideColonBlock = true;
+			return;
+		}
+		if (insideColonBlock && line.match(/^:::\s*$/)) {
+			insideColonBlock = false;
+			return;
+		}
+
+		// Only extract headings if we're NOT inside any block
+		if (!insideCodeBlock && !insideColonBlock) {
 			const match = line.match(/^(#{1,6})\s+(.+)$/);
 			if (match) {
 				const level = match[1].length;
@@ -225,8 +236,18 @@ function updateWebviewContent(panel, document) {
 
 		// Replace mermaid code blocks with <pre class="mermaid">...</pre>
 		// Process this BEFORE marked to avoid markdown escaping issues
+		// Supports both backtick (```) and triple-colon (:::) syntax for GitHub and Azure DevOps compatibility
 		raw = raw.replace(
 			/```mermaid\s*\n([\s\S]*?)```/g,
+			(match, code) => {
+				preservedBlocks.push({ type: "mermaid", content: `<pre class="mermaid">${code.trim()}</pre>` });
+				return `<!--PRESERVED_${preservedBlocks.length - 1}-->`;
+			}
+		);
+
+		// Triple-colon syntax (Azure DevOps / Fenced Div style)
+		raw = raw.replace(
+			/:::\s*mermaid\s*\n([\s\S]*?):::/g,
 			(match, code) => {
 				preservedBlocks.push({ type: "mermaid", content: `<pre class="mermaid">${code.trim()}</pre>` });
 				return `<!--PRESERVED_${preservedBlocks.length - 1}-->`;

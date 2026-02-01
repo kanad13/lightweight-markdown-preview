@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] - 2026-02-02
+
+### Added
+- Azure DevOps compatibility: Mermaid diagrams now render with both triple-colon (:::) and backtick (```) syntax
+- This makes the extension the only VS Code markdown previewer that natively supports both GitHub-style and Azure DevOps-style Mermaid notation, enabling portable documentation across platforms
+
+### Changed
+- Enhanced documentation with Azure DevOps compatibility details
+
 ## [1.0.5] - 2025-11-09
 
 ### Added

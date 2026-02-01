@@ -4,12 +4,12 @@ A minimal VS Code extension for previewing Markdown with Mermaid diagrams and Ma
 
 ## Why This Extension?
 
-- **Lightweight:** ~51 KB packaged (no massive dependencies)
-- **Privacy-Friendly:** No tracking, no analytics, no data collection. Your markdown stays on your machine
-- **Simple:** ~677 lines of code, easy to understand and maintain
-- **Fast:** Live preview updates as you type
-- **Secure:** Content Security Policy, nonce-based script execution
-- **One Job:** Previews Markdown. That's it. No themes, no plugins, no bloat.
+- **Lightest:** The smallest full-featured markdown preview extension available
+- **Fastest:** Instant live preview updates as you type
+- **Universal Mermaid:** Renders both GitHub-style (```) and Azure DevOps-style (:::) diagrams
+- **Privacy-Friendly:** No tracking, no analytics, no data collection
+- **Secure:** Content Security Policy with nonce-based script execution
+- **Zero Configuration:** Install and use. No themes, no plugins, no bloat.
 
 ![Lightweight Markdown Preview Screenshot](./docs/markdown-preview.png)
 
@@ -20,8 +20,16 @@ A minimal VS Code extension for previewing Markdown with Mermaid diagrams and Ma
 - Auto-scrolling outline that highlights your current section as you read
 - Click-to-scroll navigation in the TOC for quick jumping between sections
 - All standard Markdown elements (headings, lists, tables, code blocks, images, etc.)
-- Full Mermaid diagram support (flowcharts, sequences, state diagrams, etc.)
+- Full Mermaid diagram support with dual syntax compatibility:
+  - GitHub/CommonMark style: ` ```mermaid `
+  - Azure DevOps style: `::: mermaid`
 - MathJax support for LaTeX equations
+
+### Azure DevOps Compatibility
+
+Azure DevOps uses triple-colon (:::) "Fenced Div" syntax for Mermaid diagrams, while GitHub and most tools use backticks (```). This creates a portability problem—diagrams that render in your IDE or GitHub break in Azure Repos and Wikis.
+
+**This extension solves it.** Both syntaxes render identically, making your documentation portable across platforms without manual conversion.
 
 ## Install
 
