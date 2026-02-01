@@ -69,6 +69,7 @@ The extension's state is managed entirely in memory and is reset every time the 
 ## Content Processing Pipeline
 
 1. **Extraction:** Mermaid and math blocks are extracted and preserved before markdown parsing (prevents escaping of special syntax)
+   - Mermaid blocks support two fence styles: triple backticks (` ```mermaid `) and colon fences (`::: mermaid`)
 2. **Rendering:** `marked` converts markdown to HTML
 3. **Restoration:** Preserved blocks are restored with original delimiters intact
 4. **Path Resolution:** Image `src` attributes are converted to webview-accessible URIs, handling:

@@ -233,14 +233,28 @@ function updateWebviewContent(panel, document) {
 			}
 		);
 
+		// Also support ::: mermaid syntax (alternative fence style)
+		raw = raw.replace(
+			/:::\s*mermaid\s*\n([\s\S]*?):::/g,
+			(match, code) => {
+				preservedBlocks.push({ type: "mermaid", content: `<pre class="mermaid">${code.trim()}</pre>` });
+				return `<!--PRESERVED_${preservedBlocks.length - 1}-->`;
+			}
+		);
+
 		// Render markdown to HTML
 		let html = marked(raw);
 
 		// Add IDs to headings for anchor linking
-		headings.forEach(heading => {
-			const headingTag = `<h${heading.level}>`;
-			const headingTagWithId = `<h${heading.level} id="${heading.id}">`;
-			html = html.replace(headingTag, headingTagWithId);
+		// Use single-pass replacement to handle multiple headings of same level correctly
+		let headingIndex = 0;
+		html = html.replace(/<h([1-6])>/g, (match, level) => {
+			const heading = headings[headingIndex];
+			if (heading && heading.level === parseInt(level)) {
+				headingIndex++;
+				return `<h${level} id="${heading.id}">`;
+			}
+			return match;
 		});
 
 		// Restore preserved blocks

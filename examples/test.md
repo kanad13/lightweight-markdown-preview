@@ -65,7 +65,7 @@ print("Hello, World!")
 
 ---
 
-## Mermaid diagram
+## Mermaid diagram (backtick syntax)
 
 ```mermaid
 graph TD;
@@ -74,6 +74,14 @@ graph TD;
     B-->D;
     C-->D;
 ```
+
+## Mermaid diagram (colon fence syntax)
+
+::: mermaid
+flowchart LR;
+    Start-->Process;
+    Process-->End;
+:::
 
 ## Mathematical expressions
 

@@ -20,7 +20,7 @@ A minimal VS Code extension for previewing Markdown with Mermaid diagrams and Ma
 - Auto-scrolling outline that highlights your current section as you read
 - Click-to-scroll navigation in the TOC for quick jumping between sections
 - All standard Markdown elements (headings, lists, tables, code blocks, images, etc.)
-- Full Mermaid diagram support (flowcharts, sequences, state diagrams, etc.)
+- Full Mermaid diagram support (flowcharts, sequences, state diagrams, etc.) with both backtick (` ```mermaid `) and colon fence (`::: mermaid`) syntax
 - MathJax support for LaTeX equations
 
 ## Install
