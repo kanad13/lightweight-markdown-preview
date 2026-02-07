@@ -26,11 +26,11 @@ Webview displays rendered content with Mermaid/MathJax
 
 ## Security Model
 
-Our security model assumes that any markdown file could be malicious. We use a defense-in-depth strategy to mitigate risks, primarily Cross-Site Scripting (XSS).
+The security model assumes that any markdown file could be malicious. The extension uses a defense-in-depth strategy to mitigate risks, primarily Cross-Site Scripting (XSS).
 
 ### Layer 1: Content Security Policy (CSP) with Nonces
 
-We enforce a strict CSP that only allows scripts with a unique, randomly-generated `nonce` (number used once) to run.
+The extension enforces a strict CSP that only allows scripts with a unique, randomly-generated `nonce` (number used once) to run.
 
 - **How it works:** A new cryptographic nonce is generated for every preview render. This nonce is included in the CSP `meta` tag and in every legitimate `<script>` tag.
 - **Effect:** Any malicious `<script>` tag injected within the markdown will not have the correct nonce and will be blocked by the browser from executing.

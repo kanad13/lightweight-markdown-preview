@@ -72,8 +72,8 @@ All notable changes to this project will be documented in this file.
 
 ## [1.0.1] - 2025-11-02
 
-### Initial Release
-- Lightweight Markdown preview (~38 KB, no dependencies)
+### Added
+- Lightweight Markdown preview (single runtime dependency: `marked`)
 - Full Mermaid diagram support (flowcharts, sequences, state diagrams, etc.)
 - MathJax equation support (inline and display math)
 - Live preview updates as you type

@@ -387,7 +387,7 @@ function generateTOC(headings) {
  * - Security: Content Security Policy with nonce-based scripts
  * - Styling: Clean, minimal design that works in light and dark themes
  * - Interactivity: Mermaid diagrams and MathJax equations rendered via CDN
- * - Navigation: Collapsible overlay TOC sidebar for document outline (Option 3 pattern)
+ * - Navigation: Collapsible overlay TOC sidebar for document outline
  *
  * CSP (Content Security Policy) breakdown:
  * - default-src 'none': Block everything by default (secure)

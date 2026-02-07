@@ -55,7 +55,8 @@ This README is all you need to install and use the extension.
    - **Section 1:** Local setup and verification
    - **Section 2:** Feature development workflow (creating branches, making changes, testing, merging)
    - **Section 3:** Release to marketplace (version bumps, tagging, publishing)
-   - **Section 4 & 5:** Code quality checklist and common pitfalls to avoid
+   - **Section 4-5:** Code quality checklist and common pitfalls
+   - **Section 6-7:** Troubleshooting and release checklist
 
 **At a glance:**
 - `architecture.md` - WHY design decisions were made
