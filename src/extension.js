@@ -341,7 +341,8 @@ function renderTOCNode(node) {
 	let html = `<li class="toc-item toc-level-${h.level}${hasChildren ? "" : " toc-leaf"}">`;
 
 	if (hasChildren) {
-		html += "<details class=\"toc-details\">";
+		const openAttr = h.level <= 1 ? " open" : "";
+		html += `<details class="toc-details"${openAttr}>`;
 		html += `<summary class="toc-summary"><a href="#${h.id}" class="toc-link"><span class="toc-prefix">${prefix}</span>${h.text}</a></summary>`;
 		html += "<ul class=\"toc-list\">";
 		node.children.forEach(child => {
@@ -361,7 +362,7 @@ function renderTOCNode(node) {
  * Generates collapsible TOC HTML from headings array
  *
  * Builds a tree structure from flat headings, then renders recursively.
- * Parent headings with children are collapsible (collapsed by default).
+ * Parent headings with children are collapsible (H1 nodes expanded by default).
  * Each entry shows pound-sign prefixes indicating heading depth.
  *
  * @param {Array} headings - Array of heading objects with level, text, id
@@ -562,8 +563,6 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 
 		/* Heading hierarchy prefix (pound signs) */
 		.toc-prefix {
-			color: #999;
-			font-size: 0.85em;
 			margin-right: 6px;
 			user-select: none;
 			flex-shrink: 0;

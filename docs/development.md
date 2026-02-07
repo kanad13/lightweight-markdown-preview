@@ -11,8 +11,8 @@ Get your environment running with these commands.
 git clone https://github.com/kanad13/lightweight-markdown-preview.git
 cd lightweight-markdown-preview
 
-# Install dependencies
-npm install
+# Install dependencies (strictly from lock file)
+npm ci
 
 # Run linters to check for code quality
 npm run lint
@@ -23,12 +23,14 @@ npm run package
 
 ### Troubleshooting Setup
 
-If you encounter issues, a clean reinstall often helps.
+If you encounter issues, a clean reinstall from the lock file often helps.
 
 ```bash
 rm -rf node_modules
-npm install
+npm ci
 ```
+
+> **`npm ci` vs `npm install`:** Always use `npm ci` for setup and troubleshooting. It installs exact versions from `package-lock.json`, ensuring reproducible builds. Only use `npm install` when intentionally adding or upgrading a dependency — then commit the updated `package-lock.json`.
 
 ## 2. Feature Development Workflow
 
@@ -210,11 +212,12 @@ Add entry at the **very top** (after the header) in this exact format:
 - Do NOT include: dependency updates (unless security fix), internal refactoring, test improvements, or build process changes
 - Each section (Added/Changed/Fixed) is optional - only include sections with content
 
-### Step 3: Run Tests
+### Step 3: Verify Dependencies & Run Tests
 
 ```bash
-# Install dependencies if needed
-npm install
+# Clean install from lock file to ensure exact versions
+rm -rf node_modules
+npm ci
 
 # Run linting
 npm run lint
@@ -489,6 +492,7 @@ Use this before every release:
 BEFORE RELEASE:
 - [ ] Create feature branch for changes
 - [ ] Test all features locally (F5 dev host)
+- [ ] Clean install dependencies: `rm -rf node_modules && npm ci`
 - [ ] Run `npm run lint` with no errors
 - [ ] Run `npm run package` with no errors
 - [ ] Merge to main via git merge
