@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2026-02-07
+
+### Added
+- Heading hierarchy indicators: pound-sign prefixes (#, ##, ###) show heading level at a glance in the TOC sidebar
+- Collapsible TOC sections: headings with children can be expanded/collapsed via disclosure triangles, collapsed by default for a clean outline view
+- Auto-expand: scrolling to a heading inside a collapsed section automatically reveals it in the TOC
+
+### Changed
+- TOC generation rewritten from iterative level-tracking to recursive tree-based algorithm for proper parent-child relationships
+
 ## [1.1.0] - 2026-02-02
 
 ### Added
@@ -62,8 +72,8 @@ All notable changes to this project will be documented in this file.
 
 ## [1.0.1] - 2025-11-02
 
-### Initial Release
-- Lightweight Markdown preview (~38 KB, no dependencies)
+### Added
+- Lightweight Markdown preview (single runtime dependency: `marked`)
 - Full Mermaid diagram support (flowcharts, sequences, state diagrams, etc.)
 - MathJax equation support (inline and display math)
 - Live preview updates as you type

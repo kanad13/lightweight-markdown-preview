@@ -11,8 +11,8 @@ Get your environment running with these commands.
 git clone https://github.com/kanad13/lightweight-markdown-preview.git
 cd lightweight-markdown-preview
 
-# Install dependencies
-npm install
+# Install dependencies (strictly from lock file)
+npm ci
 
 # Run linters to check for code quality
 npm run lint
@@ -23,12 +23,14 @@ npm run package
 
 ### Troubleshooting Setup
 
-If you encounter issues, a clean reinstall often helps.
+If you encounter issues, a clean reinstall from the lock file often helps.
 
 ```bash
 rm -rf node_modules
-npm install
+npm ci
 ```
+
+> **`npm ci` vs `npm install`:** Always use `npm ci` for setup and troubleshooting. It installs exact versions from `package-lock.json`, ensuring reproducible builds. Only use `npm install` when intentionally adding or upgrading a dependency — then commit the updated `package-lock.json`.
 
 ## 2. Feature Development Workflow
 
@@ -152,7 +154,7 @@ After pushing, verify that:
 
 **Only release from `main` branch after all features are merged and tested.**
 
-Follow these steps precisely in order. Each step is required and builds on the previous one.
+Follow these steps precisely in order. Each step is required and builds on the previous one. Replace `X.Y.Z` with your actual version number throughout.
 
 ### Pre-Release Checklist
 
@@ -171,19 +173,19 @@ Before starting:
 **Edit package.json** - update the version field only:
 
 ```json
-"version": "1.0.4"
+"version": "X.Y.Z"
 ```
 
 **Edit package-lock.json** - update ALL occurrences of version (use search & replace):
 
 ```
-"version": "1.0.4"
+"version": "X.Y.Z"
 ```
 
 Verify with:
 
 ```bash
-grep '"version": "1.0.4"' package.json package-lock.json | wc -l
+grep '"version": "X.Y.Z"' package.json package-lock.json | wc -l
 # Should output: 2 (one from each file)
 ```
 
@@ -192,7 +194,7 @@ grep '"version": "1.0.4"' package.json package-lock.json | wc -l
 Add entry at the **very top** (after the header) in this exact format:
 
 ```markdown
-## [1.0.4] - 2025-11-07
+## [X.Y.Z] - YYYY-MM-DD
 
 ### Added
 - New feature description (if any)
@@ -210,11 +212,12 @@ Add entry at the **very top** (after the header) in this exact format:
 - Do NOT include: dependency updates (unless security fix), internal refactoring, test improvements, or build process changes
 - Each section (Added/Changed/Fixed) is optional - only include sections with content
 
-### Step 3: Run Tests
+### Step 3: Verify Dependencies & Run Tests
 
 ```bash
-# Install dependencies if needed
-npm install
+# Clean install from lock file to ensure exact versions
+rm -rf node_modules
+npm ci
 
 # Run linting
 npm run lint
@@ -252,11 +255,11 @@ git status
 **Commit with descriptive message:**
 
 ```bash
-git commit -m "chore: bump version to 1.0.4
+git commit -m "chore: bump version to X.Y.Z
 
 - Update package.json version
 - Update package-lock.json version
-- Add CHANGELOG entry for v1.0.4"
+- Add CHANGELOG entry for vX.Y.Z"
 ```
 
 **Verify commit:**
@@ -270,13 +273,13 @@ git log -1 --oneline  # Should show your commit
 **Create annotated tag (required, not lightweight):**
 
 ```bash
-git tag -a v1.0.4 -m "Release version 1.0.4"
+git tag -a vX.Y.Z -m "Release version X.Y.Z"
 ```
 
 **Verify tag points to correct commit:**
 
 ```bash
-git show v1.0.4 --quiet  # Should show your version bump commit
+git show vX.Y.Z --quiet  # Should show your version bump commit
 ```
 
 ### Step 7: Push to GitHub
@@ -290,14 +293,14 @@ git push origin main
 **Push tag:**
 
 ```bash
-git push origin v1.0.4
+git push origin vX.Y.Z
 ```
 
 **Verify both pushed:**
 
 ```bash
 git log -1 origin/main --oneline  # Should show your commit
-git ls-remote origin refs/tags/v1.0.4  # Should return tag SHA
+git ls-remote origin refs/tags/vX.Y.Z  # Should return tag SHA
 ```
 
 ### Step 8: Publish to VS Code Marketplace
@@ -310,7 +313,7 @@ npm run build
 npm run publish
 ```
 
-Wait for confirmation: `DONE  Published KunalPathak.lightweight-markdown-preview v1.0.4.`
+Wait for confirmation: `DONE  Published KunalPathak.lightweight-markdown-preview vX.Y.Z.`
 
 If you get version-already-published error, verify package.json has the correct new version.
 
@@ -321,7 +324,7 @@ If you get version-already-published error, verify package.json has the correct 
 git log origin/main -3 --oneline
 
 # Check GitHub tag exists
-git ls-remote origin refs/tags/v1.0.4
+git ls-remote origin refs/tags/vX.Y.Z
 
 # Check marketplace (may take 5-10 minutes to appear)
 # https://marketplace.visualstudio.com/items?itemName=KunalPathak.lightweight-markdown-preview
@@ -331,10 +334,10 @@ git ls-remote origin refs/tags/v1.0.4
 
 **Tag already exists:**
 ```bash
-git tag -d v1.0.4                      # Delete local
-git push origin :refs/tags/v1.0.4      # Delete remote
-git tag -a v1.0.4 -m "Release v1.0.4"  # Recreate
-git push origin v1.0.4                 # Push new
+git tag -d vX.Y.Z                      # Delete local
+git push origin :refs/tags/vX.Y.Z      # Delete remote
+git tag -a vX.Y.Z -m "Release vX.Y.Z"  # Recreate
+git push origin vX.Y.Z                 # Push new
 ```
 
 **Version already on marketplace:**
@@ -343,7 +346,7 @@ git push origin v1.0.4                 # Push new
 
 **Tag points to wrong commit:**
 ```bash
-git show v1.0.4 --quiet | head -3  # Check what tag points to
+git show vX.Y.Z --quiet | head -3  # Check what tag points to
 git log -1 --oneline               # Check current commit
 # If different: follow "Tag already exists" steps above
 ```
@@ -358,11 +361,11 @@ Before committing any code, verify:
 - [ ] **No security regressions:** CSP, nonce generation, and state management unchanged (unless intentional)
 - [ ] **Manual testing:** Test in F5 dev host with `examples/test.md`
 - [ ] **No console logs:** Remove debugging statements (unless required for production diagnostics)
-- [ ] **Metrics updated:** If code size or package size changed significantly, update README.md and architecture.md
+- [ ] **Documentation updated:** If features or architecture changed, update relevant docs (README.md, architecture.md, CHANGELOG.md)
 
-## 5. Common Pitfalls
+## 5. Common Pitfalls (High-Risk Areas)
 
-These are **high-risk areas** where mistakes can introduce bugs or security vulnerabilities. Review carefully before making changes.
+These are high-risk areas where mistakes can introduce bugs or security vulnerabilities. Review carefully before making changes.
 
 ### Pitfall #1: Modifying Content Security Policy (CSP)
 
@@ -447,7 +450,7 @@ html = html.replace(/src="([^"]+)"/, `src="${imageUri}"`);
 **Problem:** Code changes without documentation updates lead to drift and confusion.
 
 **When to update documentation:**
-- **README.md:** Update metrics (~XX KB, ~XX lines) if code size changes significantly
+- **README.md:** Update if user-facing features or install instructions change
 - **architecture.md:** Update if design patterns or security model changes
 - **development.md:** Update if workflow, tooling, or standards change
 - **CHANGELOG.md:** Update for **every release** with user-facing changes
@@ -481,7 +484,7 @@ Check the Actions tab on GitHub:
    - Missing files: ensure all required files are tracked in git
    - Case sensitivity issues: check for duplicate files
 
-## 5. Release Checklist Summary
+## 7. Release Checklist Summary
 
 Use this before every release:
 
@@ -489,6 +492,7 @@ Use this before every release:
 BEFORE RELEASE:
 - [ ] Create feature branch for changes
 - [ ] Test all features locally (F5 dev host)
+- [ ] Clean install dependencies: `rm -rf node_modules && npm ci`
 - [ ] Run `npm run lint` with no errors
 - [ ] Run `npm run package` with no errors
 - [ ] Merge to main via git merge
@@ -500,7 +504,7 @@ RELEASE:
 - [ ] Increment version in package.json
 - [ ] Update CHANGELOG.md with new entry
 - [ ] Commit version update
-- [ ] Create git tag (v1.0.2)
+- [ ] Create git tag (vX.Y.Z)
 - [ ] Push tag to GitHub
 - [ ] Create GitHub Release
 - [ ] Run `npm run publish`
