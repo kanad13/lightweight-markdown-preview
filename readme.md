@@ -16,8 +16,8 @@ A minimal VS Code extension for previewing Markdown with Mermaid diagrams and Ma
 ## Features
 
 - Real-time Markdown preview in a side panel
-- Interactive table of contents sidebar for easy document navigation
-- Auto-scrolling outline that highlights your current section as you read
+- Collapsible table of contents sidebar with heading-level indicators (#, ##, ###) for clear hierarchy
+- Auto-scrolling outline that highlights your current section as you read and auto-expands collapsed sections
 - Click-to-scroll navigation in the TOC for quick jumping between sections
 - All standard Markdown elements (headings, lists, tables, code blocks, images, etc.)
 - Full Mermaid diagram support with dual syntax compatibility:

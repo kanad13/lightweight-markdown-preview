@@ -117,12 +117,23 @@ The extension provides an optional table of contents sidebar that users can togg
 - **Close:** Click sidebar close button, overlay backdrop, or press Escape key
 - **Navigate:** Click any outline link for smooth scroll to heading
 - **Track:** Current heading highlighted automatically as user scrolls content
+- **Collapse/Expand:** Parent headings with children show a disclosure triangle; sections collapsed by default; clicking the triangle toggles visibility; scrolling to a heading auto-expands its collapsed parent sections
+- **Hierarchy indicators:** Pound-sign prefixes (#, ##, ###) indicate heading depth at a glance, styled in muted monospace to avoid visual clutter
+
+#### Collapsible TOC Implementation
+
+The TOC uses native HTML `<details>/<summary>` elements for collapsibility:
+- **Zero-JS toggle:** Browser-native toggle mechanism, no custom JavaScript for expand/collapse
+- **Collapsed by default:** No `open` attribute on `<details>` elements, keeping the outline compact on first open
+- **Tree-based generation:** Headings are built into a parent-child tree (via `buildTOCTree()`), then rendered recursively (via `renderTOCNode()`). Parent nodes wrap children in `<details>/<summary>`, leaf nodes render as plain items.
+- **Link/toggle separation:** `e.stopPropagation()` on link clicks prevents `<details>` toggle when navigating, so clicking the heading text scrolls without collapsing
+- **Auto-expand on scroll:** When IntersectionObserver activates a heading inside a collapsed section, `updateActiveTOC()` walks up ancestor `<details>` elements and opens them
 
 #### Performance & Accessibility
 
 - **Animation:** Uses GPU-accelerated `transform` for smooth, jank-free slide transition
 - **No layout shifts:** Overlay pattern means zero reflows during open/close
-- **Keyboard-friendly:** Escape key closes sidebar; semantic HTML enables screen reader navigation
+- **Keyboard-friendly:** Escape key closes sidebar; Enter/Space on `<summary>` toggles sections; semantic HTML enables screen reader navigation
 - **Theme-aware:** Button styling respects light/dark themes without special handling needed
 
 ## Guidelines for Future Changes

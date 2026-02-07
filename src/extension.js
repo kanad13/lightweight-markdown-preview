@@ -295,44 +295,87 @@ function updateWebviewContent(panel, document) {
 }
 
 /**
- * Generates nested TOC HTML from headings array
+ * Builds a parent-child tree from a flat array of headings
+ *
+ * Uses a stack to track nesting: each heading becomes a child of the most
+ * recent heading with a lower level. Handles irregular hierarchies gracefully
+ * (e.g., h1 followed by h3 with no h2 makes h3 a child of h1).
  *
  * @param {Array} headings - Array of heading objects with level, text, id
- * @returns {string} HTML for the nested TOC list
+ * @returns {Array} Array of root tree nodes, each with { heading, children }
+ */
+function buildTOCTree(headings) {
+	const root = { children: [] };
+	const stack = [{ node: root, level: 0 }];
+
+	headings.forEach(heading => {
+		const newNode = { heading, children: [] };
+
+		// Pop stack until we find a parent with a lower level
+		while (stack.length > 1 && stack[stack.length - 1].level >= heading.level) {
+			stack.pop();
+		}
+
+		stack[stack.length - 1].node.children.push(newNode);
+		stack.push({ node: newNode, level: heading.level });
+	});
+
+	return root.children;
+}
+
+/**
+ * Recursively renders a TOC tree node to HTML
+ *
+ * Parent nodes (those with children) are wrapped in <details>/<summary> for
+ * native collapsibility. Leaf nodes render as plain list items. All nodes
+ * include a pound-sign prefix indicating heading depth.
+ *
+ * @param {Object} node - Tree node with { heading, children }
+ * @returns {string} HTML string for this node and its descendants
+ */
+function renderTOCNode(node) {
+	const h = node.heading;
+	const prefix = "#".repeat(h.level);
+	const hasChildren = node.children.length > 0;
+
+	let html = `<li class="toc-item toc-level-${h.level}${hasChildren ? "" : " toc-leaf"}">`;
+
+	if (hasChildren) {
+		html += "<details class=\"toc-details\">";
+		html += `<summary class="toc-summary"><a href="#${h.id}" class="toc-link"><span class="toc-prefix">${prefix}</span>${h.text}</a></summary>`;
+		html += "<ul class=\"toc-list\">";
+		node.children.forEach(child => {
+			html += renderTOCNode(child);
+		});
+		html += "</ul>";
+		html += "</details>";
+	} else {
+		html += `<a href="#${h.id}" class="toc-link"><span class="toc-prefix">${prefix}</span>${h.text}</a>`;
+	}
+
+	html += "</li>";
+	return html;
+}
+
+/**
+ * Generates collapsible TOC HTML from headings array
+ *
+ * Builds a tree structure from flat headings, then renders recursively.
+ * Parent headings with children are collapsible (collapsed by default).
+ * Each entry shows pound-sign prefixes indicating heading depth.
+ *
+ * @param {Array} headings - Array of heading objects with level, text, id
+ * @returns {string} HTML for the nested, collapsible TOC list
  */
 function generateTOC(headings) {
 	if (headings.length === 0) return "<p style=\"font-size: 0.9em; color: #888;\">No headings found</p>";
 
+	const tree = buildTOCTree(headings);
 	let tocHtml = "<ul class=\"toc-list\">";
-	let currentLevel = 0;
-
-	headings.forEach((heading) => {
-		// Close deeper levels
-		while (currentLevel >= heading.level) {
-			tocHtml += "</ul>";
-			currentLevel--;
-		}
-
-		// Open new levels
-		while (currentLevel < heading.level - 1) {
-			tocHtml += "<ul class=\"toc-list\">";
-			currentLevel++;
-		}
-
-		if (currentLevel < heading.level) {
-			tocHtml += "<ul class=\"toc-list\">";
-			currentLevel++;
-		}
-
-		tocHtml += `<li class="toc-item toc-level-${heading.level}"><a href="#${heading.id}" class="toc-link">${heading.text}</a></li>`;
+	tree.forEach(node => {
+		tocHtml += renderTOCNode(node);
 	});
-
-	// Close all open levels
-	while (currentLevel > 0) {
-		tocHtml += "</ul>";
-		currentLevel--;
-	}
-
+	tocHtml += "</ul>";
 	return tocHtml;
 }
 
@@ -353,7 +396,7 @@ function generateTOC(headings) {
  * - font-src https: data: Allow fonts from HTTPS and data URIs (for MathJax)
  *
  * Sidebar Pattern (Overlay - Option 3):
- * - Sidebar is hidden by default, slides in from left when opened
+ * - Sidebar is hidden by default, slides in from right when opened
  * - Clicking overlay or close button closes the sidebar
  * - Escape key also closes the sidebar
  * - Content width remains consistent (no reflow)
@@ -517,15 +560,64 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 			margin: 2px 0;
 		}
 
-		/* Simplified toc-link styling - uniform font/color */
+		/* Heading hierarchy prefix (pound signs) */
+		.toc-prefix {
+			color: #999;
+			font-size: 0.85em;
+			margin-right: 6px;
+			user-select: none;
+			flex-shrink: 0;
+		}
+
+		/* Collapsible details/summary styling */
+		.toc-details {
+			border: none;
+			margin: 0;
+		}
+
+		.toc-summary {
+			list-style: none;
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+		}
+
+		.toc-summary::-webkit-details-marker {
+			display: none;
+		}
+
+		/* Custom disclosure triangle */
+		.toc-summary::before {
+			content: '\\25B6';
+			font-size: 0.6em;
+			color: #999;
+			margin-right: 4px;
+			transition: transform 0.15s ease;
+			flex-shrink: 0;
+			width: 12px;
+			text-align: center;
+		}
+
+		.toc-details[open] > .toc-summary::before {
+			transform: rotate(90deg);
+		}
+
+		/* Leaf items align with summary items (offset past triangle: 12px + 4px margin) */
+		.toc-leaf > .toc-link {
+			padding-left: 26px;
+		}
+
+		/* TOC link styling */
 		.toc-link {
-			display: block;
-			padding: 8px 12px;
+			display: flex;
+			align-items: center;
+			padding: 6px 10px;
 			text-decoration: none;
 			color: #0066cc;
 			border-radius: 3px;
 			border-left: 3px solid transparent;
 			transition: all 0.15s ease;
+			flex: 1;
 		}
 
 		.toc-link:hover {
@@ -538,34 +630,6 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 			background: rgba(0, 102, 204, 0.1);
 			color: #0052a3;
 			font-weight: 500;
-		}
-
-		/* Indentation shows hierarchy, no font-size variations */
-		.toc-level-2 .toc-link,
-		.toc-level-3 .toc-link,
-		.toc-level-4 .toc-link,
-		.toc-level-5 .toc-link,
-		.toc-level-6 .toc-link {
-			font-size: 0.9em;
-			color: #0066cc;
-		}
-
-		.toc-level-2 .toc-link:hover,
-		.toc-level-3 .toc-link:hover,
-		.toc-level-4 .toc-link:hover,
-		.toc-level-5 .toc-link:hover,
-		.toc-level-6 .toc-link:hover {
-			background: rgba(0, 102, 204, 0.08);
-			color: #0052a3;
-		}
-
-		.toc-level-2 .toc-link.active,
-		.toc-level-3 .toc-link.active,
-		.toc-level-4 .toc-link.active,
-		.toc-level-5 .toc-link.active,
-		.toc-level-6 .toc-link.active {
-			border-left-color: #0066cc;
-			background: rgba(0, 102, 204, 0.1);
 		}
 
 		/* Content area - no margin offset needed (sidebar is overlay) */
@@ -739,6 +803,7 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 		tocLinks.forEach(link => {
 			link.addEventListener('click', (e) => {
 				e.preventDefault();
+				e.stopPropagation(); // Prevent <details> toggle when clicking the link
 				const id = link.getAttribute('href').substring(1);
 				const target = document.getElementById(id);
 				if (target) {
@@ -759,8 +824,16 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 				link.classList.remove('active');
 				if (link.getAttribute('href') === '#' + activeId) {
 					link.classList.add('active');
-					// Only auto-scroll sidebar if it's open
+					// Only auto-expand and auto-scroll when sidebar is visible
 					if (document.body.classList.contains('sidebar-open')) {
+						// Auto-expand collapsed ancestor sections to reveal active link
+						let parent = link.closest('details');
+						while (parent) {
+							if (!parent.open) {
+								parent.open = true;
+							}
+							parent = parent.parentElement ? parent.parentElement.closest('details') : null;
+						}
 						// Scroll the TOC sidebar to make the active link visible
 						const activeLink = link;
 						const linkTop = activeLink.offsetTop;
