@@ -94,8 +94,16 @@ function activate(context) {
 		}
 	);
 
+	// Re-render when VS Code color theme changes (light ↔ dark)
+	const themeChangeSubscription = vscode.window.onDidChangeActiveColorTheme(() => {
+		if (currentPanel && currentDocument) {
+			updateWebviewContent(currentPanel, currentDocument);
+		}
+	});
+
 	context.subscriptions.push(disposable);
 	context.subscriptions.push(changeDocumentSubscription);
+	context.subscriptions.push(themeChangeSubscription);
 }
 
 /**
@@ -288,8 +296,9 @@ function updateWebviewContent(panel, document) {
 
 		// Generate nonce for CSP
 		const nonce = getNonce();
+		const theme = resolveTheme();
 
-		panel.webview.html = getWebviewContent(html, nonce, headings);
+		panel.webview.html = getWebviewContent(html, nonce, headings, theme);
 	} catch (error) {
 		vscode.window.showErrorMessage(
 			`Failed to render markdown: ${error.message}`
@@ -372,7 +381,7 @@ function renderTOCNode(node) {
  * @returns {string} HTML for the nested, collapsible TOC list
  */
 function generateTOC(headings) {
-	if (headings.length === 0) return "<p style=\"font-size: 0.9em; color: #888;\">No headings found</p>";
+	if (headings.length === 0) return "<p style=\"font-size: 0.9em; color: var(--vscode-descriptionForeground);\">No headings found</p>";
 
 	const tree = buildTOCTree(headings);
 	let tocHtml = "<ul class=\"toc-list\">";
@@ -384,11 +393,30 @@ function generateTOC(headings) {
 }
 
 /**
+ * Detects VS Code color theme kind and returns appropriate sub-theme names
+ *
+ * Maps VS Code's active color theme to Mermaid diagram theme and
+ * highlight.js stylesheet URL for consistent appearance.
+ *
+ * @returns {{ mermaidTheme: string, hljsTheme: string }} Theme configuration
+ */
+function resolveTheme() {
+	const kind = vscode.window.activeColorTheme.kind;
+	const isDark = kind === vscode.ColorThemeKind.Dark || kind === vscode.ColorThemeKind.HighContrast;
+	return {
+		mermaidTheme: isDark ? "dark" : "default",
+		hljsTheme: isDark
+			? "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/atom-one-dark.min.css"
+			: "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/atom-one-light.min.css",
+	};
+}
+
+/**
  * Generates the complete HTML content for the webview
  *
  * This function creates a sandboxed HTML environment with:
  * - Security: Content Security Policy with nonce-based scripts
- * - Styling: Clean, minimal design that works in light and dark themes
+ * - Styling: VS Code CSS variables for seamless light/dark theme support
  * - Interactivity: Mermaid diagrams and MathJax equations rendered via CDN
  * - Navigation: Collapsible overlay TOC sidebar for document outline
  *
@@ -418,9 +446,10 @@ function generateTOC(headings) {
  * @param {string} markdownHtml - Already-rendered HTML from marked
  * @param {string} nonce - Security token for CSP (random string)
  * @param {Array} headings - Array of heading objects for TOC generation
+ * @param {{ mermaidTheme: string, hljsTheme: string }} theme - Theme config from resolveTheme()
  * @returns {string} Complete HTML page
  */
-function getWebviewContent(markdownHtml, nonce, headings = []) {
+function getWebviewContent(markdownHtml, nonce, headings = [], theme = {}) {
 	const tocHtml = generateTOC(headings);
 
 	return `<!DOCTYPE html>
@@ -430,7 +459,7 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data: vscode-resource:; script-src 'nonce-${nonce}' https://cdn.jsdelivr.net; style-src 'unsafe-inline' https://cdn.jsdelivr.net; font-src https: data:;">
 	<title>Markdown Preview</title>
-	<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/atom-one-light.min.css">
+	<link rel="stylesheet" href="${theme.hljsTheme}">
 	<style>
 		* {
 			box-sizing: border-box;
@@ -441,7 +470,16 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 			line-height: 1.6;
 			margin: 0;
 			padding: 0;
-			background: #fff;
+			background: var(--vscode-editor-background);
+			color: var(--vscode-editor-foreground);
+		}
+
+		a {
+			color: var(--vscode-textLink-foreground);
+		}
+
+		a:hover {
+			color: var(--vscode-textLink-activeForeground, var(--vscode-textLink-foreground));
 		}
 
 		/* Hamburger toggle button */
@@ -451,8 +489,8 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 			right: 10px;
 			z-index: 1001;
 			background: transparent;
-			color: #333;
-			border: 1px solid #d0d0d0;
+			color: var(--vscode-editor-foreground);
+			border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
 			padding: 12px 16px;
 			cursor: pointer;
 			border-radius: 4px;
@@ -463,12 +501,11 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 		}
 
 		.sidebar-toggle:hover {
-			background: #f5f5f5;
-			border-color: #999;
+			background: var(--vscode-toolbar-hoverBackground);
 		}
 
 		.sidebar-toggle:active {
-			background: #e8e8e8;
+			background: var(--vscode-toolbar-activeBackground, var(--vscode-toolbar-hoverBackground));
 		}
 
 		/* Overlay backdrop */
@@ -497,8 +534,8 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 			top: 0;
 			height: 100vh;
 			width: 280px;
-			background: #f9f9f9;
-			border-left: 1px solid #e0e0e0;
+			background: var(--vscode-sideBar-background);
+			border-left: 1px solid var(--vscode-sideBar-border, var(--vscode-panel-border));
 			overflow-y: auto;
 			padding: 20px;
 			font-size: 0.9em;
@@ -520,17 +557,17 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 			font-weight: 600;
 			text-transform: uppercase;
 			letter-spacing: 0.5px;
-			color: #666;
+			color: var(--vscode-descriptionForeground);
 			margin-bottom: 12px;
 			padding-bottom: 8px;
-			border-bottom: 1px solid #e0e0e0;
+			border-bottom: 1px solid var(--vscode-sideBar-border, var(--vscode-panel-border));
 		}
 
 		.toc-close {
 			background: none;
 			border: none;
 			font-size: 1.5em;
-			color: #666;
+			color: var(--vscode-descriptionForeground);
 			cursor: pointer;
 			padding: 0;
 			display: flex;
@@ -543,8 +580,8 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 		}
 
 		.toc-close:hover {
-			background: #e8f0ff;
-			color: #0066cc;
+			background: var(--vscode-toolbar-hoverBackground);
+			color: var(--vscode-textLink-foreground);
 		}
 
 		.toc-list {
@@ -592,7 +629,7 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 		.toc-summary::before {
 			content: '\\25B6';
 			font-size: 0.6em;
-			color: #999;
+			color: var(--vscode-descriptionForeground);
 			margin-right: 4px;
 			transition: transform 0.15s ease;
 			flex-shrink: 0;
@@ -615,7 +652,7 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 			align-items: center;
 			padding: 6px 10px;
 			text-decoration: none;
-			color: #0066cc;
+			color: var(--vscode-textLink-foreground);
 			border-radius: 3px;
 			border-left: 3px solid transparent;
 			transition: all 0.15s ease;
@@ -623,14 +660,14 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 		}
 
 		.toc-link:hover {
-			background: rgba(0, 102, 204, 0.08);
-			color: #0052a3;
+			background: var(--vscode-list-hoverBackground);
+			color: var(--vscode-textLink-activeForeground, var(--vscode-textLink-foreground));
 		}
 
 		.toc-link.active {
-			border-left-color: #0066cc;
-			background: rgba(0, 102, 204, 0.1);
-			color: #0052a3;
+			border-left-color: var(--vscode-textLink-foreground);
+			background: var(--vscode-list-hoverBackground);
+			color: var(--vscode-textLink-activeForeground, var(--vscode-textLink-foreground));
 			font-weight: 500;
 		}
 
@@ -643,15 +680,15 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 		}
 
 		pre {
-			background-color: #f5f5f5;
-			border: 1px solid #e0e0e0;
+			background-color: var(--vscode-textCodeBlock-background);
+			border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
 			border-radius: 4px;
 			padding: 12px;
 			overflow-x: auto;
 		}
 
 		code {
-			background-color: #f5f5f5;
+			background-color: var(--vscode-textCodeBlock-background);
 			padding: 2px 4px;
 			border-radius: 3px;
 			font-family: 'Courier New', Courier, monospace;
@@ -665,10 +702,10 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 		}
 
 		blockquote {
-			border-left: 4px solid #ddd;
+			border-left: 4px solid var(--vscode-textBlockQuote-border);
 			margin: 0;
 			padding-left: 16px;
-			color: #666;
+			color: var(--vscode-descriptionForeground);
 		}
 
 		table {
@@ -678,18 +715,23 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 		}
 
 		th, td {
-			border: 1px solid #ddd;
+			border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
 			padding: 8px;
 			text-align: left;
 		}
 
 		th {
-			background-color: #f4f4f4;
+			background-color: var(--vscode-editorWidget-background);
 		}
 
 		img {
 			max-width: 100%;
 			height: auto;
+		}
+
+		hr {
+			border: none;
+			border-top: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
 		}
 
 		.mermaid {
@@ -744,10 +786,10 @@ function getWebviewContent(markdownHtml, nonce, headings = []) {
 			console.error('Syntax highlighting failed:', error);
 		}
 
-		// Initialize Mermaid with modern API
+		// Initialize Mermaid with theme matching VS Code
 		mermaid.initialize({
 			startOnLoad: false,
-			theme: 'default',
+			theme: '${theme.mermaidTheme}',
 			securityLevel: 'loose'
 		});
 
