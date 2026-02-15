@@ -21,6 +21,14 @@ const config = {
 	resolve: {
 		extensions: [".js"],
 	},
+	module: {
+		rules: [
+			{
+				test: /\.html$/,
+				type: "asset/source",
+			},
+		],
+	},
 	devtool: "nosources-source-map",
 	infrastructureLogging: {
 		level: "log",
