@@ -20,6 +20,7 @@ function activate(context) {
 	// Keep track of current panel to avoid duplicates and enable updates
 	let currentPanel = undefined;
 	let currentDocument = undefined;
+	let updateTimer = undefined;
 
 	const disposable = vscode.commands.registerCommand(
 		"lightweightMarkdownViewer.showPreview",
@@ -58,7 +59,6 @@ function activate(context) {
 					{
 						enableScripts: true, // Required for Mermaid to work
 						localResourceRoots: localResourceRoots,
-						retainContextWhenHidden: true,
 					}
 				);
 
@@ -78,7 +78,7 @@ function activate(context) {
 		}
 	);
 
-	// Listen for document changes to update preview in real-time
+	// Listen for document changes to update preview with debounce
 	const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument(
 		(e) => {
 			if (
@@ -86,7 +86,10 @@ function activate(context) {
 				currentDocument &&
 				e.document.uri.toString() === currentDocument.uri.toString()
 			) {
-				updateWebviewContent(currentPanel, e.document);
+				clearTimeout(updateTimer);
+				updateTimer = setTimeout(() => {
+					updateWebviewContent(currentPanel, e.document);
+				}, 300);
 			}
 		}
 	);

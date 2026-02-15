@@ -2,10 +2,15 @@
 .gitignore
 eslint.config.js
 jsconfig.json
+webpack.config.js
+CLAUDE.md
+WORKPLAN.md
+next.md
 .vscode/
 .vscode-test/
 .claude/
 .github/
+src/
 *.vsix
 *.log
 docs/
