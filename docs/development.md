@@ -2,9 +2,44 @@
 
 A comprehensive guide to develop, test, and release the Lightweight Markdown Preview extension.
 
-## 1. Local Setup & Verification
+## 1. Prerequisites & Setup
 
-Get your environment running with these commands.
+### Install Global Tools
+
+Required for development and publishing:
+
+```bash
+# VS Code CLI for publishing to marketplace
+npm install -g @vscode/vsce
+
+# GitHub CLI for creating releases
+brew install gh
+```
+
+### Authenticate with Services
+
+You'll need authentication for publishing (not required for local development).
+
+**Marketplace Authentication (vsce):**
+
+1. Create a Personal Access Token at https://dev.azure.com/<org>/\_usersSettings/tokens
+2. Required scope: `Marketplace > Manage`
+3. Authenticate:
+   ```bash
+   vsce login KunalPathak
+   ```
+4. Verify: `vsce ls-publishers`
+
+**GitHub Authentication (gh):**
+
+```bash
+gh auth login
+gh auth status  # Verify
+```
+
+> **Note:** If your PAT expires, run `vsce login KunalPathak` again with a fresh token.
+
+### Local Environment Setup
 
 ```bash
 # Clone the repository
@@ -483,6 +518,20 @@ Check the Actions tab on GitHub:
    - Lint errors: run `npm run lint` locally and fix
    - Missing files: ensure all required files are tracked in git
    - Case sensitivity issues: check for duplicate files
+
+### Publish Fails with "authorization failed"
+
+```bash
+vsce login KunalPathak  # Re-authenticate with fresh PAT
+npm run publish         # Retry
+```
+
+### gh CLI Not Authenticated
+
+```bash
+gh auth login
+gh auth status  # Verify
+```
 
 ## 7. Release Checklist Summary
 

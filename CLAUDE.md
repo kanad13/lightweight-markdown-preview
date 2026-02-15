@@ -6,7 +6,7 @@ This extension provides a lightweight, privacy-friendly Markdown preview in a VS
 
 - Single source file: `src/extension.js`
 - One runtime dependency: `marked`
-- Build: webpack + babel → `dist/extension.js`
+- Build: webpack → `dist/extension.js`
 - Closure-based state (no classes, no globals)
 - CSP nonce security on all webview renders
 
@@ -46,3 +46,4 @@ When a task touches 3+ files or requires multiple related edits:
 - Manual testing via F5 debug launch
 - Test file at `examples/test.md` with diverse Markdown content, Mermaid diagrams, and MathJax equations
 - `npm test` must pass before any work is considered complete
+- Build a `.vsix` (`npm run package`) after each phase for manual install testing

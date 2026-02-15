@@ -15,17 +15,17 @@
 
 ## Phases
 
-### Phase 1: Config & Build Cleanup
+### Phase 1: Config & Build Cleanup ✓
 No functional changes. Fix misconfigurations and remove dead weight.
 
-- [ ] `eslint.config.js`: `sourceType: "module"` → `"commonjs"`, add `setTimeout`/`clearTimeout` globals
-- [ ] `.gitignore`: add `dist/`
-- [ ] git: `git rm -r --cached dist/`
-- [ ] `.vscodeignore`: `.eslintrc.json` → `eslint.config.js`
-- [ ] `webpack.config.js`: remove babel-loader rule
-- [ ] `package.json`: remove `@babel/core`, `@babel/preset-env`, `babel-loader`, `@vscode/test-electron` from devDeps
+- [x] `eslint.config.js`: `sourceType: "module"` → `"commonjs"`, add `setTimeout`/`clearTimeout` globals
+- [x] `.gitignore`: add `dist/`
+- [x] git: `git rm -r --cached dist/`
+- [x] `.vscodeignore`: `.eslintrc.json` → `eslint.config.js`
+- [x] `webpack.config.js`: remove babel-loader rule
+- [x] `package.json`: remove `@babel/core`, `@babel/preset-env`, `babel-loader`, `@vscode/test-electron` from devDeps
 
-Gate: `npm run lint` passes, `npm run build` passes.
+Gate: `npm run lint` ✓, `npm run build` ✓. Committed: `01fdf78`. (.vsix not built — no functional changes.)
 
 ### Phase 2: Quick Extension Fixes
 Small targeted changes in `src/extension.js`.
@@ -33,7 +33,7 @@ Small targeted changes in `src/extension.js`.
 - [ ] Remove `retainContextWhenHidden: true`
 - [ ] Add 300ms debounce to `onDidChangeTextDocument` handler
 
-Gate: `npm test` passes, F5 preview still works.
+Gate: `npm test` passes, `npm run package` produces .vsix for manual testing.
 
 ### Phase 3: Dark Theme Support
 Replace hardcoded light-theme CSS with VS Code theme variables.
@@ -43,7 +43,7 @@ Replace hardcoded light-theme CSS with VS Code theme variables.
 - [ ] Add `onDidChangeActiveColorTheme` listener to re-render on theme switch
 - [ ] Switch highlight.js theme conditionally (light/dark)
 
-Gate: `npm test` passes, preview renders correctly in both light and dark themes.
+Gate: `npm test` passes, `npm run package` produces .vsix for manual testing.
 
 ### Phase 4: HTML Template Extraction
 Extract the ~460-line HTML template from `getWebviewContent()` to a separate file.
@@ -51,7 +51,7 @@ Extract the ~460-line HTML template from `getWebviewContent()` to a separate fil
 - [ ] Create `src/webview.html` with placeholder tokens (`{{NONCE}}`, `{{TOC}}`, `{{CONTENT}}`, etc.)
 - [ ] Refactor `getWebviewContent()` to read template + do string replacement
 
-Gate: `npm test` passes, preview renders identically to before.
+Gate: `npm test` passes, `npm run package` produces .vsix for manual testing.
 
 ### Phase 5: Automated Tests
 Add unit tests for pure functions using Node.js built-in test runner.
@@ -60,4 +60,4 @@ Add unit tests for pure functions using Node.js built-in test runner.
 - [ ] Create `test/extension.test.js` with edge cases
 - [ ] Update `package.json` `scripts.test` to run `node --test` + lint
 
-Gate: `npm test` runs tests and lint, all pass.
+Gate: `npm test` runs tests and lint, all pass. `npm run package` produces .vsix for manual testing.
