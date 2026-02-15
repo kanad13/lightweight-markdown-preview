@@ -89,7 +89,7 @@ Branch naming convention:
 1. **Edit Code:** Make changes to `src/extension.js` or other source files.
 2. **Launch Dev Host:** Press `F5` in VS Code to open a dev window with the extension loaded.
 3. **Test Locally:** Open `examples/test.md` and run `Markdown: Show Lightweight Markdown Preview` from the Command Palette (`Ctrl+Shift+P`). Changes apply in real-time.
-4. **Lint Before Committing:** Run `npm run lint` to catch style issues early.
+4. **Test Before Committing:** Run `npm test` to run unit tests and lint.
 
 ### Step 3: Commit Changes
 
@@ -150,8 +150,8 @@ function getNonce() {
 ### Step 4: Test Thoroughly
 
 ```bash
-# Run linting
-npm run lint
+# Run unit tests and linting
+npm test
 
 # Build package to verify no errors
 npm run package
@@ -254,8 +254,8 @@ Add entry at the **very top** (after the header) in this exact format:
 rm -rf node_modules
 npm ci
 
-# Run linting
-npm run lint
+# Run unit tests and linting
+npm test
 
 # Verify no errors
 echo $?  # Should output: 0
@@ -390,7 +390,7 @@ git log -1 --oneline               # Check current commit
 
 Before committing any code, verify:
 
-- [ ] **Linting passes:** `npm run lint` returns no errors
+- [ ] **Tests and linting pass:** `npm test` returns no errors
 - [ ] **Build succeeds:** `npm run package` creates .vsix without errors
 - [ ] **JSDoc complete:** All exported functions have comprehensive documentation
 - [ ] **No security regressions:** CSP, nonce generation, and state management unchanged (unless intentional)
@@ -542,7 +542,7 @@ BEFORE RELEASE:
 - [ ] Create feature branch for changes
 - [ ] Test all features locally (F5 dev host)
 - [ ] Clean install dependencies: `rm -rf node_modules && npm ci`
-- [ ] Run `npm run lint` with no errors
+- [ ] Run `npm test` with no errors
 - [ ] Run `npm run package` with no errors
 - [ ] Merge to main via git merge
 - [ ] Push to origin/main
