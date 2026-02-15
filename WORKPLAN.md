@@ -27,13 +27,13 @@ No functional changes. Fix misconfigurations and remove dead weight.
 
 Gate: `npm run lint` ✓, `npm run build` ✓. Committed: `01fdf78`. (.vsix not built — no functional changes.)
 
-### Phase 2: Quick Extension Fixes
+### Phase 2: Quick Extension Fixes ✓
 Small targeted changes in `src/extension.js`.
 
-- [ ] Remove `retainContextWhenHidden: true`
-- [ ] Add 300ms debounce to `onDidChangeTextDocument` handler
+- [x] Remove `retainContextWhenHidden: true`
+- [x] Add 300ms debounce to `onDidChangeTextDocument` handler
 
-Gate: `npm test` passes, `npm run package` produces .vsix for manual testing.
+Gate: `npm run lint` ✓, `npm run build` ✓, `npm run package` ✓ (86.72 KB, 10 files). Committed: `b1a02ef`.
 
 ### Phase 3: Dark Theme Support
 Replace hardcoded light-theme CSS with VS Code theme variables.
