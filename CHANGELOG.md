@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0] - 2026-02-15
+
+### Added
+- Dark theme support: preview now adapts to VS Code light, dark, and high-contrast themes automatically
+- Mermaid diagrams and syntax highlighting themes switch with the VS Code theme
+- Preview re-renders automatically when you change your VS Code color theme
+
+### Changed
+- All CSS uses VS Code theme variables for consistent appearance across themes
+
 ## [1.2.0] - 2026-02-07
 
 ### Added
