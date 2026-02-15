@@ -1,5 +1,6 @@
 const vscode = require("vscode");
 const { marked } = require("marked");
+const webviewTemplate = require("./webview.html");
 
 /**
  * Activation function - called when the extension loads
@@ -20,6 +21,7 @@ function activate(context) {
 	// Keep track of current panel to avoid duplicates and enable updates
 	let currentPanel = undefined;
 	let currentDocument = undefined;
+	let updateTimer = undefined;
 
 	const disposable = vscode.commands.registerCommand(
 		"lightweightMarkdownViewer.showPreview",
@@ -58,7 +60,6 @@ function activate(context) {
 					{
 						enableScripts: true, // Required for Mermaid to work
 						localResourceRoots: localResourceRoots,
-						retainContextWhenHidden: true,
 					}
 				);
 
@@ -78,7 +79,7 @@ function activate(context) {
 		}
 	);
 
-	// Listen for document changes to update preview in real-time
+	// Listen for document changes to update preview with debounce
 	const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument(
 		(e) => {
 			if (
@@ -86,13 +87,24 @@ function activate(context) {
 				currentDocument &&
 				e.document.uri.toString() === currentDocument.uri.toString()
 			) {
-				updateWebviewContent(currentPanel, e.document);
+				clearTimeout(updateTimer);
+				updateTimer = setTimeout(() => {
+					updateWebviewContent(currentPanel, e.document);
+				}, 300);
 			}
 		}
 	);
 
+	// Re-render when VS Code color theme changes (light ↔ dark)
+	const themeChangeSubscription = vscode.window.onDidChangeActiveColorTheme(() => {
+		if (currentPanel && currentDocument) {
+			updateWebviewContent(currentPanel, currentDocument);
+		}
+	});
+
 	context.subscriptions.push(disposable);
 	context.subscriptions.push(changeDocumentSubscription);
+	context.subscriptions.push(themeChangeSubscription);
 }
 
 /**
@@ -285,8 +297,9 @@ function updateWebviewContent(panel, document) {
 
 		// Generate nonce for CSP
 		const nonce = getNonce();
+		const theme = resolveTheme();
 
-		panel.webview.html = getWebviewContent(html, nonce, headings);
+		panel.webview.html = getWebviewContent(html, nonce, headings, theme);
 	} catch (error) {
 		vscode.window.showErrorMessage(
 			`Failed to render markdown: ${error.message}`
@@ -369,7 +382,7 @@ function renderTOCNode(node) {
  * @returns {string} HTML for the nested, collapsible TOC list
  */
 function generateTOC(headings) {
-	if (headings.length === 0) return "<p style=\"font-size: 0.9em; color: #888;\">No headings found</p>";
+	if (headings.length === 0) return "<p style=\"font-size: 0.9em; color: var(--vscode-descriptionForeground);\">No headings found</p>";
 
 	const tree = buildTOCTree(headings);
 	let tocHtml = "<ul class=\"toc-list\">";
@@ -381,503 +394,53 @@ function generateTOC(headings) {
 }
 
 /**
+ * Detects VS Code color theme kind and returns appropriate sub-theme names
+ *
+ * Maps VS Code's active color theme to Mermaid diagram theme and
+ * highlight.js stylesheet URL for consistent appearance.
+ *
+ * @returns {{ mermaidTheme: string, hljsTheme: string }} Theme configuration
+ */
+function resolveTheme() {
+	const kind = vscode.window.activeColorTheme.kind;
+	const isDark = kind === vscode.ColorThemeKind.Dark || kind === vscode.ColorThemeKind.HighContrast;
+	return {
+		mermaidTheme: isDark ? "dark" : "default",
+		hljsTheme: isDark
+			? "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/atom-one-dark.min.css"
+			: "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/atom-one-light.min.css",
+	};
+}
+
+/**
  * Generates the complete HTML content for the webview
  *
- * This function creates a sandboxed HTML environment with:
- * - Security: Content Security Policy with nonce-based scripts
- * - Styling: Clean, minimal design that works in light and dark themes
- * - Interactivity: Mermaid diagrams and MathJax equations rendered via CDN
- * - Navigation: Collapsible overlay TOC sidebar for document outline
+ * Loads the HTML template (inlined at build time by webpack) and replaces
+ * placeholder tokens with dynamic values. Uses function-form replacements
+ * to avoid issues with special $ patterns in user-generated content.
  *
- * CSP (Content Security Policy) breakdown:
- * - default-src 'none': Block everything by default (secure)
- * - img-src https: data: vscode-resource: Allow images from HTTPS, data URIs, and local files
- * - script-src 'nonce-*': Only allow scripts with matching nonce
- * - style-src 'unsafe-inline': Allow inline styles (needed for rendering)
- * - font-src https: data: Allow fonts from HTTPS and data URIs (for MathJax)
- *
- * Sidebar Pattern (Overlay - Option 3):
- * - Sidebar is hidden by default, slides in from right when opened
- * - Clicking overlay or close button closes the sidebar
- * - Escape key also closes the sidebar
- * - Content width remains consistent (no reflow)
- * - Uses transform: translateX() for smooth, GPU-accelerated animation
- *
- * Mermaid Configuration:
- * - startOnLoad: false - We call mermaid.run() explicitly
- * - securityLevel: loose - Allows all diagram types
- * - CDN: jsDelivr for reliability and caching
- *
- * MathJax Configuration:
- * - Loads tex-mml-chtml renderer from CDN
- * - Supports inline ($...$) and display ($$...$$) math notation
+ * Template placeholders:
+ * - {{NONCE}}: CSP nonce token (appears 4 times)
+ * - {{HLJS_THEME}}: highlight.js stylesheet URL
+ * - {{MERMAID_THEME}}: Mermaid diagram theme name
+ * - {{TOC}}: Generated table of contents HTML
+ * - {{CONTENT}}: Rendered markdown HTML
  *
  * @param {string} markdownHtml - Already-rendered HTML from marked
  * @param {string} nonce - Security token for CSP (random string)
  * @param {Array} headings - Array of heading objects for TOC generation
+ * @param {{ mermaidTheme: string, hljsTheme: string }} theme - Theme config from resolveTheme()
  * @returns {string} Complete HTML page
  */
-function getWebviewContent(markdownHtml, nonce, headings = []) {
+function getWebviewContent(markdownHtml, nonce, headings = [], theme = {}) {
 	const tocHtml = generateTOC(headings);
 
-	return `<!DOCTYPE html>
-<html lang="en">
-<head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data: vscode-resource:; script-src 'nonce-${nonce}' https://cdn.jsdelivr.net; style-src 'unsafe-inline' https://cdn.jsdelivr.net; font-src https: data:;">
-	<title>Markdown Preview</title>
-	<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/atom-one-light.min.css">
-	<style>
-		* {
-			box-sizing: border-box;
-		}
-
-		body {
-			font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-			line-height: 1.6;
-			margin: 0;
-			padding: 0;
-			background: #fff;
-		}
-
-		/* Hamburger toggle button */
-		.sidebar-toggle {
-			position: fixed;
-			top: 10px;
-			right: 10px;
-			z-index: 1001;
-			background: transparent;
-			color: #333;
-			border: 1px solid #d0d0d0;
-			padding: 12px 16px;
-			cursor: pointer;
-			border-radius: 4px;
-			font-size: 1.5em;
-			font-weight: normal;
-			transition: background 0.2s ease, border-color 0.2s ease;
-			line-height: 1;
-		}
-
-		.sidebar-toggle:hover {
-			background: #f5f5f5;
-			border-color: #999;
-		}
-
-		.sidebar-toggle:active {
-			background: #e8e8e8;
-		}
-
-		/* Overlay backdrop */
-		.sidebar-overlay {
-			position: fixed;
-			top: 0;
-			left: 0;
-			right: 0;
-			bottom: 0;
-			background: rgba(0, 0, 0, 0.5);
-			opacity: 0;
-			pointer-events: none;
-			transition: opacity 0.3s ease;
-			z-index: 1000;
-		}
-
-		body.sidebar-open .sidebar-overlay {
-			opacity: 1;
-			pointer-events: auto;
-		}
-
-		/* TOC Sidebar - Overlay pattern */
-		.toc-sidebar {
-			position: fixed;
-			right: 0;
-			top: 0;
-			height: 100vh;
-			width: 280px;
-			background: #f9f9f9;
-			border-left: 1px solid #e0e0e0;
-			overflow-y: auto;
-			padding: 20px;
-			font-size: 0.9em;
-			z-index: 1001;
-			transform: translateX(100%);
-			transition: transform 0.3s ease;
-		}
-
-		body.sidebar-open .toc-sidebar {
-			transform: translateX(0);
-		}
-
-		/* Close button in sidebar header */
-		.toc-header {
-			display: flex;
-			justify-content: space-between;
-			align-items: center;
-			font-size: 0.85em;
-			font-weight: 600;
-			text-transform: uppercase;
-			letter-spacing: 0.5px;
-			color: #666;
-			margin-bottom: 12px;
-			padding-bottom: 8px;
-			border-bottom: 1px solid #e0e0e0;
-		}
-
-		.toc-close {
-			background: none;
-			border: none;
-			font-size: 1.5em;
-			color: #666;
-			cursor: pointer;
-			padding: 0;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			width: 28px;
-			height: 28px;
-			border-radius: 3px;
-			transition: background 0.2s ease;
-		}
-
-		.toc-close:hover {
-			background: #e8f0ff;
-			color: #0066cc;
-		}
-
-		.toc-list {
-			list-style: none;
-			margin: 0;
-			padding: 0;
-		}
-
-		.toc-list ul {
-			list-style: none;
-			margin: 0;
-			padding-left: 12px;
-			margin-top: 2px;
-		}
-
-		.toc-item {
-			margin: 2px 0;
-		}
-
-		/* Heading hierarchy prefix (pound signs) */
-		.toc-prefix {
-			margin-right: 6px;
-			user-select: none;
-			flex-shrink: 0;
-		}
-
-		/* Collapsible details/summary styling */
-		.toc-details {
-			border: none;
-			margin: 0;
-		}
-
-		.toc-summary {
-			list-style: none;
-			cursor: pointer;
-			display: flex;
-			align-items: center;
-		}
-
-		.toc-summary::-webkit-details-marker {
-			display: none;
-		}
-
-		/* Custom disclosure triangle */
-		.toc-summary::before {
-			content: '\\25B6';
-			font-size: 0.6em;
-			color: #999;
-			margin-right: 4px;
-			transition: transform 0.15s ease;
-			flex-shrink: 0;
-			width: 12px;
-			text-align: center;
-		}
-
-		.toc-details[open] > .toc-summary::before {
-			transform: rotate(90deg);
-		}
-
-		/* Leaf items align with summary items (offset past triangle: 12px + 4px margin) */
-		.toc-leaf > .toc-link {
-			padding-left: 26px;
-		}
-
-		/* TOC link styling */
-		.toc-link {
-			display: flex;
-			align-items: center;
-			padding: 6px 10px;
-			text-decoration: none;
-			color: #0066cc;
-			border-radius: 3px;
-			border-left: 3px solid transparent;
-			transition: all 0.15s ease;
-			flex: 1;
-		}
-
-		.toc-link:hover {
-			background: rgba(0, 102, 204, 0.08);
-			color: #0052a3;
-		}
-
-		.toc-link.active {
-			border-left-color: #0066cc;
-			background: rgba(0, 102, 204, 0.1);
-			color: #0052a3;
-			font-weight: 500;
-		}
-
-		/* Content area - no margin offset needed (sidebar is overlay) */
-		.content {
-			flex: 1;
-			padding: 20px;
-			max-width: 900px;
-			margin: 0 auto;
-		}
-
-		pre {
-			background-color: #f5f5f5;
-			border: 1px solid #e0e0e0;
-			border-radius: 4px;
-			padding: 12px;
-			overflow-x: auto;
-		}
-
-		code {
-			background-color: #f5f5f5;
-			padding: 2px 4px;
-			border-radius: 3px;
-			font-family: 'Courier New', Courier, monospace;
-			font-size: 0.9em;
-		}
-
-		pre code {
-			background-color: transparent;
-			padding: 0;
-			font-family: 'Courier New', Courier, monospace;
-		}
-
-		blockquote {
-			border-left: 4px solid #ddd;
-			margin: 0;
-			padding-left: 16px;
-			color: #666;
-		}
-
-		table {
-			border-collapse: collapse;
-			width: 100%;
-			margin: 16px 0;
-		}
-
-		th, td {
-			border: 1px solid #ddd;
-			padding: 8px;
-			text-align: left;
-		}
-
-		th {
-			background-color: #f4f4f4;
-		}
-
-		img {
-			max-width: 100%;
-			height: auto;
-		}
-
-		.mermaid {
-			background-color: transparent;
-			border: none;
-			text-align: center;
-		}
-
-		h1, h2, h3, h4, h5, h6 {
-			scroll-margin-top: 20px;
-		}
-
-		/* Mobile responsiveness */
-		@media (max-width: 768px) {
-			.content {
-				padding: 15px;
-			}
-
-			.sidebar-toggle {
-				top: 8px;
-				right: 8px;
-				padding: 10px 14px;
-				font-size: 1.3em;
-			}
-		}
-	</style>
-</head>
-<body>
-	<button class="sidebar-toggle" aria-label="Toggle outline sidebar" title="Show outline (ESC to close)">☰</button>
-	<div class="sidebar-overlay" aria-hidden="true"></div>
-	<aside class="toc-sidebar" role="navigation" aria-label="Document outline">
-		<div class="toc-header">
-			<span>Contents</span>
-			<button class="toc-close" aria-label="Close sidebar">✕</button>
-		</div>
-		${tocHtml}
-	</aside>
-	<main class="content">
-		${markdownHtml}
-	</main>
-	<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" nonce="${nonce}"></script>
-	<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js" nonce="${nonce}"></script>
-	<script type="module" nonce="${nonce}">
-		import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
-
-		// Initialize highlight.js for syntax highlighting
-		try {
-			document.querySelectorAll('pre code').forEach((block) => {
-				hljs.highlightElement(block);
-			});
-		} catch (error) {
-			console.error('Syntax highlighting failed:', error);
-		}
-
-		// Initialize Mermaid with modern API
-		mermaid.initialize({
-			startOnLoad: false,
-			theme: 'default',
-			securityLevel: 'loose'
-		});
-
-		// Run Mermaid on all diagram elements
-		try {
-			await mermaid.run({
-				querySelector: '.mermaid'
-			});
-		} catch (error) {
-			console.error('Mermaid rendering failed:', error);
-		}
-
-		// Trigger MathJax processing if loaded
-		if (window.MathJax) {
-			try {
-				window.MathJax.typesetPromise().catch(err => console.error('MathJax rendering failed:', err));
-			} catch (error) {
-				console.error('MathJax initialization failed:', error);
-			}
-		}
-
-		// Sidebar toggle functionality
-		const toggleBtn = document.querySelector('.sidebar-toggle');
-		const closeBtn = document.querySelector('.toc-close');
-		const overlay = document.querySelector('.sidebar-overlay');
-		const tocLinks = document.querySelectorAll('.toc-link');
-		const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
-
-		// Flag to prevent observer updates immediately after user clicks a link
-		let isUserClicking = false;
-
-		// Open sidebar when toggle button clicked
-		toggleBtn.addEventListener('click', () => {
-			document.body.classList.add('sidebar-open');
-		});
-
-		// Close sidebar when close button clicked
-		closeBtn.addEventListener('click', () => {
-			document.body.classList.remove('sidebar-open');
-		});
-
-		// Close sidebar when overlay clicked
-		overlay.addEventListener('click', () => {
-			document.body.classList.remove('sidebar-open');
-		});
-
-		// Close sidebar on Escape key
-		document.addEventListener('keydown', (e) => {
-			if (e.key === 'Escape') {
-				document.body.classList.remove('sidebar-open');
-			}
-		});
-
-		// Handle TOC link clicks for smooth scrolling
-		tocLinks.forEach(link => {
-			link.addEventListener('click', (e) => {
-				e.preventDefault();
-				e.stopPropagation(); // Prevent <details> toggle when clicking the link
-				const id = link.getAttribute('href').substring(1);
-				const target = document.getElementById(id);
-				if (target) {
-					// Set flag to prevent observer from updating active state during scroll
-					isUserClicking = true;
-					setTimeout(() => { isUserClicking = false; }, 800);
-
-					target.scrollIntoView({ behavior: 'smooth' });
-					updateActiveTOC(id);
-				}
-			});
-		});
-
-		// Update active TOC link based on scroll position and scroll TOC to show it
-		function updateActiveTOC(activeId) {
-			const sidebar = document.querySelector('.toc-sidebar');
-			tocLinks.forEach(link => {
-				link.classList.remove('active');
-				if (link.getAttribute('href') === '#' + activeId) {
-					link.classList.add('active');
-					// Only auto-expand and auto-scroll when sidebar is visible
-					if (document.body.classList.contains('sidebar-open')) {
-						// Auto-expand collapsed ancestor sections to reveal active link
-						let parent = link.closest('details');
-						while (parent) {
-							if (!parent.open) {
-								parent.open = true;
-							}
-							parent = parent.parentElement ? parent.parentElement.closest('details') : null;
-						}
-						// Scroll the TOC sidebar to make the active link visible
-						const activeLink = link;
-						const linkTop = activeLink.offsetTop;
-						const linkBottom = linkTop + activeLink.offsetHeight;
-						const sidebarScrollTop = sidebar.scrollTop;
-						const sidebarHeight = sidebar.clientHeight;
-						const sidebarBottom = sidebarScrollTop + sidebarHeight;
-
-						// If link is above visible area, scroll up
-						if (linkTop < sidebarScrollTop) {
-							sidebar.scrollTop = linkTop - 50;
-						}
-						// If link is below visible area, scroll down
-						else if (linkBottom > sidebarBottom) {
-							sidebar.scrollTop = linkBottom - sidebarHeight + 50;
-						}
-					}
-				}
-			});
-		}
-
-		// Track which heading is in view as user scrolls
-		const observerOptions = {
-			root: null,
-			rootMargin: '-50% 0px -50% 0px',
-			threshold: 0
-		};
-
-		const observer = new IntersectionObserver((entries) => {
-			entries.forEach(entry => {
-				// Only update from scroll observer if user is not actively clicking a link
-				if (entry.isIntersecting && entry.target.id && !isUserClicking) {
-					updateActiveTOC(entry.target.id);
-				}
-			});
-		}, observerOptions);
-
-		headings.forEach(heading => {
-			if (heading.id) {
-				observer.observe(heading);
-			}
-		});
-	</script>
-</body>
-</html>`;
+	return webviewTemplate
+		.replace(/\{\{NONCE\}\}/g, () => nonce)
+		.replace("{{HLJS_THEME}}", () => theme.hljsTheme)
+		.replace("{{MERMAID_THEME}}", () => theme.mermaidTheme)
+		.replace("{{TOC}}", () => tocHtml)
+		.replace("{{CONTENT}}", () => markdownHtml);
 }
 
 /**
@@ -911,4 +474,8 @@ function deactivate() {}
 module.exports = {
 	activate,
 	deactivate,
+	extractHeadings,
+	buildTOCTree,
+	generateTOC,
+	getNonce,
 };

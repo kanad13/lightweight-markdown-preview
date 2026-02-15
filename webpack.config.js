@@ -4,7 +4,6 @@
 
 const path = require("path");
 
-//@ts-check
 /** @type {import("webpack").Configuration} */
 const config = {
 	target: "node",
@@ -21,25 +20,14 @@ const config = {
 	},
 	resolve: {
 		extensions: [".js"],
-		fallback: {
-			"fs": false,
-			"path": false,
-			"util": false,
-		}
 	},
 	module: {
 		rules: [
 			{
-				test: /\.js$/,
-				exclude: /node_modules/,
-				use: {
-					loader: "babel-loader",
-					options: {
-						presets: ["@babel/preset-env"]
-					}
-				}
-			}
-		]
+				test: /\.html$/,
+				type: "asset/source",
+			},
+		],
 	},
 	devtool: "nosources-source-map",
 	infrastructureLogging: {

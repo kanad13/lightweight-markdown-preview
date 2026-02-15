@@ -4,7 +4,7 @@ This document describes the design decisions and architectural patterns used in 
 
 ## Overview
 
-The extension provides a lightweight, secure markdown preview directly within VS Code. It prioritizes simplicity, security, and performance over feature breadth. The entire implementation is contained in a single extension file with no external dependencies beyond the `marked` markdown parser.
+The extension provides a lightweight, secure markdown preview directly within VS Code. It prioritizes simplicity, security, and performance over feature breadth. The implementation consists of `src/extension.js` (logic) and `src/webview.html` (template, inlined at build time by webpack), with no external dependencies beyond the `marked` markdown parser.
 
 ## High-Level Architecture
 
@@ -82,6 +82,7 @@ The extension's state is managed entirely in memory and is reset every time the 
 
 ### Current Approach
 - **Full re-render on every change:** The entire markdown is re-parsed and HTML regenerated
+- **Debounced:** 300ms debounce on `onDidChangeTextDocument` batches rapid edits
 - **Why:** Ensures consistency and simplicity. Given typical markdown file sizes (< 10 MB), this is fast enough
 - **Cost:** ~10-50ms for typical documents on modern hardware
 
@@ -89,7 +90,6 @@ The extension's state is managed entirely in memory and is reset every time the 
 For future enhancements with scroll-position syncing or large file support:
 - **Virtual rendering:** Only render visible sections of the preview
 - **Incremental updates:** Track which sections changed and re-render only those
-- **Debouncing:** Batch rapid edits to reduce render frequency
 - **Web Worker:** Off-load markdown parsing to a background thread
 
 ## UI & Navigation Design
@@ -134,7 +134,7 @@ The TOC uses native HTML `<details>/<summary>` elements for collapsibility:
 - **Animation:** Uses GPU-accelerated `transform` for smooth, jank-free slide transition
 - **No layout shifts:** Overlay pattern means zero reflows during open/close
 - **Keyboard-friendly:** Escape key closes sidebar; Enter/Space on `<summary>` toggles sections; semantic HTML enables screen reader navigation
-- **Theme-aware:** Button styling respects light/dark themes without special handling needed
+- **Theme-aware:** All CSS uses `var(--vscode-*)` variables; `resolveTheme()` auto-detects light/dark for highlight.js and Mermaid themes; `onDidChangeActiveColorTheme` re-renders on theme switch
 
 ## Guidelines for Future Changes
 

@@ -4,6 +4,10 @@ node_modules/
 .DS_Store
 .env
 
+# Build output
+dist/
+
 # Extension packaging
 *.vsix
 .vscode-test/
+next.md
