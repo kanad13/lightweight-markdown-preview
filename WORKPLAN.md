@@ -6,8 +6,8 @@
 |------|-----|-----|-----|-----|-----|
 | `eslint.config.js` | sourceType + globals | | | | |
 | `.gitignore` | add `dist/` | | | | |
-| `.vscodeignore` | fix dead ref | | | | |
-| `webpack.config.js` | remove babel | | | | |
+| `.vscodeignore` | fix dead ref | | | add `test/` | |
+| `webpack.config.js` | remove babel | | | asset/source rule | |
 | `package.json` | drop devDeps | | | | update test script |
 | `src/extension.js` | | retainContext, debounce | CSS vars, theme detect | extract template | export pure fns |
 | `src/webview.html` | | | | new file | |
@@ -35,29 +35,31 @@ Small targeted changes in `src/extension.js`.
 
 Gate: `npm run lint` ✓, `npm run build` ✓, `npm run package` ✓ (86.72 KB, 10 files). Committed: `b1a02ef`.
 
-### Phase 3: Dark Theme Support
+### Phase 3: Dark Theme Support ✓
 Replace hardcoded light-theme CSS with VS Code theme variables.
 
-- [ ] Replace all hardcoded colors with `var(--vscode-*)` CSS variables
-- [ ] Add `resolveTheme()` to auto-detect Mermaid theme from VS Code color theme
-- [ ] Add `onDidChangeActiveColorTheme` listener to re-render on theme switch
-- [ ] Switch highlight.js theme conditionally (light/dark)
+- [x] Replace all hardcoded colors with `var(--vscode-*)` CSS variables
+- [x] Add `resolveTheme()` to auto-detect Mermaid theme from VS Code color theme
+- [x] Add `onDidChangeActiveColorTheme` listener to re-render on theme switch
+- [x] Switch highlight.js theme conditionally (light/dark)
 
-Gate: `npm test` passes, `npm run package` produces .vsix for manual testing.
+Gate: `npm run lint` ✓, `npm run build` ✓, `npm run package` ✓ (87.08 KB, 10 files). Committed: `6d10354`.
 
-### Phase 4: HTML Template Extraction
-Extract the ~460-line HTML template from `getWebviewContent()` to a separate file.
+### Phase 4: HTML Template Extraction ✓
+Extract the ~480-line HTML template from `getWebviewContent()` to a separate file.
 
-- [ ] Create `src/webview.html` with placeholder tokens (`{{NONCE}}`, `{{TOC}}`, `{{CONTENT}}`, etc.)
-- [ ] Refactor `getWebviewContent()` to read template + do string replacement
+- [x] Create `src/webview.html` with placeholder tokens (`{{NONCE}}`, `{{TOC}}`, `{{CONTENT}}`, `{{HLJS_THEME}}`, `{{MERMAID_THEME}}`)
+- [x] Add webpack `asset/source` rule to inline HTML at build time
+- [x] Refactor `getWebviewContent()` to do string replacement with function-form replacers
 
-Gate: `npm test` passes, `npm run package` produces .vsix for manual testing.
+Gate: `npm run lint` ✓, `npm run build` ✓, `npm run package` ✓ (87.19 KB, 10 files). Committed: `dccfeac`.
 
-### Phase 5: Automated Tests
+### Phase 5: Automated Tests ✓
 Add unit tests for pure functions using Node.js built-in test runner.
 
-- [ ] Export `extractHeadings` (and other pure functions) from `src/extension.js`
-- [ ] Create `test/extension.test.js` with edge cases
-- [ ] Update `package.json` `scripts.test` to run `node --test` + lint
+- [x] Export `extractHeadings`, `buildTOCTree`, `generateTOC`, `getNonce` from `src/extension.js`
+- [x] Create `test/extension.test.js` with 24 tests (mocks vscode + html loader)
+- [x] Update `package.json` `scripts.test` to run `node --test` + lint
+- [x] Add `test/` to `.vscodeignore`
 
-Gate: `npm test` runs tests and lint, all pass. `npm run package` produces .vsix for manual testing.
+Gate: `npm test` ✓ (24 pass, 0 fail, lint clean), `npm run package` ✓ (87.23 KB, 10 files). Committed: `f294ffe`.
