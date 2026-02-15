@@ -8,7 +8,7 @@ module.exports = [
 		files: ["**/*.js"],
 		languageOptions: {
 			ecmaVersion: 2020,
-			sourceType: "module",
+			sourceType: "commonjs",
 			globals: {
 				console: "readonly",
 				process: "readonly",
@@ -17,7 +17,9 @@ module.exports = [
 				__filename: "readonly",
 				exports: "writable",
 				module: "writable",
-				require: "readonly"
+				require: "readonly",
+				setTimeout: "readonly",
+				clearTimeout: "readonly"
 			}
 		},
 		rules: {

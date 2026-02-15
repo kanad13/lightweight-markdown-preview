@@ -1,6 +1,6 @@
 .git
 .gitignore
-.eslintrc.json
+eslint.config.js
 jsconfig.json
 .vscode/
 .vscode-test/
