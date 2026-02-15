@@ -474,4 +474,8 @@ function deactivate() {}
 module.exports = {
 	activate,
 	deactivate,
+	extractHeadings,
+	buildTOCTree,
+	generateTOC,
+	getNonce,
 };

@@ -15,4 +15,6 @@ src/
 *.log
 docs/
 examples/
+test/
 node_modules/
+docs/markdown-preview.png

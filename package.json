@@ -69,7 +69,7 @@
 	"scripts": {
 		"build": "webpack",
 		"lint": "eslint .",
-		"test": "npm run lint",
+		"test": "node --test 'test/**/*.test.js' && npm run lint",
 		"package": "npm run build && vsce package",
 		"publish": "npm run build && vsce publish"
 	},
