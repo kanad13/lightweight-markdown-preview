@@ -2,6 +2,8 @@
 
 A minimal VS Code extension for previewing Markdown with Mermaid diagrams and MathJax support. **No bloat. No configuration. Just markdown.**
 
+![Lightweight Markdown Preview Screenshot](./assets/markdown-preview.gif)
+
 ## Why This Extension?
 
 - **Lightest:** The smallest full-featured markdown preview extension available
@@ -10,8 +12,6 @@ A minimal VS Code extension for previewing Markdown with Mermaid diagrams and Ma
 - **Privacy-Friendly:** No tracking, no analytics, no data collection
 - **Secure:** Content Security Policy with nonce-based script execution
 - **Zero Configuration:** Install and use. No themes, no plugins, no bloat.
-
-![Lightweight Markdown Preview Screenshot](./docs/markdown-preview.png)
 
 ## Features
 
@@ -24,6 +24,8 @@ A minimal VS Code extension for previewing Markdown with Mermaid diagrams and Ma
   - GitHub/CommonMark style: ` ```mermaid `
   - Azure DevOps style: `::: mermaid`
 - MathJax support for LaTeX equations
+
+![Lightweight Markdown Preview Screenshot](./assets/markdown-preview.png)
 
 ### Azure DevOps Compatibility
 
