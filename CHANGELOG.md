@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.1] - 2026-03-13
+
+### Fixed
+- Replace custom SVG command icon with built-in `$(eye)` codicon for correct rendering in dark and high-contrast VS Code themes
+- Remove redundant `activationEvents` entry (VS Code auto-generates from contribution declarations)
+
 ## [1.3.0] - 2026-02-15
 
 ### Added
