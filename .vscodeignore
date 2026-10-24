@@ -1,5 +1,7 @@
 .git
 .gitignore
+.env
+.env*
 eslint.config.js
 jsconfig.json
 webpack.config.js

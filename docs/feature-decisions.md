@@ -41,18 +41,6 @@ The project goals set the limits: small, private, and zero configuration.
 - **Cost:**
   - Medium. `extractHeadings()` and its tests change.
 
-### Publish to Open VSX
-
-- **Problem:**
-  - Cursor and other forks read extensions from the Open VSX registry, and this extension is not listed there.
-  - Users of those editors must install a `.vsix` file by hand.
-- **Approach:**
-  - Create an Open VSX account and a namespace that matches the `publisher` field.
-  - Publish the same package with `npx ovsx publish <file> -p <token>` after each Marketplace release.
-- **Cost:**
-  - Low in code. It needs the maintainer's accounts and token, which an agent never handles.
-  - Each release gains one command.
-
 ## Deferred
 
 ### Editor-to-preview scroll sync

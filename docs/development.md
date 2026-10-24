@@ -12,6 +12,9 @@ Required for development and publishing:
 # VS Code CLI for publishing to marketplace
 npm install -g @vscode/vsce
 
+# Open VSX CLI for publishing to Open VSX registry
+npm install -g ovsx
+
 # GitHub CLI for creating releases
 brew install gh
 ```
@@ -29,6 +32,17 @@ You'll need authentication for publishing (not required for local development).
    vsce login KunalPathak
    ```
 4. Verify: `vsce ls-publishers`
+
+**Open VSX Authentication (ovsx):**
+
+Authentication uses an Open VSX Personal Access Token (PAT).
+
+1. Generate a token at https://open-vsx.org under **Settings > Access Tokens**.
+2. Verify token access:
+   ```bash
+   npx ovsx verify-pat -p <token>
+   ```
+   (Alternatively, export `OVSX_PAT=<token>` in your environment).
 
 **GitHub Authentication (gh):**
 
@@ -369,7 +383,21 @@ Wait for confirmation: `DONE  Published KunalPathak.lightweight-markdown-preview
 
 If you get version-already-published error, verify package.json has the correct new version.
 
-### Step 9: Verify Release Complete
+### Step 9: Publish to Open VSX Registry
+
+```bash
+# Package extension into .vsix (if not already packaged)
+npm run package
+
+# Publish the .vsix to Open VSX
+npx ovsx publish lightweight-markdown-preview-X.Y.Z.vsix -p <token>
+# Alternatively, if OVSX_PAT environment variable is set:
+npx ovsx publish lightweight-markdown-preview-X.Y.Z.vsix
+```
+
+Wait for confirmation: `🚀  Published KunalPathak.lightweight-markdown-preview vX.Y.Z`
+
+### Step 10: Verify Release Complete
 
 ```bash
 # Check GitHub main updated
@@ -378,8 +406,12 @@ git log origin/main -3 --oneline
 # Check GitHub tag exists
 git ls-remote origin refs/tags/vX.Y.Z
 
-# Check marketplace (may take 5-10 minutes to appear)
+# Check VS Code marketplace (may take 5-10 minutes to appear)
 # https://marketplace.visualstudio.com/items?itemName=KunalPathak.lightweight-markdown-preview
+
+# Check Open VSX registry
+# https://open-vsx.org/extension/KunalPathak/lightweight-markdown-preview
+npx ovsx show KunalPathak.lightweight-markdown-preview
 ```
 
 ### Troubleshooting
@@ -397,6 +429,12 @@ git push origin vX.Y.Z                 # Push new
 
 - Verify package.json has NEW version (not old)
 - If correct, marketplace API cached old data; wait 10 minutes and refresh
+
+**Packaging fails with .env error:**
+
+- Error: `.env files should not be packaged. Ignore the file in your .vscodeignore.`
+- Cause: A local `.env` file containing tokens or secrets is present in the workspace.
+- Fix: Ensure `.env` and `.env*` are listed in `.vscodeignore` so local credentials are never packaged into the `.vsix` archive.
 
 **Tag points to wrong commit:**
 
@@ -589,8 +627,10 @@ RELEASE:
 - [ ] Create git tag (vX.Y.Z)
 - [ ] Push tag to GitHub
 - [ ] Create GitHub Release
-- [ ] Run `npm run publish`
-- [ ] Verify marketplace shows new version
+- [ ] Run `npm run publish` (VS Code Marketplace)
+- [ ] Run `npx ovsx publish lightweight-markdown-preview-X.Y.Z.vsix -p <token>` (Open VSX)
+- [ ] Verify VS Code marketplace shows new version
+- [ ] Verify Open VSX shows new version
 - [ ] Verify GitHub releases page shows new release
 
 AFTER RELEASE:
