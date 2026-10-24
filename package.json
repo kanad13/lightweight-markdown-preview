@@ -60,6 +60,11 @@
 			]
 		}
 	},
+	"capabilities": {
+		"untrustedWorkspaces": {
+			"supported": true
+		}
+	},
 	"scripts": {
 		"build": "webpack",
 		"lint": "eslint .",

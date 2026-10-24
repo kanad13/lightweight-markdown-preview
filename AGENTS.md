@@ -12,6 +12,20 @@ This extension provides a lightweight, privacy-friendly Markdown preview in a VS
 - Closure-based state (no classes, no globals)
 - CSP nonce security on all webview renders
 
+## Task Routing
+
+Match the maintainer's request to a workflow in `docs/workflows.md` and run it. Stop at the stopping point that the workflow names.
+
+| If the maintainer says...                                    | Run workflow             |
+| :----------------------------------------------------------- | :----------------------- |
+| "Evaluate adding X", "Is X worth it?"                        | Evaluate a Change        |
+| "Add X", "Implement X" (after approval)                      | Build an Approved Change |
+| "Update", "upgrade", "maintain", "dependency review"         | Maintain and Upgrade     |
+| "X is broken", "fix this bug"                                | Fix a Defect             |
+| "Release", "publish", "ship it"                              | Release                  |
+| "Check for drift", "sync the repo", "are the docs accurate?" | Sync and Audit           |
+| "Update the docs", "rewrite the README"                      | Change Documentation     |
+
 ## Dependencies
 
 Before adding, upgrading, or auditing any dependency (npm package, CDN library, or build tool), read `docs/dependencies.md`. It defines the version-selection criteria, the constraints that currently limit upgrades, and the review procedure. Ideas that were evaluated and not built are logged in `docs/feature-decisions.md`; treat that file as context, not as a task list.
@@ -35,7 +49,7 @@ Before adding, upgrading, or auditing any dependency (npm package, CDN library, 
 
 ## Git Commits
 
-Concise, imperative mood. Describe _what changed_. Commit at meaningful intervals.
+Concise, imperative mood. Describe _what changed_. Commit at meaningful intervals. Do not add `Co-Authored-By` trailers or other tool attribution to commits.
 
 ## Multi-File Change Protocol
 

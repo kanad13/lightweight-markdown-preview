@@ -343,3 +343,15 @@ describe("getWebviewContent placeholders", () => {
 		assert.ok(page.includes("{{CONTENT}}"));
 	});
 });
+
+// ============================================================================
+// package.json manifest capabilities
+// ============================================================================
+describe("package.json manifest capabilities", () => {
+	const pkg = require("../package.json");
+
+	it("declares untrustedWorkspaces capability as supported", () => {
+		assert.equal(pkg.capabilities?.untrustedWorkspaces?.supported, true);
+	});
+});
+
