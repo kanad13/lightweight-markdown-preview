@@ -1,4 +1,4 @@
-# Feature Decisions
+# Decisions
 
 This page records ideas that were evaluated and are **not implemented**. Each entry gives the reason and the condition that would justify reopening it. The page is a decision log, not a backlog.
 

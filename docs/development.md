@@ -1,640 +1,155 @@
 # Development Guide
 
-A comprehensive guide to develop, test, and release the Lightweight Markdown Preview extension.
+This guide covers setup, the daily workflow, and the release procedure. [workflows.md](workflows.md) says which procedure fits a request, and [testing.md](testing.md) says how a change is verified.
 
-## 1. Prerequisites & Setup
+## Setup
 
-### Install Global Tools
+### Install the tools
 
-Required for development and publishing:
-
-```bash
-# VS Code CLI for publishing to marketplace
-npm install -g @vscode/vsce
-
-# Open VSX CLI for publishing to Open VSX registry
-npm install -g ovsx
-
-# GitHub CLI for creating releases
-brew install gh
-```
-
-### Authenticate with Services
-
-You'll need authentication for publishing (not required for local development).
-
-**Marketplace Authentication (vsce):**
-
-1. Create a Personal Access Token at https://dev.azure.com/<org>/\_usersSettings/tokens
-2. Required scope: `Marketplace > Manage`
-3. Authenticate:
-   ```bash
-   vsce login KunalPathak
-   ```
-4. Verify: `vsce ls-publishers`
-
-**Open VSX Authentication (ovsx):**
-
-Authentication uses an Open VSX Personal Access Token (PAT).
-
-1. Generate a token at https://open-vsx.org under **Settings > Access Tokens**.
-2. Verify token access:
-   ```bash
-   npx ovsx verify-pat -p <token>
-   ```
-   (Alternatively, export `OVSX_PAT=<token>` in your environment).
-
-**GitHub Authentication (gh):**
+Local development needs only Node and `npm ci`. Publishing needs three command-line tools:
 
 ```bash
-gh auth login
-gh auth status  # Verify
+npm install -g @vscode/vsce   # Visual Studio Marketplace
+npm install -g ovsx           # Open VSX registry
+brew install gh               # GitHub CLI
 ```
 
-> **Note:** If your PAT expires, run `vsce login KunalPathak` again with a fresh token.
+### Authenticate for publishing
+
+Local development needs no credentials.
+
+- **Marketplace (`vsce`):**
+  - Create a Personal Access Token with the scope `Marketplace > Manage`.
+  - Run `vsce login KunalPathak`, then check with `vsce ls-publishers`.
+  - If the token expires, run `vsce login KunalPathak` again with a new one.
+- **Open VSX (`ovsx`):**
+  - Create an access token at https://open-vsx.org under **Settings > Access Tokens**.
+  - Export it as `OVSX_PAT`, or pass it with `-p`. Check it with `npx ovsx verify-pat -p <token>`.
+- **GitHub (`gh`):**
+  - Run `gh auth login`, then check with `gh auth status`.
 
 > **Deadline:** Microsoft retires global Azure DevOps Personal Access Tokens on 2026-12-01. After that date, authenticate with Microsoft Entra ID and publish with `vsce publish --azure-credential`. Follow the [VS Code publishing guide](https://code.visualstudio.com/api/working-with-extensions/publishing-extension) and update this section when the new credential is in place.
 
-### Local Environment Setup
+### Set up the repository
 
 ```bash
-# Clone the repository
 git clone https://github.com/kanad13/lightweight-markdown-preview.git
 cd lightweight-markdown-preview
-
-# Install dependencies (strictly from lock file)
 npm ci
-
-# Run linters to check for code quality
-npm run lint
-
-# Create a distributable .vsix file
-npm run package
+npm test
 ```
 
-### Troubleshooting Setup
+- **`npm ci`, not `npm install`:**
+  - `npm ci` installs the exact versions in `package-lock.json`, so builds are reproducible. Use it for setup and for fixing a broken `node_modules`.
+  - Use `npm install` only to add or upgrade a dependency on purpose, and commit the updated lockfile.
 
-If you encounter issues, a clean reinstall from the lock file often helps.
+## Daily Workflow
 
-```bash
-rm -rf node_modules
-npm ci
-```
+1. **Branch:**
+   - Work on a feature branch and never commit to `main`: `git checkout -b feat/<name>`.
+   - Use the prefixes `feat/`, `fix/`, `docs/`, and `refactor/`.
+2. **Change:**
+   - Press `F5` to start the Extension Development Host, open `examples/test.md`, and run **Markdown: Show Lightweight Markdown Preview**.
+   - Follow the [architecture rules](../AGENTS.md#architecture-rules) and the style rules below.
+3. **Check:**
+   - Run `npm test`. It builds the bundle, runs every automated test, and lints. [testing.md](testing.md) explains the suites and the manual smoke check.
+   - Run `npm run package` to confirm that the `.vsix` builds.
+4. **Commit:**
+   - Keep commits atomic. Write a concise, imperative subject that says what changed, and add the reason in the body.
+   - Add no attribution trailers.
+5. **Merge:**
+   - Merge into `main` with `git merge --no-ff` after the maintainer approves, then push. Confirm that the CI run on `main` passes.
 
-> **`npm ci` vs `npm install`:** Always use `npm ci` for setup and troubleshooting. It installs exact versions from `package-lock.json`, ensuring reproducible builds. Only use `npm install` when intentionally adding or upgrading a dependency — then commit the updated `package-lock.json`.
+### Style
 
-## 2. Feature Development Workflow
-
-### Step 1: Create a Feature Branch
-
-Always create a new branch for features. Never commit directly to `main`.
-
-```bash
-# Create and switch to a feature branch
-git checkout -b feat/your-feature-name
-```
-
-Branch naming convention:
-
-- `feat/` - New features
-- `fix/` - Bug fixes
-- `docs/` - Documentation updates
-- `refactor/` - Code refactoring
-
-### Step 2: Make Changes
-
-1. **Edit Code:** Make changes to `src/extension.js` or other source files.
-2. **Launch Dev Host:** Press `F5` in VS Code to open a dev window with the extension loaded.
-3. **Test Locally:** Open `examples/test.md` and run `Markdown: Show Lightweight Markdown Preview` from the Command Palette (`Ctrl+Shift+P`). Changes apply in real-time.
-4. **Test Before Committing:** Run `npm test`, which builds the bundle, runs the unit, lifecycle, and bundle tests, then lints. See [testing.md](testing.md) for the strategy and the manual smoke check.
-
-### Step 3: Commit Changes
-
-```bash
-# Stage your changes
-git add src/extension.js
-
-# Commit with a descriptive message
-git commit -m "feat: add descriptive title
-
-- Bullet point details
-- More details"
-```
-
-Keep commits atomic and logical. Write commit messages that explain _why_ the change was made.
-
-### Code Style
-
-- **Tab indentation** (enforced by ESLint - see `eslint.config.js`)
-- `const`/`let` only (no `var`)
-- Keep functions simple with clear JSDoc comments
-- No console logs in production code (unless debugging is explicitly required)
-- **Formatting:** `.prettierrc` matches the ESLint rules (tabs, double quotes, semicolons), so a Prettier run and `npm run lint` agree. Prettier skips `src/webview.html`, `.github/`, and `.vscode/` (see `.prettierignore`)
-
-### JSDoc Standards
-
-All exported functions **must** have JSDoc comments describing:
-
-- Purpose and behavior
-- Parameters with types
-- Return values
-- Side effects (state changes, file I/O, etc.)
-
-**Example:**
-
-```javascript
-/**
- * Generates a random nonce for Content Security Policy.
- * Only scripts that carry the nonce of the current render can run.
- * @returns {string} A random 32-character hexadecimal nonce
- */
-function getNonce() {
-  return crypto.randomBytes(16).toString("hex");
-}
-```
+- **Enforced by ESLint** (`eslint.config.js`): tab indentation, double quotes, semicolons, `const` and `let` only.
+- **`.prettierrc`:** it matches the ESLint rules for editors that format on save. The repository has no formatter script.
+- **JSDoc:** every exported function states its purpose, parameters with types, return value, and side effects.
+- **Comments:** explain why. Leave no `TODO` comments and no debugging output in shipped code.
 
 ### Dependencies
 
-**Avoid adding new NPM dependencies.** This keeps the extension lightweight. If absolutely necessary:
-
-1. Justify the need
-2. Check bundle size impact (`npm run package` and review dist/)
-3. Consider using a CDN instead
-4. See [architecture.md](architecture.md) for security considerations
-5. Choose the version with the criteria in [dependencies.md](dependencies.md), and add the package to its inventory
-
-CDN library versions live in the `CDN_VERSIONS` constant in `src/extension.js`, always as an exact `x.y.z` version.
-
-### Step 4: Test Thoroughly
-
-```bash
-# Run unit tests and linting
-npm test
-
-# Build package to verify no errors
-npm run package
-```
-
-Open the dev host and verify:
-
-- All elements render correctly (headings, lists, tables, code blocks, images)
-- Mermaid diagrams render properly
-- MathJax equations display correctly (both block `$$...$$` and inline `$...$`)
-- Scroll position holds while typing in a long document
-- Live updates work when typing
-- No errors in Developer Tools (`Help > Toggle Developer Tools`)
-
-### Step 5: Merge to Main
-
-```bash
-# Switch to main branch
-git checkout main
-
-# Ensure main is up to date
-git pull origin main
-
-# Merge your feature branch (use --no-ff for clarity)
-git merge --no-ff feat/your-feature-name
-
-# Push to remote
-git push origin main
-```
-
-After pushing, verify that:
-
-1. GitHub Actions builds pass (check the Actions tab)
-2. The build produces valid .vsix files
-3. No new warnings or errors in the CI logs
-
-## 3. Release to Marketplace
-
-**Only release from `main` branch after all features are merged and tested.**
-
-Follow these steps precisely in order. Each step is required and builds on the previous one. Replace `X.Y.Z` with your actual version number throughout.
-
-### Pre-Release Checklist
-
-Before starting:
-
-```
-- [ ] All features merged to `main`
-- [ ] GitHub Actions build passes
-- [ ] `git status` shows no uncommitted changes
-- [ ] Decide version bump (MAJOR.MINOR.PATCH per semantic versioning)
-- [ ] Identify all user-facing changes since last release
-- [ ] Icon is a PNG between 128 and 1024 pixels square
-```
-
-### Step 1: Update Version Numbers
-
-**Edit package.json** - update the version field only:
-
-```json
-"version": "X.Y.Z"
-```
-
-**Edit package-lock.json** - update ALL occurrences of version (use search & replace):
-
-```
-"version": "X.Y.Z"
-```
-
-Verify with:
-
-```bash
-grep '"version": "X.Y.Z"' package.json package-lock.json | wc -l
-# Should output: 2 (one from each file)
-```
-
-### Step 2: Update CHANGELOG.md
-
-Add entry at the **very top** (after the header) in this exact format:
-
-```markdown
-## [X.Y.Z] - YYYY-MM-DD
-
-### Added
-
-- New feature description (if any)
-
-### Changed
-
-- Enhancement description (if any)
-
-### Fixed
-
-- Bug fix description (if any)
-```
-
-**Important notes:**
-
-- Use the actual date (YYYY-MM-DD format)
-- Only include **user-facing changes**
-- Do NOT include: dependency updates (unless security fix), internal refactoring, test improvements, or build process changes
-- Each section (Added/Changed/Fixed) is optional - only include sections with content
-
-### Step 3: Verify Dependencies & Run Tests
-
-```bash
-# Clean install from lock file to ensure exact versions
-rm -rf node_modules
-npm ci
-
-# Run unit tests and linting
-npm test
-
-# Verify no errors
-echo $?  # Should output: 0
-
-# Shipped dependencies must have no known vulnerabilities
-npm audit --omit=dev
-```
-
-Follow the review procedure in [dependencies.md](dependencies.md) before each release.
-
-### Step 4: Build Package
-
-```bash
-# Build the extension
-npm run build
-
-# Verify files updated
-ls -lh dist/extension.js dist/extension.js.map
-
-# Verify no errors in output
-```
-
-### Step 5: Commit Version Update + CHANGELOG
-
-**Stage only these three files:**
-
-```bash
-git add package.json package-lock.json CHANGELOG.md
-```
-
-**Verify staged files:**
-
-```bash
-git status
-```
-
-**Commit with descriptive message:**
-
-```bash
-git commit -m "chore: bump version to X.Y.Z
-
-- Update package.json version
-- Update package-lock.json version
-- Add CHANGELOG entry for vX.Y.Z"
-```
-
-**Verify commit:**
-
-```bash
-git log -1 --oneline  # Should show your commit
-```
-
-### Step 6: Create Git Tag
-
-**Create annotated tag (required, not lightweight):**
-
-```bash
-git tag -a vX.Y.Z -m "Release version X.Y.Z"
-```
-
-**Verify tag points to correct commit:**
-
-```bash
-git show vX.Y.Z --quiet  # Should show your version bump commit
-```
-
-### Step 7: Push to GitHub
-
-**Push main branch:**
-
-```bash
-git push origin main
-```
-
-**Push tag:**
-
-```bash
-git push origin vX.Y.Z
-```
-
-**Verify both pushed:**
-
-```bash
-git log -1 origin/main --oneline  # Should show your commit
-git ls-remote origin refs/tags/vX.Y.Z  # Should return tag SHA
-```
-
-### Step 8: Publish to VS Code Marketplace
-
-```bash
-# Build one final time (vsce will run this anyway)
-npm run build
-
-# Publish (also builds automatically)
-npm run publish
-```
-
-Wait for confirmation: `DONE  Published KunalPathak.lightweight-markdown-preview vX.Y.Z.`
-
-If you get version-already-published error, verify package.json has the correct new version.
-
-### Step 9: Publish to Open VSX Registry
-
-```bash
-# Package extension into .vsix (if not already packaged)
-npm run package
-
-# Publish the .vsix to Open VSX
-npx ovsx publish lightweight-markdown-preview-X.Y.Z.vsix -p <token>
-# Alternatively, if OVSX_PAT environment variable is set:
-npx ovsx publish lightweight-markdown-preview-X.Y.Z.vsix
-```
-
-Wait for confirmation: `🚀  Published KunalPathak.lightweight-markdown-preview vX.Y.Z`
-
-### Step 10: Verify Release Complete
-
-```bash
-# Check GitHub main updated
-git log origin/main -3 --oneline
-
-# Check GitHub tag exists
-git ls-remote origin refs/tags/vX.Y.Z
-
-# Check VS Code marketplace (may take 5-10 minutes to appear)
-# https://marketplace.visualstudio.com/items?itemName=KunalPathak.lightweight-markdown-preview
-
-# Check Open VSX registry
-# https://open-vsx.org/extension/KunalPathak/lightweight-markdown-preview
-npx ovsx show KunalPathak.lightweight-markdown-preview
-```
-
-### Troubleshooting
-
-**Tag already exists:**
-
-```bash
-git tag -d vX.Y.Z                      # Delete local
-git push origin :refs/tags/vX.Y.Z      # Delete remote
-git tag -a vX.Y.Z -m "Release vX.Y.Z"  # Recreate
-git push origin vX.Y.Z                 # Push new
-```
-
-**Version already on marketplace:**
-
-- Verify package.json has NEW version (not old)
-- If correct, marketplace API cached old data; wait 10 minutes and refresh
-
-**Packaging fails with .env error:**
-
-- Error: `.env files should not be packaged. Ignore the file in your .vscodeignore.`
-- Cause: A local `.env` file containing tokens or secrets is present in the workspace.
-- Fix: Ensure `.env` and `.env*` are listed in `.vscodeignore` so local credentials are never packaged into the `.vsix` archive.
-
-**Tag points to wrong commit:**
-
-```bash
-git show vX.Y.Z --quiet | head -3  # Check what tag points to
-git log -1 --oneline               # Check current commit
-# If different: follow "Tag already exists" steps above
-```
-
-## 4. Code Quality Checklist
-
-Before committing any code, verify:
-
-- [ ] **Tests and linting pass:** `npm test` returns no errors
-- [ ] **Build succeeds:** `npm run package` creates .vsix without errors
-- [ ] **JSDoc complete:** All exported functions have comprehensive documentation
-- [ ] **No security regressions:** CSP, nonce generation, and state management unchanged (unless intentional)
-- [ ] **Dependencies reviewed:** `npm audit --omit=dev` reports 0, and any version change follows [dependencies.md](dependencies.md)
-- [ ] **Manual testing:** Test in F5 dev host with `examples/test.md`
-- [ ] **No console logs:** Remove debugging statements (unless required for production diagnostics)
-- [ ] **Documentation updated:** If features or architecture changed, update relevant docs (README.md, architecture.md, CHANGELOG.md)
-
-## 5. Common Pitfalls (High-Risk Areas)
-
-These are high-risk areas where mistakes can introduce bugs or security vulnerabilities. Review carefully before making changes.
-
-### Pitfall #1: Modifying Content Security Policy (CSP)
-
-**Problem:** The CSP header controls what scripts can execute in the webview. Loosening it creates XSS vulnerabilities.
-
-**What NOT to do:**
-
-```javascript
-// ❌ BAD: Allows any script to run
-<meta http-equiv="Content-Security-Policy" content="script-src *;">
-
-// ❌ BAD: Allows inline scripts without nonces
-<meta http-equiv="Content-Security-Policy" content="script-src 'unsafe-inline';">
-```
-
-**Safe approach:**
-
-- Only allow scripts with the correct nonce: `script-src 'nonce-${nonce}'`
-- Only allow trusted CDNs: `https://cdn.jsdelivr.net`
-- **Always** require a security review before changing CSP
-
-### Pitfall #2: Breaking Nonce Generation
-
-**Problem:** The nonce must be cryptographically random and unique per render. Predictable nonces defeat the entire security model.
-
-**What NOT to do:**
-
-```javascript
-// ❌ BAD: Predictable nonce
-function getNonce() {
-  return "fixed-nonce-123";
-}
-
-// ❌ BAD: Reusing nonce across renders
-let globalNonce = getNonce();
-function updateWebviewContent() {
-  const html = `<script nonce="${globalNonce}">...</script>`;
-}
-```
-
-**Safe approach:**
-
-- Generate a **new** nonce for every `updateWebviewContent()` call
-- Use the operating system's random source (`crypto.randomBytes`); `Math.random()` output is predictable
-
-### Pitfall #3: State Management Race Conditions
-
-**Problem:** The extension uses closure variables (`currentPanel`, `currentDocument`) to track state. Mismanaging these can cause crashes or unexpected behavior.
-
-**What NOT to do:**
-
-```javascript
-// ❌ BAD: Not checking if panel exists before using it
-currentPanel.webview.html = newHtml; // Crashes if panel was closed
-
-// ❌ BAD: Not disposing listeners
-vscode.workspace.onDidChangeTextDocument(() => { ... }); // Memory leak
-```
-
-**Safe approach:**
-
-- **Always** check `if (currentPanel)` before accessing
-- **Always** dispose listeners when panel is closed
-- Follow the existing pattern in `extension.js`
-
-### Pitfall #4: Image Path Resolution
-
-**Problem:** Webviews have restricted file access. Image paths must be converted to special `vscode-resource:` URIs.
-
-**What NOT to do:**
-
-```javascript
-// ❌ BAD: Direct file path won't load
-<img src="./images/photo.png">
-
-// ❌ BAD: Absolute path won't load
-<img src="/home/user/project/images/photo.png">
-```
-
-**Safe approach:**
-
-```javascript
-// ✅ GOOD: Convert to webview URI
-const imageUri = currentPanel.webview.asWebviewUri(vscode.Uri.file(imagePath));
-html = html.replace(/src="([^"]+)"/, `src="${imageUri}"`);
-```
-
-### Pitfall #5: Ignoring Documentation Updates
-
-**Problem:** Code changes without documentation updates lead to drift and confusion.
-
-**When to update documentation:**
-
-- **README.md:** Update if user-facing features or install instructions change
-- **architecture.md:** Update if design patterns or security model changes
-- **development.md:** Update if workflow, tooling, or standards change
-- **CHANGELOG.md:** Update for **every release** with user-facing changes
-
-## 6. Common Issues & Troubleshooting
-
-### Build Fails with "same case insensitive path"
-
-This means duplicate files with different casing exist (e.g., `README.md` and `readme.md`). Git tracks them separately.
-
-**Fix:**
-
-```bash
-# Remove duplicates (keep lowercase version)
-git rm -f README.md
-git commit -m "fix: remove duplicate file with wrong case"
-```
-
-### VSIX Package Already Exists on Marketplace
-
-If you try to publish an already-published version, vsce will fail. Always:
-
-1. Increment version in `package.json` first
-2. Create a new git tag for the new version
-
-### GitHub Actions Build Fails
-
-Check the Actions tab on GitHub:
-
-1. Click the failed workflow
-2. Review the build logs
-3. Common causes:
-   - Lint errors: run `npm run lint` locally and fix
-   - Missing files: ensure all required files are tracked in git
-   - Case sensitivity issues: check for duplicate files
-
-### Publish Fails with "authorization failed"
-
-```bash
-vsce login KunalPathak  # Re-authenticate with fresh PAT
-npm run publish         # Retry
-```
-
-### gh CLI Not Authenticated
-
-```bash
-gh auth login
-gh auth status  # Verify
-```
-
-## 7. Release Checklist Summary
-
-Use this before every release:
-
-```
-BEFORE RELEASE:
-- [ ] Create feature branch for changes
-- [ ] Test all features locally (F5 dev host)
-- [ ] Clean install dependencies: `rm -rf node_modules && npm ci`
-- [ ] Run `npm test` with no errors
-- [ ] Run `npm run package` with no errors
-- [ ] Merge to main via git merge
-- [ ] Push to origin/main
-- [ ] Wait for GitHub Actions to pass
-- [ ] Verify no uncommitted changes
-
-RELEASE:
-- [ ] Increment version in package.json
-- [ ] Update CHANGELOG.md with new entry
-- [ ] Commit version update
-- [ ] Create git tag (vX.Y.Z)
-- [ ] Push tag to GitHub
-- [ ] Create GitHub Release
-- [ ] Run `npm run publish` (VS Code Marketplace)
-- [ ] Run `npx ovsx publish lightweight-markdown-preview-X.Y.Z.vsix -p <token>` (Open VSX)
-- [ ] Verify VS Code marketplace shows new version
-- [ ] Verify Open VSX shows new version
-- [ ] Verify GitHub releases page shows new release
-
-AFTER RELEASE:
-- [ ] Announce release if applicable
-- [ ] Monitor marketplace for issues
-- [ ] Keep documentation up to date
-```
+Avoid new npm dependencies, because the extension stays small and has one runtime dependency. When a new one is unavoidable:
+
+1. Justify the need in the change description.
+2. Compare the bundle size before and after (`npm run package`, then inspect `dist/`).
+3. Consider loading it from a CDN instead, and read the security notes in [architecture.md](architecture.md).
+4. Choose the version with the rules in [dependencies.md](dependencies.md) and add the package to its inventory.
+
+CDN library versions live in `CDN_VERSIONS` in `src/extension.js`, always as an exact `x.y.z`.
+
+### High-risk areas
+
+[architecture.md](architecture.md#requires-security-review) lists the areas that need a security review: the CSP, nonce generation, Mermaid and math preprocessing, state management, and script execution. Three mistakes recur there:
+
+- **Nonce:**
+  - Generate a new nonce with `crypto.randomBytes` on every render. A fixed or reused nonce defeats the CSP.
+- **Panel state:**
+  - Check that `currentPanel` exists before you use it. When the panel closes, cancel the pending update and reset `currentPanel` and `currentDocument`.
+- **Images:**
+  - Convert image paths with `webview.asWebviewUri`. A raw file path does not load in a webview.
+
+## Release to Marketplace
+
+Release only from `main`, only when the maintainer asks, and only after CI passes there. Replace `X.Y.Z` with the new version.
+
+1. **Decide the version:**
+   - Use semantic versioning: patch for fixes, minor for backward-compatible features, major for breaking changes.
+   - Check that the icon is a PNG between 128 and 1024 pixels square, and that `git status` is clean.
+2. **Bump the manifest:**
+   - Run `npm version X.Y.Z --no-git-tag-version`. It updates `package.json` and `package-lock.json`, and the flag stops it from creating a tag.
+3. **Update `CHANGELOG.md`:**
+   - Add a section at the top with the header `## [X.Y.Z] - YYYY-MM-DD`.
+   - Use the sections `Added`, `Changed`, and `Fixed`, and list user-facing changes only. Leave out refactors, tests, and build changes. Mention a dependency update only when it fixes a security problem.
+4. **Verify from a clean state:**
+
+   ```bash
+   rm -rf node_modules
+   npm ci
+   npm test
+   npm audit --omit=dev
+   npm run package
+   ```
+
+   - `npm audit` does not cover the CDN libraries. Follow the [review procedure](dependencies.md#review-procedure) before each release.
+
+5. **Commit and tag:**
+
+   ```bash
+   git add package.json package-lock.json CHANGELOG.md
+   git commit -m "chore: bump version to X.Y.Z"
+   git tag -a vX.Y.Z -m "Release version X.Y.Z"
+   ```
+
+   - Use an annotated tag. It must point at the version commit.
+
+6. **Push:**
+
+   ```bash
+   git push origin main
+   git push origin vX.Y.Z
+   ```
+
+   - The tag push starts `.github/workflows/release.yml`, which builds the `.vsix` and creates the GitHub release.
+
+7. **Publish to the Marketplace:**
+   - Run `npm run publish`. The command builds first.
+8. **Publish to Open VSX:**
+   - Run `npx ovsx publish lightweight-markdown-preview-X.Y.Z.vsix`, with `OVSX_PAT` set or `-p <token>`.
+9. **Verify:**
+   - The [Marketplace page](https://marketplace.visualstudio.com/items?itemName=KunalPathak.lightweight-markdown-preview) shows the new version (allow 5 to 10 minutes).
+   - `npx ovsx show KunalPathak.lightweight-markdown-preview` shows it on Open VSX.
+   - The GitHub release exists with the `.vsix` attached, and CI is green.
+
+## Troubleshooting
+
+| Symptom                                                  | Cause and fix                                                                                                                                                                         |
+| :------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `npm test` fails after a pull                            | Run `rm -rf node_modules && npm ci`                                                                                                                                                   |
+| CI fails                                                 | Open the failed run on the Actions tab. Reproduce lint errors with `npm run lint`, and check that every required file is tracked                                                      |
+| Build fails with "same case insensitive path"            | Two tracked files differ only in letter case, such as `README.md` and `readme.md`. Remove the one with the wrong case with `git rm`                                                   |
+| Packaging fails with ".env files should not be packaged" | A local `.env` is present. List `.env` and `.env*` in `.vscodeignore`                                                                                                                 |
+| Publish fails with "authorization failed"                | Run `vsce login KunalPathak` with a new token, then publish again                                                                                                                     |
+| Publish fails because the version exists                 | The version in `package.json` was not bumped. Bump it, commit, tag the new commit, and publish again                                                                                  |
+| The tag already exists or points at the wrong commit     | Check with `git show vX.Y.Z --quiet`. Ask the maintainer before you delete or move a pushed tag |
+| `gh` reports no authentication                           | Run `gh auth login`                                                                                                                                                                   |

@@ -98,6 +98,6 @@ Start with the documents below. Each one answers a different question.
 - **Build and release:** [development.md](docs/development.md) covers setup and publishing.
 - **Pick a task procedure:** [workflows.md](docs/workflows.md) maps each kind of request to its steps.
 - **Test:** [testing.md](docs/testing.md) maps workflows to checks and lists the manual smoke check.
-- **Check past decisions:** [feature-decisions.md](docs/feature-decisions.md) lists ideas that were evaluated and not built.
+- **Check past decisions:** [decisions.md](docs/decisions.md) lists ideas that were evaluated and not built.
 - **See what changed:** [CHANGELOG.md](CHANGELOG.md) lists changes by version.
 - **Work as an AI agent:** [AGENTS.md](AGENTS.md) holds the shared instructions.
