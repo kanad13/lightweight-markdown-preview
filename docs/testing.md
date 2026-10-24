@@ -32,6 +32,7 @@ The extension has two halves, and each half has its own kind of check.
 | `test/extension.test.js`      | Pure functions: heading extraction, outline tree, escaping, math and Mermaid preservation, nonce, template substitution | `.html` loader and `vscode` shim |
 | `test/lifecycle.test.js`      | Command, active-editor following, debounce, disposal, theme change, image paths, error notification                     | Fake panel, mock timers          |
 | `test/bundle.test.js`         | The webpack output renders a complete page with CSP, pinned CDN versions, and no unreplaced placeholders                | Fake `vscode` only               |
+| `test/docs.test.js`           | Relative links and heading anchors in every Markdown file; the routing table in `AGENTS.md` matches `docs/workflows.md` | None                             |
 | `test/helpers/fake-vscode.js` | Shared `vscode` and `.html` shims, handler capture, fake documents and panel                                            | Not a suite                      |
 
 ## Workflow Map
@@ -47,6 +48,7 @@ The extension has two halves, and each half has its own kind of check.
 | Hostile document text                    | `extension`: escaping of outline, math, Mermaid; placeholder text in content           | CSP enforcement is manual                |
 | Inline and block math, Mermaid, code     | `extension`: source is preserved for the browser libraries                             | Rendering in the browser is manual       |
 | Bundled extension starts and renders     | `bundle`: complete page from `dist/extension.js`                                       | Install in a real editor is manual       |
+| Documents agree with each other          | `docs`: links, anchors, and task routing resolve                                       | Claims about behavior are manual (Sync)  |
 | Outline sidebar, scroll save and restore | None automated                                                                         | Manual smoke check                       |
 
 ## Manual Smoke Check
