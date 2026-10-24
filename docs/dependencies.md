@@ -1,10 +1,10 @@
-# Dependency Management
+# Dependency Management Policy
 
-This extension has three kinds of dependency, and each kind has one place where its version is defined. This page gives the rules for choosing a version, the constraints that currently limit upgrades, and the procedure for reviewing dependencies.
+This page sets the rules for choosing, configuring, and reviewing dependencies. It contains policies only. Which versions are in use is recorded in the files named below, and the history of changes is in [CHANGELOG.md](../CHANGELOG.md) and Git.
 
 ## Where Versions Are Defined
 
-Version numbers live only in the files below. Documentation refers to these files and does not repeat the numbers.
+Version numbers live only in these files. Documentation refers to the files and never repeats the numbers.
 
 | Kind                           | Examples                                       | Defined in                                                                   |
 | :----------------------------- | :--------------------------------------------- | :--------------------------------------------------------------------------- |
@@ -14,7 +14,7 @@ Version numbers live only in the files below. Documentation refers to these file
 
 The kinds differ in consequence. A bundled package runs in the extension host and parses untrusted text. A CDN library runs in the webview under the Content Security Policy. A tool runs only on a developer machine or in CI.
 
-## Version Selection Criteria
+## Version Selection Policy
 
 A version qualifies only if it meets all of these rules. Apply them the same way to every dependency.
 
@@ -22,28 +22,27 @@ A version qualifies only if it meets all of these rules. Apply them the same way
 2. **Supported line.** Use the newest major line that still receives fixes. Treat a line with no release for 12 months as abandoned, unless the project declares it feature-complete.
 3. **Soak time.** A new major version qualifies 30 days after its `.0` release. A minor or patch version qualifies 14 days after its release.
 4. **No known advisories.** `npm audit --omit=dev` reports 0 for the shipped tree. For CDN libraries, read the project's GitHub Security Advisories page.
-5. **Support policy.** The version runs on the current stable VS Code and on the floor defined under Support Policy, and on the Node release in `engines.node`. Confirm by rendering `examples/test.md` and reading the release notes for raised browser baselines.
+5. **Support policy.** The version runs on the current stable VS Code, on the floor defined under Editor Support Policy, and on the Node release in `engines.node`. Confirm by rendering `examples/test.md` and reading the release notes for browser-baseline changes.
 6. **Exact pins without a lockfile.** CDN URLs name a full `x.y.z` version, because no lockfile protects them. npm packages use a caret range, and `package-lock.json` fixes the resolved version.
 7. **Stable tool majors.** Build tools stay on their current major version unless an advisory or an engine requirement forces a change.
 
-## Support Policy
+## Editor Support Policy
 
-The extension targets the current stable release of VS Code and does not carry compatibility code for older editors.
+The extension targets the current stable release of VS Code and carries no compatibility code for older editors.
 
 - **Test target.** The current stable VS Code release. Insiders builds are not a target.
-- **Floor.** `engines.vscode` names the newest VS Code release that is at least 12 months old. A floor that follows the calendar keeps the extension from being tied to legacy versions, and a 12-month window still reaches editors that update slowly.
-- **Forks.** Cursor, Windsurf, and other forks run an older VS Code base than upstream and refuse to install an extension whose `engines.vscode` is above that base. Check the fork's base version (its About dialog) before raising the floor, because a higher floor removes those users.
-- **Moving the floor.** At each quarterly review, raise `engines.vscode` and the exact `@types/vscode` pin together to the newest release that is at least 12 months old. Dependencies whose browser baseline needs a newer Chromium become eligible once the floor reaches a VS Code release that ships it.
+- **Floor.** `engines.vscode` names the newest VS Code release that is at least 12 months old. A floor that follows the calendar keeps the extension from depending on legacy editors, and a 12-month window still reaches editors that update slowly.
+- **Forks.** Cursor, Windsurf, and other forks run an older VS Code base than upstream and refuse to install an extension whose `engines.vscode` is above that base. Check the fork's base version (its About dialog) before raising the floor, because a higher floor excludes those users.
+- **Moving the floor.** At each quarterly review, raise `engines.vscode` and the exact `@types/vscode` pin together to the newest release that is at least 12 months old.
 - **Release dates.** `npm view @types/vscode time` lists the VS Code release dates.
 
-## Standing Constraints
+## Configuration Policy
 
-These constraints limit upgrades until their release condition is met.
-
-- **Mermaid renders with its default layout and look.** Mermaid 12 and later default to the ELK layout and a flat theme. To restore the classic appearance, pass `layout: 'dagre'` and `look: 'classic'` to `mermaid.initialize()` in `src/webview.html`. Review the `examples/test.md` diagrams visually after any Mermaid major upgrade.
-- **Mermaid's browser baseline must stay below the floor's Chromium.** Mermaid 12 requires ES2024 features. A future Mermaid major that raises the baseline further must wait until the Support Policy floor reaches a VS Code release that ships a matching Chromium.
-- **`@types/vscode` is pinned to the exact version of `engines.vscode`.** The type package then cannot suggest an API that the floor lacks, and `vsce` refuses a type version above the engine. Change both together.
-- **`overrides.uuid` in `package.json`** replaces the `uuid` version that `@azure/identity` (a `vsce` dependency used only for `vsce publish` with Azure credentials) resolves, because the unpatched range has an advisory. The newest `@azure/identity` depends on an `@azure/msal-node` range that has its own advisory, so a plain upgrade does not clear it. Release condition: remove the override when `npm audit` reports 0 without it.
+- **Library defaults.** Configure a library with its defaults. Override a setting only for one of three reasons: security (for example Mermaid `securityLevel`), matching the VS Code theme, or aligning a syntax with the extraction code (for example MathJax delimiters). Visual defaults such as diagram layout and look are never overridden.
+- **Browser baseline.** A CDN library qualifies only when its documented browser baseline is met by the Chromium that ships in the floor VS Code release. Read the release notes for baseline changes at every major upgrade.
+- **Type package.** `@types/vscode` is pinned to the exact version of `engines.vscode`, so the types cannot suggest an API the floor lacks. `vsce` refuses a type version above the engine.
+- **Overrides.** Add an `overrides` entry in `package.json` only when no upgrade path clears an advisory. At each review, remove each override, run `npm install` and `npm audit`, and keep the entry only if the audit reports advisories without it.
+- **Content Security Policy.** Keep the CSP strict. Do not add a directive to silence a library's console message.
 
 ## Review Procedure
 
@@ -52,21 +51,22 @@ Run the review before every release and at least once per quarter.
 ```bash
 npm audit --omit=dev    # shipped dependencies; must report 0 vulnerabilities
 npm audit               # whole tree, including build tools
-npm outdated            # candidates to compare against the criteria
+npm outdated            # candidates to compare against the selection policy
 ```
 
-1. Apply `npm update` for in-range tool updates, then `npm audit fix` for remaining advisories. Add an override only when no upgrade path exists, and record it under Standing Constraints.
-2. For each CDN library, run `npm view <package> time` to read recent versions and dates, then apply the selection criteria.
-3. Change `CDN_VERSIONS` for a qualifying CDN version. Open the F5 dev host and render `examples/test.md`: check Mermaid diagrams, block and inline math, and highlighted code.
-4. Read the release notes before crossing a major version, and record any new limit under Standing Constraints.
-5. Run `npm test`, which includes lint and the template tests that verify the pinned versions.
+1. Apply `npm update` for in-range tool updates, then `npm audit fix` for remaining advisories.
+2. For each CDN library, run `npm view <package> time` to read recent versions and dates, then apply the selection policy.
+3. Change `CDN_VERSIONS` for a qualifying version. Open the F5 dev host and render `examples/test.md`: check Mermaid diagrams, block and inline math, and highlighted code, in a light and a dark theme.
+4. Read the release notes before crossing a major version.
+5. Apply the Editor Support Policy: check whether the floor moves.
+6. Run `npm test`, which includes lint and the template tests that verify the pinned versions.
 
 ## Adding a Dependency
 
-[development.md](development.md) requires a justification for any new npm dependency. Once approved, choose its version with the criteria above and check the bundle size in `dist/` after `npm run build`. A library the webview needs goes into `CDN_VERSIONS` with an exact version, never a floating tag such as `@11`.
+[development.md](development.md) requires a justification for any new npm dependency. Once approved, choose its version with the selection policy and check the bundle size in `dist/` after `npm run build`. A library the webview needs goes into `CDN_VERSIONS` with an exact version. A major-only tag such as `@12` is not allowed.
 
-## Known Limits
+## Security Controls and Their Limits
 
-- **No integrity hashes for Mermaid.** The page loads Mermaid with a dynamic ES module import, which cannot carry a Subresource Integrity hash. The exact version pin limits exposure to a changed release but still trusts jsDelivr to serve the pinned file unmodified.
-- **Network required for rich rendering.** Diagrams, math, and syntax highlighting load from the CDN on each preview, and they fail to render offline. The outline sidebar and the Markdown itself still work. Bundling the libraries would add several megabytes, mostly Mermaid.
-- **MathJax 4 worker message.** MathJax 4 tries to start a Web Worker from a `blob:` URL and the CSP blocks it. MathJax continues without the worker. Allowing `worker-src blob:` would weaken the CSP with no visible benefit, so the console message remains.
+- **Exact pins.** The version pin is the control against a changed upstream release. It trusts jsDelivr to serve the pinned file unmodified.
+- **No integrity hashes for Mermaid.** A dynamic ES module import cannot carry a Subresource Integrity hash. Libraries loaded through a `<script>` tag can carry one.
+- **Network dependence.** Diagrams, math, and syntax highlighting load from the CDN on each preview. The Markdown, the outline sidebar, and the scroll position keep working when the CDN is unreachable. Do not bundle a large library to remove the network dependence.

@@ -34,16 +34,6 @@ The fix reads headings from the `marked` token stream and generates GitHub-style
 
 **Reopen when.** Heading anchors are rebuilt on the token stream, because that work produces the line mapping.
 
-### Preview follows the active editor
-
-**What it is.** Opening or switching to another Markdown file in the editor updates the preview automatically.
-
-**Current behavior.** The preview shows the file it was last opened for. To move it to another file, activate that file's editor and run the **Show Lightweight Markdown Preview** command (the eye icon in the editor title bar, or **Markdown: Show Lightweight Markdown Preview** in the Command Palette). The command reuses the same panel and renders the new file.
-
-**Why it waits.** Automatic switching would stop users from keeping a reference file pinned in the preview while they edit another file. The behavior needs a maintainer decision about which expectation to serve.
-
-**Reopen when.** Users ask for it, or the maintainer picks the follow behavior.
-
 ### Images outside the workspace
 
 **What it is.** Images beside a Markdown file that is not inside an open workspace folder do not load, because the webview may only read folders listed when the panel opens.
