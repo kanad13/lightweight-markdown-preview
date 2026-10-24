@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.2] - 2026-10-24
+
+### Fixed
+
+- Documentation links in the readme now point to the current guides, including the renamed decisions page and the new task workflows guide
+
 ## [1.4.1] - 2026-10-24
 
 ### Added
