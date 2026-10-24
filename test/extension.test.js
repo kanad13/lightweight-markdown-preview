@@ -1,55 +1,20 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
-const Module = require("module");
-const fs = require("fs");
+const { install } = require("./helpers/fake-vscode");
 
-// --- Test-time module shims (replaces webpack asset/source and vscode external) ---
-
-// Handle require("./webview.html") without webpack
-require.extensions[".html"] = function (module, filename) {
-	module.exports = fs.readFileSync(filename, "utf-8");
-};
-
-// Handlers the extension registers on the fake vscode module, captured so tests can fire them
-const handlers = {};
-
-// Handle require("vscode") without VS Code runtime
-const origResolve = Module._resolveFilename;
-Module._resolveFilename = function (request) {
-	if (request === "vscode") return "vscode";
-	return origResolve.apply(this, arguments);
-};
-require.cache["vscode"] = {
-	id: "vscode",
-	filename: "vscode",
-	loaded: true,
-	exports: {
-		window: {
-			activeColorTheme: { kind: 1 },
-			showErrorMessage: () => {},
-			onDidChangeActiveColorTheme: () => ({ dispose: () => {} }),
-			onDidChangeActiveTextEditor: (handler) => {
-				handlers.activeEditor = handler;
-				return { dispose: () => {} };
-			},
-		},
-		workspace: {
-			onDidChangeTextDocument: () => ({ dispose: () => {} }),
-		},
-		commands: {
-			registerCommand: (id, fn) => {
-				handlers.command = fn;
-				return { dispose: () => {} };
-			},
-		},
-		ViewColumn: { Beside: 2 },
-		Uri: { joinPath: () => ({ toString: () => "" }) },
-		ColorThemeKind: { Light: 1, Dark: 2, HighContrast: 3, HighContrastLight: 4 },
-	},
-};
+install();
 
 // --- Load the extension module ---
-const { activate, extractHeadings, buildTOCTree, generateTOC, getNonce, escapeHtml, renderMarkdown, getWebviewContent, CDN_VERSIONS } = require("../src/extension");
+const {
+	extractHeadings,
+	buildTOCTree,
+	generateTOC,
+	getNonce,
+	escapeHtml,
+	renderMarkdown,
+	getWebviewContent,
+	CDN_VERSIONS,
+} = require("../src/extension");
 
 // ============================================================================
 // extractHeadings
@@ -59,8 +24,14 @@ describe("extractHeadings", () => {
 		const md = "# H1\n## H2\n### H3\n#### H4\n##### H5\n###### H6";
 		const result = extractHeadings(md);
 		assert.equal(result.length, 6);
-		assert.deepEqual(result.map(h => h.level), [1, 2, 3, 4, 5, 6]);
-		assert.deepEqual(result.map(h => h.text), ["H1", "H2", "H3", "H4", "H5", "H6"]);
+		assert.deepEqual(
+			result.map((h) => h.level),
+			[1, 2, 3, 4, 5, 6]
+		);
+		assert.deepEqual(
+			result.map((h) => h.text),
+			["H1", "H2", "H3", "H4", "H5", "H6"]
+		);
 	});
 
 	it("returns empty array for input with no headings", () => {
@@ -91,7 +62,10 @@ describe("extractHeadings", () => {
 		const md = "# A\n```\ncode\n```\n# B\n```\n# C inside code\n```\n# D";
 		const result = extractHeadings(md);
 		assert.equal(result.length, 3);
-		assert.deepEqual(result.map(h => h.text), ["A", "B", "D"]);
+		assert.deepEqual(
+			result.map((h) => h.text),
+			["A", "B", "D"]
+		);
 	});
 
 	it("generates URL-friendly IDs", () => {
@@ -147,7 +121,7 @@ describe("buildTOCTree", () => {
 		];
 		const tree = buildTOCTree(headings);
 		assert.equal(tree.length, 3);
-		tree.forEach(node => assert.equal(node.children.length, 0));
+		tree.forEach((node) => assert.equal(node.children.length, 0));
 	});
 
 	it("nests lower-level headings under higher-level parents", () => {
@@ -203,9 +177,9 @@ describe("generateTOC", () => {
 	it("generates a <ul> list for non-empty headings", () => {
 		const headings = [{ level: 1, text: "Title", id: "title" }];
 		const result = generateTOC(headings);
-		assert.ok(result.includes("<ul class=\"toc-list\">"));
+		assert.ok(result.includes('<ul class="toc-list">'));
 		assert.ok(result.includes("Title"));
-		assert.ok(result.includes("href=\"#title\""));
+		assert.ok(result.includes('href="#title"'));
 	});
 
 	it("uses <details>/<summary> for headings with children", () => {
@@ -263,7 +237,7 @@ describe("getNonce", () => {
 // ============================================================================
 describe("escapeHtml", () => {
 	it("escapes &, <, > and double quotes", () => {
-		assert.equal(escapeHtml("<a href=\"x\">&</a>"), "&lt;a href=&quot;x&quot;&gt;&amp;&lt;/a&gt;");
+		assert.equal(escapeHtml('<a href="x">&</a>'), "&lt;a href=&quot;x&quot;&gt;&amp;&lt;/a&gt;");
 	});
 
 	it("leaves plain text unchanged", () => {
@@ -298,8 +272,8 @@ describe("renderMarkdown", () => {
 	});
 
 	it("keeps dollar signs inside Mermaid blocks out of math extraction", () => {
-		const { html } = renderMarkdown("```mermaid\ngraph TD\n  A[\"$5\"] --> B[\"$6\"]\n```\n");
-		assert.ok(html.includes("<pre class=\"mermaid\">"));
+		const { html } = renderMarkdown('```mermaid\ngraph TD\n  A["$5"] --> B["$6"]\n```\n');
+		assert.ok(html.includes('<pre class="mermaid">'));
 		assert.ok(html.includes("$5") && html.includes("$6"));
 		assert.ok(!html.includes("PRESERVED_"));
 	});
@@ -346,7 +320,7 @@ describe("getWebviewContent", () => {
 		const scripts = page.match(/<script\b[^>]*>/g);
 		assert.ok(scripts.length >= 4);
 		for (const tag of scripts) {
-			assert.ok(tag.includes("nonce=\"NONCE123\""), tag);
+			assert.ok(tag.includes('nonce="NONCE123"'), tag);
 		}
 		assert.ok(page.includes("'nonce-NONCE123'"));
 	});
@@ -359,75 +333,13 @@ describe("getWebviewContent placeholders", () => {
 	const theme = { mermaidTheme: "default", hljsTheme: "https://example.test/theme.css" };
 
 	it("writes an escaped document key for the scroll position", () => {
-		const page = getWebviewContent("", "N", [], theme, "file:///a\"b.md");
-		assert.ok(page.includes("data-doc=\"file:///a&quot;b.md\""));
+		const page = getWebviewContent("", "N", [], theme, 'file:///a"b.md');
+		assert.ok(page.includes('data-doc="file:///a&quot;b.md"'));
 	});
 
 	it("does not substitute placeholder text that appears inside content", () => {
 		const page = getWebviewContent("<p>{{TOC}} and {{NONCE}}</p>", "N", extractHeadings("# {{CONTENT}}"), theme);
 		assert.ok(page.includes("<p>{{TOC}} and {{NONCE}}</p>"));
 		assert.ok(page.includes("{{CONTENT}}"));
-	});
-});
-
-// ============================================================================
-// Following the active editor
-// ============================================================================
-describe("active editor following", () => {
-	const vscode = require("vscode");
-	const makeDoc = (name, text, languageId = "markdown", scheme = "file") => ({
-		languageId,
-		getText: () => text,
-		uri: { scheme, path: `/${name}`, with: () => ({}), toString: () => `${scheme}:///${name}` },
-	});
-	const docA = makeDoc("a.md", "# Alpha heading");
-	const docB = makeDoc("b.md", "# Beta heading");
-	let panel;
-
-	const open = (doc) => {
-		panel = { webview: { html: "", asWebviewUri: (u) => u }, reveal() {}, onDidDispose() {} };
-		vscode.window.createWebviewPanel = () => panel;
-		vscode.window.activeTextEditor = { document: doc };
-		activate({ extensionUri: {}, subscriptions: [] });
-		handlers.command();
-	};
-
-	it("renders the file the command was run on", () => {
-		open(docA);
-		assert.ok(panel.webview.html.includes("Alpha heading"));
-	});
-
-	it("switches to another Markdown editor when it becomes active", () => {
-		open(docA);
-		handlers.activeEditor({ document: docB });
-		assert.ok(panel.webview.html.includes("Beta heading"));
-		assert.ok(!panel.webview.html.includes("Alpha heading"));
-	});
-
-	it("keeps the preview when focus moves to the panel (no editor)", () => {
-		open(docA);
-		handlers.activeEditor(undefined);
-		assert.ok(panel.webview.html.includes("Alpha heading"));
-	});
-
-	it("keeps the preview when a non-Markdown file becomes active", () => {
-		open(docA);
-		handlers.activeEditor({ document: makeDoc("c.js", "const x = 1;", "javascript") });
-		assert.ok(panel.webview.html.includes("Alpha heading"));
-	});
-
-	it("ignores the git side of a diff", () => {
-		open(docA);
-		handlers.activeEditor({ document: makeDoc("a.md", "# Old revision", "markdown", "git") });
-		assert.ok(panel.webview.html.includes("Alpha heading"));
-	});
-
-	it("does nothing when no preview is open", () => {
-		open(docA);
-		panel.webview.html = "";
-		// A fresh activation has no panel; its handler replaces the previous one
-		activate({ extensionUri: {}, subscriptions: [] });
-		handlers.activeEditor({ document: docB });
-		assert.equal(panel.webview.html, "");
 	});
 });
