@@ -12,7 +12,7 @@
 	},
 	"engines": {
 		"vscode": "^1.85.0",
-		"node": ">=18.0.0"
+		"node": ">=20.0.0"
 	},
 	"categories": [
 		"Other",
@@ -68,11 +68,11 @@
 		"publish": "npm run build && vsce publish"
 	},
 	"dependencies": {
-		"marked": "^16.4.1"
+		"marked": "^18.1.0"
 	},
 	"devDependencies": {
 		"@types/node": "^24.9.2",
-		"@types/vscode": "^1.85.0",
+		"@types/vscode": "1.85.0",
 		"@vscode/vsce": "^3.6.2",
 		"eslint": "^9.39.0",
 		"webpack": "^5.92.0",
@@ -83,5 +83,8 @@
 		"url": "https://github.com/kanad13/lightweight-markdown-preview.git"
 	},
 	"license": "MIT",
-	"pricing": "Free"
+	"pricing": "Free",
+	"overrides": {
+		"uuid": "^11.1.1"
+	}
 }
