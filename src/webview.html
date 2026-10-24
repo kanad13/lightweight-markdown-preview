@@ -318,11 +318,19 @@
 	<main class="content">
 		{{CONTENT}}
 	</main>
-	<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" nonce="{{NONCE}}"></script>
-	<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js" nonce="{{NONCE}}"></script>
+	<script nonce="{{NONCE}}">
+		// MathJax ships with only \( \) inline delimiters; enable $...$ to match the extraction in extension.js
+		let resolveMath;
+		// Settles when MathJax finishes typesetting; the timeout keeps an offline or blocked CDN from stalling scroll restore
+		window.mathReady = new Promise((resolve) => { resolveMath = resolve; setTimeout(resolve, 4000); });
+		window.MathJax = {
+			tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+			startup: { pageReady: () => MathJax.startup.defaultPageReady().then(resolveMath) }
+		};
+	</script>
+	<script async src="https://cdn.jsdelivr.net/npm/mathjax@{{MATHJAX_VERSION}}/tex-mml-chtml.js" nonce="{{NONCE}}"></script>
+	<script src="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@{{HLJS_VERSION}}/highlight.min.js" nonce="{{NONCE}}"></script>
 	<script type="module" nonce="{{NONCE}}">
-		import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
-
 		// Initialize highlight.js for syntax highlighting
 		try {
 			document.querySelectorAll('pre code').forEach((block) => {
@@ -332,29 +340,19 @@
 			console.error('Syntax highlighting failed:', error);
 		}
 
-		// Initialize Mermaid with theme matching VS Code
-		mermaid.initialize({
-			startOnLoad: false,
-			theme: '{{MERMAID_THEME}}',
-			securityLevel: 'loose'
-		});
-
-		// Run Mermaid on all diagram elements
+		// Dynamic import: a failed CDN fetch must not abort this script, or the TOC sidebar below would stop working too
 		try {
+			const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@{{MERMAID_VERSION}}/dist/mermaid.esm.min.mjs');
+			mermaid.initialize({
+				startOnLoad: false,
+				theme: '{{MERMAID_THEME}}',
+				securityLevel: 'strict'
+			});
 			await mermaid.run({
 				querySelector: '.mermaid'
 			});
 		} catch (error) {
 			console.error('Mermaid rendering failed:', error);
-		}
-
-		// Trigger MathJax processing if loaded
-		if (window.MathJax) {
-			try {
-				window.MathJax.typesetPromise().catch(err => console.error('MathJax rendering failed:', err));
-			} catch (error) {
-				console.error('MathJax initialization failed:', error);
-			}
 		}
 
 		// Sidebar toggle functionality
@@ -466,6 +464,22 @@
 				observer.observe(heading);
 			}
 		});
+
+		// Every edit replaces the whole page, so restore the reading position once Mermaid and MathJax have settled the layout
+		const vscodeApi = typeof acquireVsCodeApi === 'function' ? acquireVsCodeApi() : undefined;
+		await window.mathReady;
+		const savedState = vscodeApi && vscodeApi.getState();
+		if (savedState && typeof savedState.scrollY === 'number') {
+			window.scrollTo(0, savedState.scrollY);
+		}
+		if (vscodeApi) {
+			// Attached after the restore so the initial scroll-to-top does not overwrite the saved position
+			let scrollSaveTimer;
+			window.addEventListener('scroll', () => {
+				clearTimeout(scrollSaveTimer);
+				scrollSaveTimer = setTimeout(() => vscodeApi.setState({ scrollY: window.scrollY }), 100);
+			});
+		}
 	</script>
 </body>
 </html>

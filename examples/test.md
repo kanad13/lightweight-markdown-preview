@@ -85,7 +85,7 @@ sequenceDiagram
 
 ## Mathematical expressions
 
-- Inline Mathematical Expression Not supported right now - $E = mc^2$
+- Inline mathematical expression: $E = mc^2$
 
 - Block Mathematical Expression Supported:
 

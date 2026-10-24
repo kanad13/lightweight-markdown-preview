@@ -39,7 +39,7 @@ require.cache["vscode"] = {
 };
 
 // --- Load the extension module ---
-const { extractHeadings, buildTOCTree, generateTOC, getNonce } = require("../src/extension");
+const { extractHeadings, buildTOCTree, generateTOC, getNonce, escapeHtml, renderMarkdown, getWebviewContent, CDN_VERSIONS } = require("../src/extension");
 
 // ============================================================================
 // extractHeadings
@@ -232,6 +232,10 @@ describe("getNonce", () => {
 		assert.equal(getNonce().length, 32);
 	});
 
+	it("is hexadecimal", () => {
+		assert.match(getNonce(), /^[0-9a-f]{32}$/);
+	});
+
 	it("contains only alphanumeric characters", () => {
 		const nonce = getNonce();
 		assert.match(nonce, /^[A-Za-z0-9]{32}$/);
@@ -241,5 +245,99 @@ describe("getNonce", () => {
 		const a = getNonce();
 		const b = getNonce();
 		assert.notEqual(a, b);
+	});
+});
+
+// ============================================================================
+// escapeHtml
+// ============================================================================
+describe("escapeHtml", () => {
+	it("escapes &, <, > and double quotes", () => {
+		assert.equal(escapeHtml("<a href=\"x\">&</a>"), "&lt;a href=&quot;x&quot;&gt;&amp;&lt;/a&gt;");
+	});
+
+	it("leaves plain text unchanged", () => {
+		assert.equal(escapeHtml("plain text 123"), "plain text 123");
+	});
+});
+
+// ============================================================================
+// generateTOC escaping
+// ============================================================================
+describe("generateTOC escaping", () => {
+	it("escapes HTML in heading text", () => {
+		const html = generateTOC(extractHeadings("# <img src=x onerror=alert(1)>"));
+		assert.ok(!html.includes("<img"));
+		assert.ok(html.includes("&lt;img"));
+	});
+});
+
+// ============================================================================
+// renderMarkdown
+// ============================================================================
+describe("renderMarkdown", () => {
+	it("preserves inline and block math with delimiters intact", () => {
+		const { html } = renderMarkdown("Energy $E = mc^2$ here\n\n$$\n\\int x\n$$\n");
+		assert.ok(html.includes("$E = mc^2$"));
+		assert.ok(html.includes("$$\n\\int x\n$$"));
+	});
+
+	it("escapes HTML characters inside math", () => {
+		const { html } = renderMarkdown("$a<b$");
+		assert.ok(html.includes("$a&lt;b$"));
+	});
+
+	it("keeps dollar signs inside Mermaid blocks out of math extraction", () => {
+		const { html } = renderMarkdown("```mermaid\ngraph TD\n  A[\"$5\"] --> B[\"$6\"]\n```\n");
+		assert.ok(html.includes("<pre class=\"mermaid\">"));
+		assert.ok(html.includes("$5") && html.includes("$6"));
+		assert.ok(!html.includes("PRESERVED_"));
+	});
+
+	it("renders both Mermaid syntaxes identically", () => {
+		const a = renderMarkdown("```mermaid\ngraph TD\n  A-->B\n```\n").html;
+		const b = renderMarkdown("::: mermaid\ngraph TD\n  A-->B\n:::\n").html;
+		assert.equal(a, b);
+	});
+
+	it("escapes markup in Mermaid source so it cannot break out of the pre element", () => {
+		const { html } = renderMarkdown("```mermaid\ngraph TD\n  A[</pre><img src=x>]\n```\n");
+		assert.ok(!html.includes("<img src=x>"));
+	});
+
+	it("adds heading IDs matching the extracted headings", () => {
+		const { html, headings } = renderMarkdown("# Title\n\n## Sub\n");
+		assert.equal(headings.length, 2);
+		for (const h of headings) {
+			assert.ok(html.includes(`<h${h.level} id="${h.id}">`));
+		}
+	});
+});
+
+// ============================================================================
+// getWebviewContent
+// ============================================================================
+describe("getWebviewContent", () => {
+	const theme = { mermaidTheme: "default", hljsTheme: "https://example.test/theme.css" };
+	const page = getWebviewContent("<p>x</p>", "NONCE123", [], theme);
+
+	it("leaves no unreplaced placeholders", () => {
+		assert.ok(!/\{\{[A-Z_]+\}\}/.test(page));
+	});
+
+	it("loads every CDN library at its pinned version", () => {
+		assert.ok(page.includes(`mermaid@${CDN_VERSIONS.mermaid}/`));
+		assert.ok(page.includes(`mathjax@${CDN_VERSIONS.mathjax}/`));
+		assert.ok(page.includes(`cdn-assets@${CDN_VERSIONS.highlightjs}/`));
+		assert.ok(!/(mermaid|mathjax)@\d+\//.test(page), "floating major version found");
+	});
+
+	it("puts the nonce on every script tag and in the CSP", () => {
+		const scripts = page.match(/<script\b[^>]*>/g);
+		assert.ok(scripts.length >= 4);
+		for (const tag of scripts) {
+			assert.ok(tag.includes("nonce=\"NONCE123\""), tag);
+		}
+		assert.ok(page.includes("'nonce-NONCE123'"));
 	});
 });
