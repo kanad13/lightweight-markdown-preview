@@ -24,7 +24,7 @@ const webviewTemplate = require("./webview.html");
  * constant. Selection criteria and upgrade rules live in docs/dependencies.md.
  */
 const CDN_VERSIONS = {
-	mermaid: "11.17.2",
+	mermaid: "12.1.0",
 	mathjax: "4.1.3",
 	highlightjs: "11.12.0",
 };

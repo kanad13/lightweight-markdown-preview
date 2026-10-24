@@ -11,7 +11,7 @@
 		"url": "https://github.com/kanad13/lightweight-markdown-preview/issues"
 	},
 	"engines": {
-		"vscode": "^1.85.0",
+		"vscode": "^1.105.0",
 		"node": ">=20.0.0"
 	},
 	"categories": [
@@ -72,7 +72,7 @@
 	},
 	"devDependencies": {
 		"@types/node": "^24.9.2",
-		"@types/vscode": "1.85.0",
+		"@types/vscode": "1.105.0",
 		"@vscode/vsce": "^3.6.2",
 		"eslint": "^9.39.0",
 		"webpack": "^5.92.0",

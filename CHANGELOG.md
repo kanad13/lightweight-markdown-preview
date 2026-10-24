@@ -9,7 +9,9 @@ All notable changes to this project will be documented in this file.
 - Preview keeps its scroll position while you type
 
 ### Changed
-- Mermaid, MathJax, and highlight.js load at exact versions (Mermaid 11.17.2, MathJax 4.1.3, highlight.js 11.12.0) instead of floating major tags
+- Mermaid, MathJax, and highlight.js load at exact versions (Mermaid 12.1.0, MathJax 4.1.3, highlight.js 11.12.0) instead of floating major tags
+- Mermaid 12 draws diagrams with its new default look (orthogonal edges, flat styling), so existing diagrams look different
+- Minimum VS Code version is 1.105 (was 1.85)
 - Mermaid diagrams use the `strict` security level
 - Markdown parser updated to `marked` 18.1.0
 - Minimum Node version for development is 20

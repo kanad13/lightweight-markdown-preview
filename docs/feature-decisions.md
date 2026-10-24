@@ -36,9 +36,11 @@ The fix reads headings from the `marked` token stream and generates GitHub-style
 
 ### Preview follows the active editor
 
-**What it is.** Switching to another Markdown file updates the preview automatically.
+**What it is.** Opening or switching to another Markdown file in the editor updates the preview automatically.
 
-**Why it waits.** Running the command on the current file already switches the preview. Automatic switching changes the rule that the panel shows the file the user chose, so a user who wants to keep a reference file open would lose it. The behavior needs a maintainer decision about which expectation to serve.
+**Current behavior.** The preview shows the file it was last opened for. To move it to another file, activate that file's editor and run the **Show Lightweight Markdown Preview** command (the eye icon in the editor title bar, or **Markdown: Show Lightweight Markdown Preview** in the Command Palette). The command reuses the same panel and renders the new file.
+
+**Why it waits.** Automatic switching would stop users from keeping a reference file pinned in the preview while they edit another file. The behavior needs a maintainer decision about which expectation to serve.
 
 **Reopen when.** Users ask for it, or the maintainer picks the follow behavior.
 
@@ -57,14 +59,6 @@ The fix reads headings from the `marked` token stream and generates GitHub-style
 **Why it waits.** It needs a message from the webview to the extension, which opens a new input path to the extension host. The extension would then need to validate every target path.
 
 **Reopen when.** A concrete workflow needs it. Plan it together with scroll sync, since both add the message channel.
-
-### Mermaid 12
-
-**What it is.** Moving the CDN library from the 11.x line to 12.x.
-
-**Why it waits.** Mermaid 12 requires newer JavaScript features than the Chromium inside VS Code 1.85 may provide, and it changes how diagrams look by default. The full constraint is in [dependencies.md](dependencies.md).
-
-**Reopen when.** `engines.vscode` is raised to a version whose Chromium meets Mermaid 12's baseline.
 
 ## Declined
 

@@ -22,16 +22,27 @@ A version qualifies only if it meets all of these rules. Apply them the same way
 2. **Supported line.** Use the newest major line that still receives fixes. Treat a line with no release for 12 months as abandoned, unless the project declares it feature-complete.
 3. **Soak time.** A new major version qualifies 30 days after its `.0` release. A minor or patch version qualifies 14 days after its release.
 4. **No known advisories.** `npm audit --omit=dev` reports 0 for the shipped tree. For CDN libraries, read the project's GitHub Security Advisories page.
-5. **Support floor.** The version runs on the oldest VS Code release in `engines.vscode` and the Node release in `engines.node`. Confirm by rendering `examples/test.md` and reading the release notes for raised browser baselines.
+5. **Support policy.** The version runs on the current stable VS Code and on the floor defined under Support Policy, and on the Node release in `engines.node`. Confirm by rendering `examples/test.md` and reading the release notes for raised browser baselines.
 6. **Exact pins without a lockfile.** CDN URLs name a full `x.y.z` version, because no lockfile protects them. npm packages use a caret range, and `package-lock.json` fixes the resolved version.
 7. **Stable tool majors.** Build tools stay on their current major version unless an advisory or an engine requirement forces a change.
+
+## Support Policy
+
+The extension targets the current stable release of VS Code and does not carry compatibility code for older editors.
+
+- **Test target.** The current stable VS Code release. Insiders builds are not a target.
+- **Floor.** `engines.vscode` names the newest VS Code release that is at least 12 months old. A floor that follows the calendar keeps the extension from being tied to legacy versions, and a 12-month window still reaches editors that update slowly.
+- **Forks.** Cursor, Windsurf, and other forks run an older VS Code base than upstream and refuse to install an extension whose `engines.vscode` is above that base. Check the fork's base version (its About dialog) before raising the floor, because a higher floor removes those users.
+- **Moving the floor.** At each quarterly review, raise `engines.vscode` and the exact `@types/vscode` pin together to the newest release that is at least 12 months old. Dependencies whose browser baseline needs a newer Chromium become eligible once the floor reaches a VS Code release that ships it.
+- **Release dates.** `npm view @types/vscode time` lists the VS Code release dates.
 
 ## Standing Constraints
 
 These constraints limit upgrades until their release condition is met.
 
-- **Mermaid stays on the 11.x line** while `engines.vscode` is `^1.85.0`. Mermaid 12 sets its baseline to ES2024 and Safari 17.4. VS Code 1.85 embeds an older Chromium, so a diagram could fail to render for users on that release. Mermaid 12 also changes the default layout (ELK) and theme, which alters how every existing diagram looks. Release condition: raise `engines.vscode` to a version whose Chromium meets the Mermaid 12 baseline, then review `examples/test.md` diagrams visually.
-- **`@types/vscode` is pinned to the exact minimum in `engines.vscode`.** The type package then cannot suggest an API that the minimum supported VS Code lacks, and `vsce` refuses a type version above the engine. Release condition: change both together.
+- **Mermaid renders with its default layout and look.** Mermaid 12 and later default to the ELK layout and a flat theme. To restore the classic appearance, pass `layout: 'dagre'` and `look: 'classic'` to `mermaid.initialize()` in `src/webview.html`. Review the `examples/test.md` diagrams visually after any Mermaid major upgrade.
+- **Mermaid's browser baseline must stay below the floor's Chromium.** Mermaid 12 requires ES2024 features. A future Mermaid major that raises the baseline further must wait until the Support Policy floor reaches a VS Code release that ships a matching Chromium.
+- **`@types/vscode` is pinned to the exact version of `engines.vscode`.** The type package then cannot suggest an API that the floor lacks, and `vsce` refuses a type version above the engine. Change both together.
 - **`overrides.uuid` in `package.json`** replaces the `uuid` version that `@azure/identity` (a `vsce` dependency used only for `vsce publish` with Azure credentials) resolves, because the unpatched range has an advisory. The newest `@azure/identity` depends on an `@azure/msal-node` range that has its own advisory, so a plain upgrade does not clear it. Release condition: remove the override when `npm audit` reports 0 without it.
 
 ## Review Procedure

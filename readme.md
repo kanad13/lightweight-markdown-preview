@@ -36,7 +36,7 @@ Azure DevOps uses triple-colon (:::) "Fenced Div" syntax for Mermaid diagrams, w
 
 ## Install
 
-1. Open VS Code (Insiders, Cursor, Windsurf or any other VS Code-based editor)
+1. Open VS Code 1.105 or later (or a VS Code-based editor such as Cursor or Windsurf, at a compatible base version)
 2. Go to Extensions
 3. Search for "Lightweight Markdown Preview" or explicitly for `KunalPathak.lightweight-markdown-preview`
 4. Click Install
