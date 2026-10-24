@@ -87,6 +87,7 @@ GitHub uses backtick fences for Mermaid diagrams, and Azure DevOps uses triple-c
   - A Content Security Policy runs only scripts that carry a per-render random nonce.
   - The extension escapes text it inserts into the page.
   - Mermaid runs at its strict security level.
+  - Workspace Trust is fully supported (`supported: true`), keeping previews functional in Restricted Mode on untrusted repositories without executing local code.
 
 ## Contribute
 

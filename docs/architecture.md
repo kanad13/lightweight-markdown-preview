@@ -72,6 +72,16 @@ VS Code runs the preview in an isolated webview.
 - **Extension host:**
   - The page has no direct access to the extension host.
 
+### Layer 5: Workspace Trust (Restricted Mode Support)
+
+The extension declares `"capabilities": { "untrustedWorkspaces": { "supported": true } }` in `package.json`.
+
+- **Safe in untrusted workspaces:**
+  - Rendering markdown is a pure in-memory transformation.
+  - The extension runs no workspace executables, build scripts, or language servers.
+  - The webview runs with strict CSP nonces and restricted local roots.
+  - Users can safely preview untrusted folders and cloned repositories without granting workspace trust.
+
 ## State Management
 
 The extension's state is managed entirely in memory and is reset every time the extension is reloaded.

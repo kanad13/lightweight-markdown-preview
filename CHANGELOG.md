@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- Workspace Trust support (`capabilities.untrustedWorkspaces.supported = true`), allowing Markdown previews to function in Restricted Mode on untrusted workspaces
+
 ## [1.4.0] - 2026-10-24
 
 ### Added
