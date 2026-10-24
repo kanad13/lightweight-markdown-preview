@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.0] - 2026-10-24
+
+### Added
+- Inline math (`$...$`) now renders; before, only block math (`$$...$$`) did
+- Preview keeps its scroll position while you type
+
+### Changed
+- Mermaid, MathJax, and highlight.js load at exact versions (Mermaid 11.17.2, MathJax 4.1.3, highlight.js 11.12.0) instead of floating major tags
+- Mermaid diagrams use the `strict` security level
+- Markdown parser updated to `marked` 18.1.0
+- Minimum Node version for development is 20
+
+### Fixed
+- Math and Mermaid source containing `<`, `>`, or `&` no longer breaks the page; heading text in the outline is escaped
+- A `$` inside a Mermaid diagram label no longer corrupts the diagram
+- The outline sidebar and syntax highlighting keep working when the Mermaid library cannot be loaded
+- Closing the preview while an update is pending no longer raises an error notification
+- Security: build-tool dependency advisories resolved (`npm audit` reports 0)
+
 ## [1.3.1] - 2026-03-13
 
 ### Fixed
