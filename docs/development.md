@@ -39,6 +39,8 @@ gh auth status  # Verify
 
 > **Note:** If your PAT expires, run `vsce login KunalPathak` again with a fresh token.
 
+> **Deadline:** Microsoft retires global Azure DevOps Personal Access Tokens on 2026-12-01. After that date, authenticate with Microsoft Entra ID and publish with `vsce publish --azure-credential`. Follow the [VS Code publishing guide](https://code.visualstudio.com/api/working-with-extensions/publishing-extension) and update this section when the new credential is in place.
+
 ### Local Environment Setup
 
 ```bash
@@ -206,6 +208,7 @@ Before starting:
 - [ ] `git status` shows no uncommitted changes
 - [ ] Decide version bump (MAJOR.MINOR.PATCH per semantic versioning)
 - [ ] Identify all user-facing changes since last release
+- [ ] Icon is a PNG between 128 and 1024 pixels square
 ```
 
 ### Step 1: Update Version Numbers

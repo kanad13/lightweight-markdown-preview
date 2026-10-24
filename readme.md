@@ -20,13 +20,18 @@ The extension adds one command that opens a live preview beside your Markdown fi
 
 ## Install
 
-1. Open the Extensions view in VS Code, or in a VS Code-based editor such as Cursor or Windsurf.
+1. Open the Extensions view in VS Code.
 2. Search for "Lightweight Markdown Preview", or for the identifier `KunalPathak.lightweight-markdown-preview`.
 3. Select **Install**.
 
+**VS Code forks:**
+
+- Editors such as Cursor read extensions from the Open VSX registry, where this extension is not listed.
+- Download the `.vsix` file from the [GitHub releases](https://github.com/kanad13/lightweight-markdown-preview/releases) and run **Extensions: Install from VSIX...**.
+
 **Requirements:**
 
-- VS Code or a compatible fork released within the last 12 months.
+- VS Code, or a compatible fork, released within the last 12 months.
 - Network access to the jsDelivr CDN for diagrams, math, and syntax highlighting.
 
 ## Use
@@ -90,6 +95,7 @@ Start with the documents below. Each one answers a different question.
 - **Understand the design:** [architecture.md](docs/architecture.md) explains the structure and the security model.
 - **Work with dependencies:** [dependencies.md](docs/dependencies.md) sets the rules for choosing and reviewing versions.
 - **Build and release:** [development.md](docs/development.md) covers setup and publishing.
+- **Pick a task procedure:** [workflows.md](docs/workflows.md) maps each kind of request to its steps.
 - **Test:** [testing.md](docs/testing.md) maps workflows to checks and lists the manual smoke check.
 - **Check past decisions:** [feature-decisions.md](docs/feature-decisions.md) lists ideas that were evaluated and not built.
 - **See what changed:** [CHANGELOG.md](CHANGELOG.md) lists changes by version.
