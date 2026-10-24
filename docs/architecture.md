@@ -22,7 +22,7 @@ updateWebviewContent() renders markdown to HTML
 Webview displays rendered content with Mermaid/MathJax
 ```
 
-**Design principle:** One active webview panel per extension session, reused across different markdown files. This minimizes resource consumption and simplifies state management.
+**Design principle:** One active webview panel per extension session. The panel follows the active Markdown editor: when another Markdown file becomes the active editor, the panel renders that file. This minimizes resource consumption and simplifies state management.
 
 ## Security Model
 
@@ -61,7 +61,7 @@ The extension's state is managed entirely in memory and is reset every time the 
 2. **State Variables:** Two key variables are set in a closure:
    - `currentPanel`: Holds the reference to the active webview.
    - `currentDocument`: Holds the reference to the text document being previewed.
-3. **Event Listening:** An `onDidChangeTextDocument` listener is registered to watch for edits.
+3. **Event Listening:** An `onDidChangeTextDocument` listener watches for edits, and an `onDidChangeActiveTextEditor` listener switches the preview to the newly active Markdown file. The switch ignores the panel taking focus (no editor), non-Markdown files, and the `git` side of a diff, and it cancels any pending debounced update so the previous file cannot overwrite the new one.
 4. **Update Cycle:** When the document changes, the listener triggers an update:
    - A new CSP `nonce` is generated.
    - The markdown content is parsed and rendered into a full HTML document.
@@ -82,7 +82,7 @@ The extension's state is managed entirely in memory and is reset every time the 
 
 ## Scroll Position Retention
 
-Every edit replaces the whole webview page, which resets the browser's scroll position to the top. To keep the reading position, the page saves `window.scrollY` with the webview state API (`acquireVsCodeApi().setState`) on a 100 ms debounce. After Mermaid and MathJax finish and the layout has its final height, the page restores that position. A 4-second timeout bounds the wait when the CDN is offline or blocked.
+Every edit replaces the whole webview page, which resets the browser's scroll position to the top. To keep the reading position, the page saves `window.scrollY` with the webview state API (`acquireVsCodeApi().setState`) on a 100 ms debounce, together with the URI of the previewed document (`data-doc` on the content element). After Mermaid and MathJax finish and the layout has its final height, the page restores that position when the saved URI matches the document on screen. A different file starts at the top. A 4-second timeout bounds the wait when the CDN is offline or blocked.
 
 ## Performance Characteristics
 

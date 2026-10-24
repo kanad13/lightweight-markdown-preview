@@ -315,7 +315,7 @@
 		</div>
 		{{TOC}}
 	</aside>
-	<main class="content">
+	<main class="content" data-doc="{{DOC_KEY}}">
 		{{CONTENT}}
 	</main>
 	<script nonce="{{NONCE}}">
@@ -468,8 +468,10 @@
 		// Every edit replaces the whole page, so restore the reading position once Mermaid and MathJax have settled the layout
 		const vscodeApi = typeof acquireVsCodeApi === 'function' ? acquireVsCodeApi() : undefined;
 		await window.mathReady;
+		// The saved position belongs to one document; switching files must start at the top
+		const docKey = document.querySelector('.content').dataset.doc;
 		const savedState = vscodeApi && vscodeApi.getState();
-		if (savedState && typeof savedState.scrollY === 'number') {
+		if (savedState && savedState.doc === docKey && typeof savedState.scrollY === 'number') {
 			window.scrollTo(0, savedState.scrollY);
 		}
 		if (vscodeApi) {
@@ -477,7 +479,7 @@
 			let scrollSaveTimer;
 			window.addEventListener('scroll', () => {
 				clearTimeout(scrollSaveTimer);
-				scrollSaveTimer = setTimeout(() => vscodeApi.setState({ scrollY: window.scrollY }), 100);
+				scrollSaveTimer = setTimeout(() => vscodeApi.setState({ doc: docKey, scrollY: window.scrollY }), 100);
 			});
 		}
 	</script>

@@ -25,6 +25,7 @@ A minimal VS Code extension for previewing Markdown with Mermaid diagrams and Ma
   - Azure DevOps style: `::: mermaid`
 - MathJax support for LaTeX equations, both block (`$$ ... $$`) and inline (`$ ... $`)
 - Preview keeps your reading position while you edit
+- Preview follows the Markdown file you are editing: switch tabs and the preview switches with you
 
 ![Lightweight Markdown Preview Screenshot](./assets/markdown-preview.png)
 

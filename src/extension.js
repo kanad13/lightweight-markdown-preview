@@ -48,7 +48,7 @@ function escapeHtml(text) {
  * Activation function - called when the extension loads
  *
  * This extension provides a lightweight Markdown preview with Mermaid diagram and MathJax support.
- * It maintains a single webview panel that reuses across different markdown files.
+ * It maintains a single webview panel that follows the active Markdown editor.
  *
  * State managed:
  * - currentPanel: The active preview panel (or undefined if closed)
@@ -128,6 +128,25 @@ function activate(context) {
 		}
 	});
 
+	// Follow the active Markdown editor. The panel itself taking focus reports no editor, and non-Markdown
+	// editors keep the last preview. The "git" scheme is the old side of a diff, which must not replace the file being edited.
+	const activeEditorSubscription = vscode.window.onDidChangeActiveTextEditor((editor) => {
+		if (!currentPanel || !editor) {
+			return;
+		}
+		const doc = editor.document;
+		if (doc.languageId !== "markdown" || doc.uri.scheme === "git") {
+			return;
+		}
+		if (currentDocument && doc.uri.toString() === currentDocument.uri.toString()) {
+			return;
+		}
+		// A pending debounced update belongs to the previous file and would overwrite this one
+		clearTimeout(updateTimer);
+		currentDocument = doc;
+		updateWebviewContent(currentPanel, doc);
+	});
+
 	// Re-render when VS Code color theme changes (light ↔ dark)
 	const themeChangeSubscription = vscode.window.onDidChangeActiveColorTheme(() => {
 		if (currentPanel && currentDocument) {
@@ -137,6 +156,7 @@ function activate(context) {
 
 	context.subscriptions.push(disposable);
 	context.subscriptions.push(changeDocumentSubscription);
+	context.subscriptions.push(activeEditorSubscription);
 	context.subscriptions.push(themeChangeSubscription);
 }
 
@@ -311,7 +331,7 @@ function updateWebviewContent(panel, document) {
 			return `<img src="${resolvedPath}"`;
 		});
 
-		panel.webview.html = getWebviewContent(html, getNonce(), headings, resolveTheme());
+		panel.webview.html = getWebviewContent(html, getNonce(), headings, resolveTheme(), document.uri.toString());
 	} catch (error) {
 		vscode.window.showErrorMessage(`Failed to render markdown: ${error.message}`);
 	}
@@ -425,8 +445,9 @@ function resolveTheme() {
  * Generates the complete HTML content for the webview
  *
  * Loads the HTML template (inlined at build time by webpack) and replaces
- * placeholder tokens with dynamic values. Uses function-form replacements
- * to avoid issues with special $ patterns in user-generated content.
+ * placeholder tokens with dynamic values in a single pass. A value is never
+ * rescanned, so "{{...}}" text in a document or heading cannot trigger a
+ * substitution, and "$" sequences in content stay literal.
  *
  * Template placeholders:
  * - {{NONCE}}: CSP nonce token (appears on every inline and CDN script tag)
@@ -435,25 +456,30 @@ function resolveTheme() {
  * - {{MERMAID_THEME}}: Mermaid diagram theme name
  * - {{TOC}}: Generated table of contents HTML
  * - {{CONTENT}}: Rendered markdown HTML
+ * - {{DOC_KEY}}: Escaped URI of the previewed document, read by the page to scope its saved scroll position
  *
  * @param {string} markdownHtml - Already-rendered HTML from marked
  * @param {string} nonce - Security token for CSP (random string)
  * @param {Array} headings - Array of heading objects for TOC generation
  * @param {{ mermaidTheme: string, hljsTheme: string }} theme - Theme config from resolveTheme()
+ * @param {string} documentKey - URI of the previewed document; the page keys its saved scroll position to it
  * @returns {string} Complete HTML page
  */
-function getWebviewContent(markdownHtml, nonce, headings = [], theme = {}) {
-	const tocHtml = generateTOC(headings);
+function getWebviewContent(markdownHtml, nonce, headings = [], theme = {}, documentKey = "") {
+	const values = {
+		NONCE: nonce,
+		MERMAID_VERSION: CDN_VERSIONS.mermaid,
+		MATHJAX_VERSION: CDN_VERSIONS.mathjax,
+		HLJS_VERSION: CDN_VERSIONS.highlightjs,
+		HLJS_THEME: theme.hljsTheme,
+		MERMAID_THEME: theme.mermaidTheme,
+		DOC_KEY: escapeHtml(documentKey),
+		TOC: generateTOC(headings),
+		CONTENT: markdownHtml,
+	};
 
-	return webviewTemplate
-		.replace(/\{\{NONCE\}\}/g, () => nonce)
-		.replace(/\{\{MERMAID_VERSION\}\}/g, () => CDN_VERSIONS.mermaid)
-		.replace(/\{\{MATHJAX_VERSION\}\}/g, () => CDN_VERSIONS.mathjax)
-		.replace(/\{\{HLJS_VERSION\}\}/g, () => CDN_VERSIONS.highlightjs)
-		.replace("{{HLJS_THEME}}", () => theme.hljsTheme)
-		.replace("{{MERMAID_THEME}}", () => theme.mermaidTheme)
-		.replace("{{TOC}}", () => tocHtml)
-		.replace("{{CONTENT}}", () => markdownHtml);
+	// One pass over the template, so placeholder-like text inside the document or a heading is never substituted
+	return webviewTemplate.replace(/\{\{([A-Z_]+)\}\}/g, (match, key) => values[key] ?? match);
 }
 
 /**

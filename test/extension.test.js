@@ -10,6 +10,9 @@ require.extensions[".html"] = function (module, filename) {
 	module.exports = fs.readFileSync(filename, "utf-8");
 };
 
+// Handlers the extension registers on the fake vscode module, captured so tests can fire them
+const handlers = {};
+
 // Handle require("vscode") without VS Code runtime
 const origResolve = Module._resolveFilename;
 Module._resolveFilename = function (request) {
@@ -25,12 +28,19 @@ require.cache["vscode"] = {
 			activeColorTheme: { kind: 1 },
 			showErrorMessage: () => {},
 			onDidChangeActiveColorTheme: () => ({ dispose: () => {} }),
+			onDidChangeActiveTextEditor: (handler) => {
+				handlers.activeEditor = handler;
+				return { dispose: () => {} };
+			},
 		},
 		workspace: {
 			onDidChangeTextDocument: () => ({ dispose: () => {} }),
 		},
 		commands: {
-			registerCommand: () => ({ dispose: () => {} }),
+			registerCommand: (id, fn) => {
+				handlers.command = fn;
+				return { dispose: () => {} };
+			},
 		},
 		ViewColumn: { Beside: 2 },
 		Uri: { joinPath: () => ({ toString: () => "" }) },
@@ -39,7 +49,7 @@ require.cache["vscode"] = {
 };
 
 // --- Load the extension module ---
-const { extractHeadings, buildTOCTree, generateTOC, getNonce, escapeHtml, renderMarkdown, getWebviewContent, CDN_VERSIONS } = require("../src/extension");
+const { activate, extractHeadings, buildTOCTree, generateTOC, getNonce, escapeHtml, renderMarkdown, getWebviewContent, CDN_VERSIONS } = require("../src/extension");
 
 // ============================================================================
 // extractHeadings
@@ -339,5 +349,85 @@ describe("getWebviewContent", () => {
 			assert.ok(tag.includes("nonce=\"NONCE123\""), tag);
 		}
 		assert.ok(page.includes("'nonce-NONCE123'"));
+	});
+});
+
+// ============================================================================
+// getWebviewContent placeholders
+// ============================================================================
+describe("getWebviewContent placeholders", () => {
+	const theme = { mermaidTheme: "default", hljsTheme: "https://example.test/theme.css" };
+
+	it("writes an escaped document key for the scroll position", () => {
+		const page = getWebviewContent("", "N", [], theme, "file:///a\"b.md");
+		assert.ok(page.includes("data-doc=\"file:///a&quot;b.md\""));
+	});
+
+	it("does not substitute placeholder text that appears inside content", () => {
+		const page = getWebviewContent("<p>{{TOC}} and {{NONCE}}</p>", "N", extractHeadings("# {{CONTENT}}"), theme);
+		assert.ok(page.includes("<p>{{TOC}} and {{NONCE}}</p>"));
+		assert.ok(page.includes("{{CONTENT}}"));
+	});
+});
+
+// ============================================================================
+// Following the active editor
+// ============================================================================
+describe("active editor following", () => {
+	const vscode = require("vscode");
+	const makeDoc = (name, text, languageId = "markdown", scheme = "file") => ({
+		languageId,
+		getText: () => text,
+		uri: { scheme, path: `/${name}`, with: () => ({}), toString: () => `${scheme}:///${name}` },
+	});
+	const docA = makeDoc("a.md", "# Alpha heading");
+	const docB = makeDoc("b.md", "# Beta heading");
+	let panel;
+
+	const open = (doc) => {
+		panel = { webview: { html: "", asWebviewUri: (u) => u }, reveal() {}, onDidDispose() {} };
+		vscode.window.createWebviewPanel = () => panel;
+		vscode.window.activeTextEditor = { document: doc };
+		activate({ extensionUri: {}, subscriptions: [] });
+		handlers.command();
+	};
+
+	it("renders the file the command was run on", () => {
+		open(docA);
+		assert.ok(panel.webview.html.includes("Alpha heading"));
+	});
+
+	it("switches to another Markdown editor when it becomes active", () => {
+		open(docA);
+		handlers.activeEditor({ document: docB });
+		assert.ok(panel.webview.html.includes("Beta heading"));
+		assert.ok(!panel.webview.html.includes("Alpha heading"));
+	});
+
+	it("keeps the preview when focus moves to the panel (no editor)", () => {
+		open(docA);
+		handlers.activeEditor(undefined);
+		assert.ok(panel.webview.html.includes("Alpha heading"));
+	});
+
+	it("keeps the preview when a non-Markdown file becomes active", () => {
+		open(docA);
+		handlers.activeEditor({ document: makeDoc("c.js", "const x = 1;", "javascript") });
+		assert.ok(panel.webview.html.includes("Alpha heading"));
+	});
+
+	it("ignores the git side of a diff", () => {
+		open(docA);
+		handlers.activeEditor({ document: makeDoc("a.md", "# Old revision", "markdown", "git") });
+		assert.ok(panel.webview.html.includes("Alpha heading"));
+	});
+
+	it("does nothing when no preview is open", () => {
+		open(docA);
+		panel.webview.html = "";
+		// A fresh activation has no panel; its handler replaces the previous one
+		activate({ extensionUri: {}, subscriptions: [] });
+		handlers.activeEditor({ document: docB });
+		assert.equal(panel.webview.html, "");
 	});
 });

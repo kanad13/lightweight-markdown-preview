@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [1.4.0] - 2026-10-24
 
 ### Added
+- Preview follows the active Markdown editor; switching to another Markdown file updates the preview, and each file starts at the top
 - Inline math (`$...$`) now renders; before, only block math (`$$...$$`) did
 - Preview keeps its scroll position while you type
 
@@ -19,6 +20,7 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - Math and Mermaid source containing `<`, `>`, or `&` no longer breaks the page; heading text in the outline is escaped
 - A `$` inside a Mermaid diagram label no longer corrupts the diagram
+- Text such as `{{CONTENT}}` in a heading can no longer displace the page content
 - The outline sidebar and syntax highlighting keep working when the Mermaid library cannot be loaded
 - Closing the preview while an update is pending no longer raises an error notification
 - Security: build-tool dependency advisories resolved (`npm audit` reports 0)
