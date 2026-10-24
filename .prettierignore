@@ -1,0 +1,9 @@
+node_modules/
+dist/
+package-lock.json
+*.vsix
+assets/
+examples/test.md
+src/webview.html
+.github/
+.vscode/

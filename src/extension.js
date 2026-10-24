@@ -1,12 +1,54 @@
+/**
+ * VS Code extension entry point: a lightweight Markdown preview in a webview.
+ *
+ * Why it exists: the built-in preview is heavier than needed for people who
+ * want Mermaid, MathJax, and a navigable outline with nothing else. This file
+ * holds all extension logic; `webview.html` supplies the page template.
+ *
+ * Approach and invariants:
+ * - One webview panel, reused across files; state lives in the `activate` closure.
+ * - Markdown is rendered in the extension host, then injected as a whole page.
+ * - Untrusted text reaches HTML only through `marked` or `escapeHtml`, and the
+ *   CSP runs only scripts that carry the per-render nonce.
+ */
+const crypto = require("crypto");
 const vscode = require("vscode");
 const { marked } = require("marked");
 const webviewTemplate = require("./webview.html");
 
 /**
+ * Exact versions of the libraries the webview loads from jsDelivr.
+ *
+ * Each value is an exact version, so a compromised or regressed upstream
+ * release reaches users only after a maintainer reviews it and changes this
+ * constant. Selection criteria and upgrade rules live in docs/dependencies.md.
+ */
+const CDN_VERSIONS = {
+	mermaid: "12.1.0",
+	mathjax: "4.1.3",
+	highlightjs: "11.12.0",
+};
+
+/**
+ * Escapes the characters that are significant in HTML text and attributes
+ *
+ * Used wherever untrusted document text is placed into generated markup that
+ * marked does not process (TOC entries, preserved math and Mermaid source).
+ * Browsers decode the entities back, so MathJax and Mermaid still read the
+ * original source from the element text.
+ *
+ * @param {string} text - Raw text to escape
+ * @returns {string} Text safe to embed in HTML
+ */
+function escapeHtml(text) {
+	return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+/**
  * Activation function - called when the extension loads
  *
  * This extension provides a lightweight Markdown preview with Mermaid diagram and MathJax support.
- * It maintains a single webview panel that reuses across different markdown files.
+ * It maintains a single webview panel that follows the active Markdown editor.
  *
  * State managed:
  * - currentPanel: The active preview panel (or undefined if closed)
@@ -17,83 +59,93 @@ const webviewTemplate = require("./webview.html");
  * @param {vscode.ExtensionContext} context - Extension context provided by VS Code
  */
 function activate(context) {
-	console.log("lightweightMarkdownViewer extension activated");
 	// Keep track of current panel to avoid duplicates and enable updates
 	let currentPanel = undefined;
 	let currentDocument = undefined;
 	let updateTimer = undefined;
 
-	const disposable = vscode.commands.registerCommand(
-		"lightweightMarkdownViewer.showPreview",
-		function () {
-			const editor = vscode.window.activeTextEditor;
-			if (!editor) {
-				vscode.window.showErrorMessage("No active editor");
-				return;
-			}
-
-			const doc = editor.document;
-			if (doc.languageId !== "markdown") {
-				vscode.window.showErrorMessage("Not a Markdown file");
-				return;
-			}
-
-			if (currentPanel) {
-				// If panel exists, reveal it and update content
-				currentPanel.reveal(vscode.ViewColumn.Beside);
-				currentDocument = doc;
-				updateWebviewContent(currentPanel, doc);
-			} else {
-				// Create new panel with proper options
-				const workspaceFolders = vscode.workspace.workspaceFolders;
-				const localResourceRoots = [context.extensionUri];
-
-				// Add workspace folder(s) to allow access to markdown files and images
-				if (workspaceFolders) {
-					localResourceRoots.push(...workspaceFolders.map(folder => folder.uri));
-				}
-
-				currentPanel = vscode.window.createWebviewPanel(
-					"markdownPreviewBasic",
-					"Markdown Preview",
-					vscode.ViewColumn.Beside,
-					{
-						enableScripts: true, // Required for Mermaid to work
-						localResourceRoots: localResourceRoots,
-					}
-				);
-
-				currentDocument = doc;
-				updateWebviewContent(currentPanel, doc);
-
-				// Handle panel disposal
-				currentPanel.onDidDispose(
-					() => {
-						currentPanel = undefined;
-						currentDocument = undefined;
-					},
-					null,
-					context.subscriptions
-				);
-			}
+	const disposable = vscode.commands.registerCommand("lightweightMarkdownViewer.showPreview", function () {
+		const editor = vscode.window.activeTextEditor;
+		if (!editor) {
+			vscode.window.showErrorMessage("No active editor");
+			return;
 		}
-	);
+
+		const doc = editor.document;
+		if (doc.languageId !== "markdown") {
+			vscode.window.showErrorMessage("Not a Markdown file");
+			return;
+		}
+
+		if (currentPanel) {
+			// If panel exists, reveal it and update content
+			currentPanel.reveal(vscode.ViewColumn.Beside);
+			currentDocument = doc;
+			updateWebviewContent(currentPanel, doc);
+		} else {
+			// Create new panel with proper options
+			const workspaceFolders = vscode.workspace.workspaceFolders;
+			const localResourceRoots = [context.extensionUri];
+
+			// Add workspace folder(s) to allow access to markdown files and images
+			if (workspaceFolders) {
+				localResourceRoots.push(...workspaceFolders.map((folder) => folder.uri));
+			}
+
+			currentPanel = vscode.window.createWebviewPanel(
+				"markdownPreviewBasic",
+				"Markdown Preview",
+				vscode.ViewColumn.Beside,
+				{
+					enableScripts: true, // Required for Mermaid to work
+					localResourceRoots: localResourceRoots,
+				}
+			);
+
+			currentDocument = doc;
+			updateWebviewContent(currentPanel, doc);
+
+			// Handle panel disposal
+			currentPanel.onDidDispose(
+				() => {
+					clearTimeout(updateTimer);
+					currentPanel = undefined;
+					currentDocument = undefined;
+				},
+				null,
+				context.subscriptions
+			);
+		}
+	});
 
 	// Listen for document changes to update preview with debounce
-	const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument(
-		(e) => {
-			if (
-				currentPanel &&
-				currentDocument &&
-				e.document.uri.toString() === currentDocument.uri.toString()
-			) {
-				clearTimeout(updateTimer);
-				updateTimer = setTimeout(() => {
-					updateWebviewContent(currentPanel, e.document);
-				}, 300);
-			}
+	const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument((e) => {
+		if (currentPanel && currentDocument && e.document.uri.toString() === currentDocument.uri.toString()) {
+			clearTimeout(updateTimer);
+			updateTimer = setTimeout(() => {
+				updateWebviewContent(currentPanel, e.document);
+			}, 300);
 		}
-	);
+	});
+
+	// Follow the active Markdown editor. The panel itself taking focus reports no editor, and non-Markdown
+	// editors keep the last preview. The "git" scheme is the old side of a diff, which must not replace the file being edited.
+	const activeEditorSubscription = vscode.window.onDidChangeActiveTextEditor((editor) => {
+		if (!currentPanel || !editor) {
+			return;
+		}
+		const doc = editor.document;
+		if (doc.languageId !== "markdown" || doc.uri.scheme === "git") {
+			return;
+		}
+		if (currentDocument && doc.uri.toString() === currentDocument.uri.toString()) {
+			return;
+		}
+		// A pending debounced update belongs to the previous file and would overwrite this one
+		clearTimeout(updateTimer);
+		currentDocument = doc;
+		updateWebviewContent(currentPanel, doc);
+	});
 
 	// Re-render when VS Code color theme changes (light ↔ dark)
 	const themeChangeSubscription = vscode.window.onDidChangeActiveColorTheme(() => {
@@ -104,6 +156,7 @@ function activate(context) {
 
 	context.subscriptions.push(disposable);
 	context.subscriptions.push(changeDocumentSubscription);
+	context.subscriptions.push(activeEditorSubscription);
 	context.subscriptions.push(themeChangeSubscription);
 }
 
@@ -129,7 +182,9 @@ function resolveImagePath(imagePath, document, panel) {
 
 	try {
 		const documentPath = document.uri;
-		const documentDir = documentPath.with({ path: documentPath.path.substring(0, documentPath.path.lastIndexOf("/")) });
+		const documentDir = documentPath.with({
+			path: documentPath.path.substring(0, documentPath.path.lastIndexOf("/")),
+		});
 
 		// Resolve relative path against document directory
 		let imagePath_parsed;
@@ -196,7 +251,10 @@ function extractHeadings(raw) {
 				const level = match[1].length;
 				const text = match[2].trim();
 				// Create a URL-friendly ID from heading text
-				const id = `heading-${text.toLowerCase().replace(/[^\w\s-]/g, "").replace(/\s+/g, "-")}-${index}`;
+				const id = `heading-${text
+					.toLowerCase()
+					.replace(/[^\w\s-]/g, "")
+					.replace(/\s+/g, "-")}-${index}`;
 
 				headings.push({ level, text, id, lineIndex: index });
 			}
@@ -207,103 +265,77 @@ function extractHeadings(raw) {
 }
 
 /**
- * Updates the webview content with rendered markdown
+ * Converts markdown source to body HTML plus the heading list for the TOC
  *
- * This is the core rendering pipeline:
- * 1. Extract mermaid diagram blocks (before markdown parsing)
- * 2. Extract math expressions - both inline ($...$) and block ($$...$$)
- * 3. Convert markdown to HTML using marked library
- * 4. Restore mermaid and math blocks with preservation markers
- * 5. Process image paths to resolve relative paths to webview URIs
- * 6. Inject HTML into webview with proper CSP and styling
+ * Pipeline:
+ * 1. Extract Mermaid blocks, then block and inline math, before parsing
+ * 2. Convert the remaining markdown to HTML with marked
+ * 3. Attach heading IDs and restore the preserved blocks
  *
  * Why extraction happens first:
- * - marked parser would escape backticks/delimiters in mermaid & math syntax
- * - Pre-processing preserves code and math integrity
- * - Mermaid v11 renders elements with class="mermaid"
- * - MathJax processes restored math delimiters correctly
+ * - marked would escape or reflow the backticks, delimiters and operators in Mermaid and math source
+ * - Mermaid goes first because diagram labels may contain "$", which the math passes would swallow
+ * - Preserved source is HTML-escaped; the browser decodes it, so Mermaid and MathJax read the original text
+ *
+ * @param {string} source - Raw markdown text
+ * @returns {{ html: string, headings: Array }} Rendered HTML and extracted headings
+ */
+function renderMarkdown(source) {
+	let raw = source;
+	const preservedBlocks = [];
+	const preserve = (content) => {
+		preservedBlocks.push(content);
+		return `<!--PRESERVED_${preservedBlocks.length - 1}-->`;
+	};
+
+	const headings = extractHeadings(raw);
+
+	// Both the backtick (```) and triple-colon (:::) forms render, for GitHub and Azure DevOps compatibility
+	const preserveMermaid = (match, code) => preserve(`<pre class="mermaid">${escapeHtml(code.trim())}</pre>`);
+	raw = raw.replace(/```mermaid\s*\n([\s\S]*?)```/g, preserveMermaid);
+	raw = raw.replace(/:::\s*mermaid\s*\n([\s\S]*?):::/g, preserveMermaid);
+
+	// Block math ($$...$$) must come before inline math ($...$)
+	const preserveMath = (match) => preserve(escapeHtml(match));
+	raw = raw.replace(/\$\$\s*\n[\s\S]*?\$\$/g, preserveMath);
+	raw = raw.replace(/\$[^$\n]+\$/g, preserveMath);
+
+	let html = marked(raw);
+
+	// Add IDs to headings for anchor linking
+	headings.forEach((heading) => {
+		html = html.replace(`<h${heading.level}>`, `<h${heading.level} id="${heading.id}">`);
+	});
+
+	html = html.replace(/<!--PRESERVED_(\d+)-->/g, (match, index) => {
+		return preservedBlocks[parseInt(index, 10)] ?? match;
+	});
+
+	return { html, headings };
+}
+
+/**
+ * Renders a markdown document into the webview
+ *
+ * Runs renderMarkdown, rewrites image paths to webview URIs, then injects the
+ * result into the HTML template with a fresh CSP nonce. Errors surface as a
+ * VS Code notification, so a failed render is visible.
  *
  * @param {vscode.WebviewPanel} panel - The webview to update
  * @param {vscode.TextDocument} document - The markdown document to render
  */
 function updateWebviewContent(panel, document) {
 	try {
-		let raw = document.getText();
-		const preservedBlocks = [];
+		const { html: renderedHtml, headings } = renderMarkdown(document.getText());
 
-		// Extract headings for TOC
-		const headings = extractHeadings(raw);
-
-		// Extract block math ($$...$$) - must come before inline math
-		raw = raw.replace(/\$\$\s*\n([\s\S]*?)\$\$/g, (_, code) => {
-			preservedBlocks.push({ type: "math-block", content: `$$\n${code}$$` });
-			return `<!--PRESERVED_${preservedBlocks.length - 1}-->`;
-		});
-
-		// Extract inline math ($...$) - protect from marked escaping
-		raw = raw.replace(/\$([^$\n]+)\$/g, (_, code) => {
-			preservedBlocks.push({ type: "math-inline", content: `$${code}$` });
-			return `<!--PRESERVED_${preservedBlocks.length - 1}-->`;
-		});
-
-		// Replace mermaid code blocks with <pre class="mermaid">...</pre>
-		// Process this BEFORE marked to avoid markdown escaping issues
-		// Supports both backtick (```) and triple-colon (:::) syntax for GitHub and Azure DevOps compatibility
-		raw = raw.replace(
-			/```mermaid\s*\n([\s\S]*?)```/g,
-			(match, code) => {
-				preservedBlocks.push({ type: "mermaid", content: `<pre class="mermaid">${code.trim()}</pre>` });
-				return `<!--PRESERVED_${preservedBlocks.length - 1}-->`;
-			}
-		);
-
-		// Triple-colon syntax (Azure DevOps / Fenced Div style)
-		raw = raw.replace(
-			/:::\s*mermaid\s*\n([\s\S]*?):::/g,
-			(match, code) => {
-				preservedBlocks.push({ type: "mermaid", content: `<pre class="mermaid">${code.trim()}</pre>` });
-				return `<!--PRESERVED_${preservedBlocks.length - 1}-->`;
-			}
-		);
-
-		// Render markdown to HTML
-		let html = marked(raw);
-
-		// Add IDs to headings for anchor linking
-		headings.forEach(heading => {
-			const headingTag = `<h${heading.level}>`;
-			const headingTagWithId = `<h${heading.level} id="${heading.id}">`;
-			html = html.replace(headingTag, headingTagWithId);
-		});
-
-		// Restore preserved blocks
-		html = html.replace(/<!--PRESERVED_(\d+)-->/g, (match, index) => {
-			const block = preservedBlocks[parseInt(index)];
-			if (block.type === "mermaid") {
-				return block.content;
-			} else if (block.type === "math-block") {
-				return block.content;
-			} else if (block.type === "math-inline") {
-				return block.content;
-			}
-			return match;
-		});
-
-		// Process image paths to resolve relative paths
-		html = html.replace(/<img\s+src="([^"]+)"/g, (match, imagePath) => {
+		const html = renderedHtml.replace(/<img\s+src="([^"]+)"/g, (match, imagePath) => {
 			const resolvedPath = resolveImagePath(imagePath, document, panel);
 			return `<img src="${resolvedPath}"`;
 		});
 
-		// Generate nonce for CSP
-		const nonce = getNonce();
-		const theme = resolveTheme();
-
-		panel.webview.html = getWebviewContent(html, nonce, headings, theme);
+		panel.webview.html = getWebviewContent(html, getNonce(), headings, resolveTheme(), document.uri.toString());
 	} catch (error) {
-		vscode.window.showErrorMessage(
-			`Failed to render markdown: ${error.message}`
-		);
+		vscode.window.showErrorMessage(`Failed to render markdown: ${error.message}`);
 	}
 }
 
@@ -321,7 +353,7 @@ function buildTOCTree(headings) {
 	const root = { children: [] };
 	const stack = [{ node: root, level: 0 }];
 
-	headings.forEach(heading => {
+	headings.forEach((heading) => {
 		const newNode = { heading, children: [] };
 
 		// Pop stack until we find a parent with a lower level
@@ -356,15 +388,15 @@ function renderTOCNode(node) {
 	if (hasChildren) {
 		const openAttr = h.level <= 1 ? " open" : "";
 		html += `<details class="toc-details"${openAttr}>`;
-		html += `<summary class="toc-summary"><a href="#${h.id}" class="toc-link"><span class="toc-prefix">${prefix}</span>${h.text}</a></summary>`;
-		html += "<ul class=\"toc-list\">";
-		node.children.forEach(child => {
+		html += `<summary class="toc-summary"><a href="#${h.id}" class="toc-link"><span class="toc-prefix">${prefix}</span>${escapeHtml(h.text)}</a></summary>`;
+		html += '<ul class="toc-list">';
+		node.children.forEach((child) => {
 			html += renderTOCNode(child);
 		});
 		html += "</ul>";
 		html += "</details>";
 	} else {
-		html += `<a href="#${h.id}" class="toc-link"><span class="toc-prefix">${prefix}</span>${h.text}</a>`;
+		html += `<a href="#${h.id}" class="toc-link"><span class="toc-prefix">${prefix}</span>${escapeHtml(h.text)}</a>`;
 	}
 
 	html += "</li>";
@@ -382,11 +414,12 @@ function renderTOCNode(node) {
  * @returns {string} HTML for the nested, collapsible TOC list
  */
 function generateTOC(headings) {
-	if (headings.length === 0) return "<p style=\"font-size: 0.9em; color: var(--vscode-descriptionForeground);\">No headings found</p>";
+	if (headings.length === 0)
+		return '<p style="font-size: 0.9em; color: var(--vscode-descriptionForeground);">No headings found</p>';
 
 	const tree = buildTOCTree(headings);
-	let tocHtml = "<ul class=\"toc-list\">";
-	tree.forEach(node => {
+	let tocHtml = '<ul class="toc-list">';
+	tree.forEach((node) => {
 		tocHtml += renderTOCNode(node);
 	});
 	tocHtml += "</ul>";
@@ -406,9 +439,7 @@ function resolveTheme() {
 	const isDark = kind === vscode.ColorThemeKind.Dark || kind === vscode.ColorThemeKind.HighContrast;
 	return {
 		mermaidTheme: isDark ? "dark" : "default",
-		hljsTheme: isDark
-			? "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/atom-one-dark.min.css"
-			: "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/atom-one-light.min.css",
+		hljsTheme: `https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@${CDN_VERSIONS.highlightjs}/styles/atom-one-${isDark ? "dark" : "light"}.min.css`,
 	};
 }
 
@@ -416,57 +447,55 @@ function resolveTheme() {
  * Generates the complete HTML content for the webview
  *
  * Loads the HTML template (inlined at build time by webpack) and replaces
- * placeholder tokens with dynamic values. Uses function-form replacements
- * to avoid issues with special $ patterns in user-generated content.
+ * placeholder tokens with dynamic values in a single pass. A value is never
+ * rescanned, so "{{...}}" text in a document or heading cannot trigger a
+ * substitution, and "$" sequences in content stay literal.
  *
  * Template placeholders:
- * - {{NONCE}}: CSP nonce token (appears 4 times)
+ * - {{NONCE}}: CSP nonce token (appears on every inline and CDN script tag)
+ * - {{MERMAID_VERSION}}, {{MATHJAX_VERSION}}, {{HLJS_VERSION}}: pinned CDN versions from CDN_VERSIONS
  * - {{HLJS_THEME}}: highlight.js stylesheet URL
  * - {{MERMAID_THEME}}: Mermaid diagram theme name
  * - {{TOC}}: Generated table of contents HTML
  * - {{CONTENT}}: Rendered markdown HTML
+ * - {{DOC_KEY}}: Escaped URI of the previewed document, read by the page to scope its saved scroll position
  *
  * @param {string} markdownHtml - Already-rendered HTML from marked
  * @param {string} nonce - Security token for CSP (random string)
  * @param {Array} headings - Array of heading objects for TOC generation
  * @param {{ mermaidTheme: string, hljsTheme: string }} theme - Theme config from resolveTheme()
+ * @param {string} documentKey - URI of the previewed document; the page keys its saved scroll position to it
  * @returns {string} Complete HTML page
  */
-function getWebviewContent(markdownHtml, nonce, headings = [], theme = {}) {
-	const tocHtml = generateTOC(headings);
+function getWebviewContent(markdownHtml, nonce, headings = [], theme = {}, documentKey = "") {
+	const values = {
+		NONCE: nonce,
+		MERMAID_VERSION: CDN_VERSIONS.mermaid,
+		MATHJAX_VERSION: CDN_VERSIONS.mathjax,
+		HLJS_VERSION: CDN_VERSIONS.highlightjs,
+		HLJS_THEME: theme.hljsTheme,
+		MERMAID_THEME: theme.mermaidTheme,
+		DOC_KEY: escapeHtml(documentKey),
+		TOC: generateTOC(headings),
+		CONTENT: markdownHtml,
+	};
 
-	return webviewTemplate
-		.replace(/\{\{NONCE\}\}/g, () => nonce)
-		.replace("{{HLJS_THEME}}", () => theme.hljsTheme)
-		.replace("{{MERMAID_THEME}}", () => theme.mermaidTheme)
-		.replace("{{TOC}}", () => tocHtml)
-		.replace("{{CONTENT}}", () => markdownHtml);
+	// One pass over the template, so placeholder-like text inside the document or a heading is never substituted
+	return webviewTemplate.replace(/\{\{([A-Z_]+)\}\}/g, (match, key) => values[key] ?? match);
 }
 
 /**
  * Generates a random nonce for Content Security Policy
  *
- * A nonce (number used once) is a random token that:
- * - Makes each rendered page unique
- * - Prevents inline script injection attacks
- * - Is required by VS Code's webview security model
+ * The CSP only runs scripts carrying the nonce of the current render, so the
+ * value must be unguessable by markdown content. It comes from the operating
+ * system's CSPRNG (`crypto.randomBytes`) because `Math.random` output can be
+ * predicted from earlier values.
  *
- * The nonce is included in the CSP header and must match
- * all inline scripts for them to execute. This prevents
- * malicious scripts from running even if CSP is bypassed.
- *
- * Length: 32 characters of alphanumeric (sufficient for security)
- *
- * @returns {string} Random 32-character alphanumeric string
+ * @returns {string} Random 32-character hexadecimal string
  */
 function getNonce() {
-	let text = "";
-	const possible =
-		"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-	for (let i = 0; i < 32; i++) {
-		text += possible.charAt(Math.floor(Math.random() * possible.length));
-	}
-	return text;
+	return crypto.randomBytes(16).toString("hex");
 }
 
 function deactivate() {}
@@ -478,4 +507,8 @@ module.exports = {
 	buildTOCTree,
 	generateTOC,
 	getNonce,
+	escapeHtml,
+	renderMarkdown,
+	getWebviewContent,
+	CDN_VERSIONS,
 };

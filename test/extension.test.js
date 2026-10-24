@@ -1,45 +1,20 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
-const Module = require("module");
-const fs = require("fs");
+const { install } = require("./helpers/fake-vscode");
 
-// --- Test-time module shims (replaces webpack asset/source and vscode external) ---
-
-// Handle require("./webview.html") without webpack
-require.extensions[".html"] = function (module, filename) {
-	module.exports = fs.readFileSync(filename, "utf-8");
-};
-
-// Handle require("vscode") without VS Code runtime
-const origResolve = Module._resolveFilename;
-Module._resolveFilename = function (request) {
-	if (request === "vscode") return "vscode";
-	return origResolve.apply(this, arguments);
-};
-require.cache["vscode"] = {
-	id: "vscode",
-	filename: "vscode",
-	loaded: true,
-	exports: {
-		window: {
-			activeColorTheme: { kind: 1 },
-			showErrorMessage: () => {},
-			onDidChangeActiveColorTheme: () => ({ dispose: () => {} }),
-		},
-		workspace: {
-			onDidChangeTextDocument: () => ({ dispose: () => {} }),
-		},
-		commands: {
-			registerCommand: () => ({ dispose: () => {} }),
-		},
-		ViewColumn: { Beside: 2 },
-		Uri: { joinPath: () => ({ toString: () => "" }) },
-		ColorThemeKind: { Light: 1, Dark: 2, HighContrast: 3, HighContrastLight: 4 },
-	},
-};
+install();
 
 // --- Load the extension module ---
-const { extractHeadings, buildTOCTree, generateTOC, getNonce } = require("../src/extension");
+const {
+	extractHeadings,
+	buildTOCTree,
+	generateTOC,
+	getNonce,
+	escapeHtml,
+	renderMarkdown,
+	getWebviewContent,
+	CDN_VERSIONS,
+} = require("../src/extension");
 
 // ============================================================================
 // extractHeadings
@@ -49,8 +24,14 @@ describe("extractHeadings", () => {
 		const md = "# H1\n## H2\n### H3\n#### H4\n##### H5\n###### H6";
 		const result = extractHeadings(md);
 		assert.equal(result.length, 6);
-		assert.deepEqual(result.map(h => h.level), [1, 2, 3, 4, 5, 6]);
-		assert.deepEqual(result.map(h => h.text), ["H1", "H2", "H3", "H4", "H5", "H6"]);
+		assert.deepEqual(
+			result.map((h) => h.level),
+			[1, 2, 3, 4, 5, 6]
+		);
+		assert.deepEqual(
+			result.map((h) => h.text),
+			["H1", "H2", "H3", "H4", "H5", "H6"]
+		);
 	});
 
 	it("returns empty array for input with no headings", () => {
@@ -81,7 +62,10 @@ describe("extractHeadings", () => {
 		const md = "# A\n```\ncode\n```\n# B\n```\n# C inside code\n```\n# D";
 		const result = extractHeadings(md);
 		assert.equal(result.length, 3);
-		assert.deepEqual(result.map(h => h.text), ["A", "B", "D"]);
+		assert.deepEqual(
+			result.map((h) => h.text),
+			["A", "B", "D"]
+		);
 	});
 
 	it("generates URL-friendly IDs", () => {
@@ -137,7 +121,7 @@ describe("buildTOCTree", () => {
 		];
 		const tree = buildTOCTree(headings);
 		assert.equal(tree.length, 3);
-		tree.forEach(node => assert.equal(node.children.length, 0));
+		tree.forEach((node) => assert.equal(node.children.length, 0));
 	});
 
 	it("nests lower-level headings under higher-level parents", () => {
@@ -193,9 +177,9 @@ describe("generateTOC", () => {
 	it("generates a <ul> list for non-empty headings", () => {
 		const headings = [{ level: 1, text: "Title", id: "title" }];
 		const result = generateTOC(headings);
-		assert.ok(result.includes("<ul class=\"toc-list\">"));
+		assert.ok(result.includes('<ul class="toc-list">'));
 		assert.ok(result.includes("Title"));
-		assert.ok(result.includes("href=\"#title\""));
+		assert.ok(result.includes('href="#title"'));
 	});
 
 	it("uses <details>/<summary> for headings with children", () => {
@@ -232,6 +216,10 @@ describe("getNonce", () => {
 		assert.equal(getNonce().length, 32);
 	});
 
+	it("is hexadecimal", () => {
+		assert.match(getNonce(), /^[0-9a-f]{32}$/);
+	});
+
 	it("contains only alphanumeric characters", () => {
 		const nonce = getNonce();
 		assert.match(nonce, /^[A-Za-z0-9]{32}$/);
@@ -241,5 +229,117 @@ describe("getNonce", () => {
 		const a = getNonce();
 		const b = getNonce();
 		assert.notEqual(a, b);
+	});
+});
+
+// ============================================================================
+// escapeHtml
+// ============================================================================
+describe("escapeHtml", () => {
+	it("escapes &, <, > and double quotes", () => {
+		assert.equal(escapeHtml('<a href="x">&</a>'), "&lt;a href=&quot;x&quot;&gt;&amp;&lt;/a&gt;");
+	});
+
+	it("leaves plain text unchanged", () => {
+		assert.equal(escapeHtml("plain text 123"), "plain text 123");
+	});
+});
+
+// ============================================================================
+// generateTOC escaping
+// ============================================================================
+describe("generateTOC escaping", () => {
+	it("escapes HTML in heading text", () => {
+		const html = generateTOC(extractHeadings("# <img src=x onerror=alert(1)>"));
+		assert.ok(!html.includes("<img"));
+		assert.ok(html.includes("&lt;img"));
+	});
+});
+
+// ============================================================================
+// renderMarkdown
+// ============================================================================
+describe("renderMarkdown", () => {
+	it("preserves inline and block math with delimiters intact", () => {
+		const { html } = renderMarkdown("Energy $E = mc^2$ here\n\n$$\n\\int x\n$$\n");
+		assert.ok(html.includes("$E = mc^2$"));
+		assert.ok(html.includes("$$\n\\int x\n$$"));
+	});
+
+	it("escapes HTML characters inside math", () => {
+		const { html } = renderMarkdown("$a<b$");
+		assert.ok(html.includes("$a&lt;b$"));
+	});
+
+	it("keeps dollar signs inside Mermaid blocks out of math extraction", () => {
+		const { html } = renderMarkdown('```mermaid\ngraph TD\n  A["$5"] --> B["$6"]\n```\n');
+		assert.ok(html.includes('<pre class="mermaid">'));
+		assert.ok(html.includes("$5") && html.includes("$6"));
+		assert.ok(!html.includes("PRESERVED_"));
+	});
+
+	it("renders both Mermaid syntaxes identically", () => {
+		const a = renderMarkdown("```mermaid\ngraph TD\n  A-->B\n```\n").html;
+		const b = renderMarkdown("::: mermaid\ngraph TD\n  A-->B\n:::\n").html;
+		assert.equal(a, b);
+	});
+
+	it("escapes markup in Mermaid source so it cannot break out of the pre element", () => {
+		const { html } = renderMarkdown("```mermaid\ngraph TD\n  A[</pre><img src=x>]\n```\n");
+		assert.ok(!html.includes("<img src=x>"));
+	});
+
+	it("adds heading IDs matching the extracted headings", () => {
+		const { html, headings } = renderMarkdown("# Title\n\n## Sub\n");
+		assert.equal(headings.length, 2);
+		for (const h of headings) {
+			assert.ok(html.includes(`<h${h.level} id="${h.id}">`));
+		}
+	});
+});
+
+// ============================================================================
+// getWebviewContent
+// ============================================================================
+describe("getWebviewContent", () => {
+	const theme = { mermaidTheme: "default", hljsTheme: "https://example.test/theme.css" };
+	const page = getWebviewContent("<p>x</p>", "NONCE123", [], theme);
+
+	it("leaves no unreplaced placeholders", () => {
+		assert.ok(!/\{\{[A-Z_]+\}\}/.test(page));
+	});
+
+	it("loads every CDN library at its pinned version", () => {
+		assert.ok(page.includes(`mermaid@${CDN_VERSIONS.mermaid}/`));
+		assert.ok(page.includes(`mathjax@${CDN_VERSIONS.mathjax}/`));
+		assert.ok(page.includes(`cdn-assets@${CDN_VERSIONS.highlightjs}/`));
+		assert.ok(!/(mermaid|mathjax)@\d+\//.test(page), "floating major version found");
+	});
+
+	it("puts the nonce on every script tag and in the CSP", () => {
+		const scripts = page.match(/<script\b[^>]*>/g);
+		assert.ok(scripts.length >= 4);
+		for (const tag of scripts) {
+			assert.ok(tag.includes('nonce="NONCE123"'), tag);
+		}
+		assert.ok(page.includes("'nonce-NONCE123'"));
+	});
+});
+
+// ============================================================================
+// getWebviewContent placeholders
+// ============================================================================
+describe("getWebviewContent placeholders", () => {
+	const theme = { mermaidTheme: "default", hljsTheme: "https://example.test/theme.css" };
+
+	it("writes an escaped document key for the scroll position", () => {
+		const page = getWebviewContent("", "N", [], theme, 'file:///a"b.md');
+		assert.ok(page.includes('data-doc="file:///a&quot;b.md"'));
+	});
+
+	it("does not substitute placeholder text that appears inside content", () => {
+		const page = getWebviewContent("<p>{{TOC}} and {{NONCE}}</p>", "N", extractHeadings("# {{CONTENT}}"), theme);
+		assert.ok(page.includes("<p>{{TOC}} and {{NONCE}}</p>"));
+		assert.ok(page.includes("{{CONTENT}}"));
 	});
 });

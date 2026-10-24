@@ -16,7 +16,7 @@ const config = {
 		devtoolModuleFilenameTemplate: "../../[resource-path]",
 	},
 	externals: {
-		vscode: "commonjs vscode"
+		vscode: "commonjs vscode",
 	},
 	resolve: {
 		extensions: [".js"],

@@ -1,66 +1,96 @@
 # Lightweight Markdown Preview
 
-A minimal VS Code extension for previewing Markdown with Mermaid diagrams and MathJax support. **No bloat. No configuration. Just markdown.**
+A small VS Code extension that previews Markdown with Mermaid diagrams and MathJax equations. It needs no configuration.
 
-![Lightweight Markdown Preview Screenshot](./assets/markdown-preview.gif)
+![Lightweight Markdown Preview demo](./assets/markdown-preview.gif)
 
-## Why This Extension?
+## Overview
 
-- **Lightest:** The smallest full-featured markdown preview extension available
-- **Fastest:** Instant live preview updates as you type
-- **Universal Mermaid:** Renders both GitHub-style (```) and Azure DevOps-style (:::) diagrams
-- **Privacy-Friendly:** No tracking, no analytics, no data collection
-- **Secure:** Content Security Policy with nonce-based script execution
-- **Zero Configuration:** Install and use. No themes, no plugins, no bloat.
+The extension adds one command that opens a live preview beside your Markdown file.
 
-## Features
-
-- Real-time Markdown preview in a side panel
-- Collapsible table of contents sidebar with heading-level indicators (#, ##, ###) for clear hierarchy
-- Auto-scrolling outline that highlights your current section as you read and auto-expands collapsed sections
-- Click-to-scroll navigation in the TOC for quick jumping between sections
-- All standard Markdown elements (headings, lists, tables, code blocks, images, etc.)
-- Full Mermaid diagram support with dual syntax compatibility:
-  - GitHub/CommonMark style: ` ```mermaid `
-  - Azure DevOps style: `::: mermaid`
-- MathJax support for LaTeX equations
-
-![Lightweight Markdown Preview Screenshot](./assets/markdown-preview.png)
-
-### Azure DevOps Compatibility
-
-Azure DevOps uses triple-colon (:::) "Fenced Div" syntax for Mermaid diagrams, while GitHub and most tools use backticks (```). This creates a portability problem—diagrams that render in your IDE or GitHub break in Azure Repos and Wikis.
-
-**This extension solves it.** Both syntaxes render identically, making your documentation portable across platforms without manual conversion.
+- **What you get:**
+  - A preview that updates as you type and follows the Markdown file you are editing.
+  - An outline sidebar for jumping between sections.
+  - Mermaid diagrams, LaTeX math, and highlighted code.
+- **What you do not get:**
+  - Settings, themes, or plugins. The preview follows your VS Code color theme.
+- **Why it is small:**
+  - One bundled dependency, the `marked` parser.
+  - Mermaid, MathJax, and highlight.js load from a CDN when a preview opens.
 
 ## Install
 
-1. Open VS Code (Insiders, Cursor, Windsurf or any other VS Code-based editor)
-2. Go to Extensions
-3. Search for "Lightweight Markdown Preview" or explicitly for `KunalPathak.lightweight-markdown-preview`
-4. Click Install
-5. Start previewing your Markdown file by clicking the "Eye" icon in the top-right corner or using the Command Palette (`Ctrl+Shift+P` > `Markdown: Show Lightweight Markdown Preview`)
+1. Open the Extensions view in VS Code, or in a VS Code-based editor such as Cursor or Windsurf.
+2. Search for "Lightweight Markdown Preview", or for the identifier `KunalPathak.lightweight-markdown-preview`.
+3. Select **Install**.
 
-## Documentation Guide
+**Requirements:**
 
-### For Users
-This README is all you need to install and use the extension.
+- VS Code or a compatible fork released within the last 12 months.
+- Network access to the jsDelivr CDN for diagrams, math, and syntax highlighting.
 
-### For Developers
+## Use
 
-**Before making any code changes:**
-1. Read [architecture.md](docs/architecture.md) - understand design decisions, security model, and why things are structured as they are
-2. This ensures changes align with the existing design and don't introduce security issues
+1. Open a Markdown file.
+2. Select the eye icon in the top-right of the editor title bar. You can also open the Command Palette (`Ctrl+Shift+P` or `Cmd+Shift+P`) and run **Markdown: Show Lightweight Markdown Preview**.
+3. Edit the file. The preview updates after a short pause.
+4. Switch to another Markdown file. The preview switches with you and starts at the top of that file.
 
-**While developing and releasing:**
-1. Follow [development.md](docs/development.md) for the complete workflow:
-   - **Section 1:** Local setup and verification
-   - **Section 2:** Feature development workflow (creating branches, making changes, testing, merging)
-   - **Section 3:** Release to marketplace (version bumps, tagging, publishing)
-   - **Section 4-5:** Code quality checklist and common pitfalls
-   - **Section 6-7:** Troubleshooting and release checklist
+## Features
 
-**At a glance:**
-- `architecture.md` - WHY design decisions were made
-- `development.md` - HOW to develop and release code
-- `CHANGELOG.md` - WHAT changed in each version
+![Lightweight Markdown Preview screenshot](./assets/markdown-preview.png)
+
+- **Live preview:**
+  - Updates as you type.
+  - Keeps your reading position while you edit.
+  - Follows the active Markdown editor.
+- **Outline sidebar:**
+  - Opens from the ☰ button and closes with the ✕ button, the backdrop, or `Esc`.
+  - Shows heading levels with `#` prefixes and collapses sections that have children.
+  - Highlights the section you are reading and expands its parents.
+  - Scrolls to a heading when you select it.
+- **Markdown:**
+  - Renders headings, lists, tables, code blocks, images, and links.
+  - Resolves relative and workspace-root image paths.
+- **Mermaid diagrams:**
+  - Renders GitHub-style fences (` ```mermaid `).
+  - Renders Azure DevOps-style fences (`::: mermaid`).
+- **Math:**
+  - Renders block equations (`$$ ... $$`).
+  - Renders inline equations (`$ ... $`).
+- **Code:**
+  - Highlights fenced code blocks.
+- **Themes:**
+  - Matches light, dark, and high-contrast VS Code themes.
+  - Re-renders when you change the theme.
+
+## Mermaid on GitHub and Azure DevOps
+
+GitHub uses backtick fences for Mermaid diagrams, and Azure DevOps uses triple-colon "fenced div" syntax. A diagram written for one platform does not render on the other.
+
+- **This extension:**
+  - Renders both syntaxes the same way.
+  - Lets you keep one source file and preview it before you publish to either platform.
+
+## Privacy and Security
+
+- **Privacy:**
+  - The extension sends no telemetry or analytics.
+  - Your document text stays on your machine.
+  - jsDelivr sees the requests for the Mermaid, MathJax, and highlight.js files, not your content.
+- **Security:**
+  - A Content Security Policy runs only scripts that carry a per-render random nonce.
+  - The extension escapes text it inserts into the page.
+  - Mermaid runs at its strict security level.
+
+## Contribute
+
+Start with the documents below. Each one answers a different question.
+
+- **Understand the design:** [architecture.md](docs/architecture.md) explains the structure and the security model.
+- **Work with dependencies:** [dependencies.md](docs/dependencies.md) sets the rules for choosing and reviewing versions.
+- **Build and release:** [development.md](docs/development.md) covers setup and publishing.
+- **Test:** [testing.md](docs/testing.md) maps workflows to checks and lists the manual smoke check.
+- **Check past decisions:** [feature-decisions.md](docs/feature-decisions.md) lists ideas that were evaluated and not built.
+- **See what changed:** [CHANGELOG.md](CHANGELOG.md) lists changes by version.
+- **Work as an AI agent:** [AGENTS.md](AGENTS.md) holds the shared instructions.

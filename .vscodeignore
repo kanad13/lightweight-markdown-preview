@@ -3,7 +3,7 @@
 eslint.config.js
 jsconfig.json
 webpack.config.js
-CLAUDE.md
+AGENTS.md
 WORKPLAN.md
 next.md
 .vscode/
@@ -20,3 +20,5 @@ node_modules/
 docs/markdown-preview.png
 assets/markdown-preview.gif
 assets/markdown-preview.png
+.prettierrc
+.prettierignore

@@ -2,7 +2,7 @@ const js = require("@eslint/js");
 
 module.exports = [
 	{
-		ignores: ["node_modules/**", "dist/**"]
+		ignores: ["node_modules/**", "dist/**"],
 	},
 	{
 		files: ["**/*.js"],
@@ -19,17 +19,17 @@ module.exports = [
 				module: "writable",
 				require: "readonly",
 				setTimeout: "readonly",
-				clearTimeout: "readonly"
-			}
+				clearTimeout: "readonly",
+			},
 		},
 		rules: {
 			...js.configs.recommended.rules,
-			"indent": ["error", "tab"],
+			indent: ["error", "tab"],
 			"linebreak-style": ["error", "unix"],
-			"quotes": ["error", "double"],
-			"semi": ["error", "always"],
+			quotes: ["error", "double", { avoidEscape: true }],
+			semi: ["error", "always"],
 			"no-unused-vars": ["warn"],
-			"no-console": "off"
-		}
-	}
+			"no-console": "off",
+		},
+	},
 ];
