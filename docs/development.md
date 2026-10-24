@@ -125,17 +125,12 @@ All exported functions **must** have JSDoc comments describing:
 
 ```javascript
 /**
- * Generates a cryptographic nonce for Content Security Policy.
- * Used to prevent XSS attacks by allowing only trusted scripts to execute.
+ * Generates a random nonce for Content Security Policy.
+ * Only scripts that carry the nonce of the current render can run.
  * @returns {string} A random 32-character hexadecimal nonce
  */
 function getNonce() {
-	let text = "";
-	const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-	for (let i = 0; i < 32; i++) {
-		text += possible.charAt(Math.floor(Math.random() * possible.length));
-	}
-	return text;
+	return crypto.randomBytes(16).toString("hex");
 }
 ```
 
@@ -146,6 +141,9 @@ function getNonce() {
 2. Check bundle size impact (`npm run package` and review dist/)
 3. Consider using a CDN instead
 4. See [architecture.md](architecture.md) for security considerations
+5. Choose the version with the criteria in [dependencies.md](dependencies.md), and add the package to its inventory
+
+CDN library versions live in the `CDN_VERSIONS` constant in `src/extension.js`, always as an exact `x.y.z` version.
 
 ### Step 4: Test Thoroughly
 
@@ -160,7 +158,8 @@ npm run package
 Open the dev host and verify:
 - All elements render correctly (headings, lists, tables, code blocks, images)
 - Mermaid diagrams render properly
-- MathJax equations display correctly
+- MathJax equations display correctly (both block `$$...$$` and inline `$...$`)
+- Scroll position holds while typing in a long document
 - Live updates work when typing
 - No errors in Developer Tools (`Help > Toggle Developer Tools`)
 
@@ -259,7 +258,12 @@ npm test
 
 # Verify no errors
 echo $?  # Should output: 0
+
+# Shipped dependencies must have no known vulnerabilities
+npm audit --omit=dev
 ```
+
+Follow the review procedure in [dependencies.md](dependencies.md) before each release.
 
 ### Step 4: Build Package
 
@@ -394,6 +398,7 @@ Before committing any code, verify:
 - [ ] **Build succeeds:** `npm run package` creates .vsix without errors
 - [ ] **JSDoc complete:** All exported functions have comprehensive documentation
 - [ ] **No security regressions:** CSP, nonce generation, and state management unchanged (unless intentional)
+- [ ] **Dependencies reviewed:** `npm audit --omit=dev` reports 0, and any version change follows [dependencies.md](dependencies.md)
 - [ ] **Manual testing:** Test in F5 dev host with `examples/test.md`
 - [ ] **No console logs:** Remove debugging statements (unless required for production diagnostics)
 - [ ] **Documentation updated:** If features or architecture changed, update relevant docs (README.md, architecture.md, CHANGELOG.md)
@@ -440,7 +445,7 @@ function updateWebviewContent() {
 
 **Safe approach:**
 - Generate a **new** nonce for every `updateWebviewContent()` call
-- Use a cryptographically strong random source (not `Math.random()` alone for production crypto, but acceptable here given the threat model)
+- Use the operating system's random source (`crypto.randomBytes`); `Math.random()` output is predictable
 
 ### Pitfall #3: State Management Race Conditions
 

@@ -4,7 +4,7 @@ This document describes the design decisions and architectural patterns used in 
 
 ## Overview
 
-The extension provides a lightweight, secure markdown preview directly within VS Code. It prioritizes simplicity, security, and performance over feature breadth. The implementation consists of `src/extension.js` (logic) and `src/webview.html` (template, inlined at build time by webpack), with no external dependencies beyond the `marked` markdown parser.
+The extension provides a lightweight, secure markdown preview directly within VS Code. It prioritizes simplicity, security, and performance over feature breadth. The implementation consists of `src/extension.js` (logic) and `src/webview.html` (template, inlined at build time by webpack). The only bundled dependency is the `marked` markdown parser. Mermaid, MathJax, and highlight.js load in the webview from jsDelivr at exact, pinned versions; [dependencies.md](dependencies.md) explains how those versions are chosen.
 
 ## High-Level Architecture
 
@@ -35,19 +35,21 @@ The extension enforces a strict CSP that only allows scripts with a unique, rand
 - **How it works:** A new cryptographic nonce is generated for every preview render. This nonce is included in the CSP `meta` tag and in every legitimate `<script>` tag.
 - **Effect:** Any malicious `<script>` tag injected within the markdown will not have the correct nonce and will be blocked by the browser from executing.
 
-### Layer 2: Safe HTML Parsing
+### Layer 2: Escaping of Generated Markup
 
-The `marked` parser sanitizes input by escaping HTML, turning potentially executable code into inert text.
+Raw HTML in a document passes through `marked` unchanged, so the CSP in Layer 1 is the control that keeps such markup from running scripts. The extension escapes every fragment it builds itself:
 
-- **Example:** `<script>alert('xss')</script>` becomes `&lt;script&gt;alert('xss')&lt;/script&gt;`
+- **TOC entries:** heading text is escaped with `escapeHtml()` before it enters the sidebar markup.
+- **Math and Mermaid source:** preserved blocks are escaped, so a diagram or formula cannot close its `<pre>` element or open a new tag. The browser decodes the entities, so MathJax and Mermaid still read the original source.
+- **Mermaid security level:** diagrams render with `securityLevel: 'strict'`, which disables click handlers and sanitizes HTML labels.
 
 ### Layer 3: Trusted External Scripts
 
-Mermaid and MathJax are loaded from trusted CDNs (jsDelivr), not from user-controlled content. The extension never executes user-provided JavaScript.
+Mermaid, MathJax, and highlight.js load from jsDelivr at the exact versions in `CDN_VERSIONS`. A new upstream release reaches users only after a maintainer reviews it and changes that constant. The extension never executes user-provided JavaScript.
 
 ### Layer 4: VS Code Sandbox
 
-The entire preview is sandboxed by VS Code, preventing access to the file system or other sensitive resources.
+VS Code runs the preview in an isolated webview. The page can only load local files from the folders listed in `localResourceRoots` (the extension folder and the open workspace folders), and it has no direct access to the extension host.
 
 ## State Management
 
@@ -64,19 +66,23 @@ The extension's state is managed entirely in memory and is reset every time the 
    - A new CSP `nonce` is generated.
    - The markdown content is parsed and rendered into a full HTML document.
    - The webview's HTML is replaced with the new content.
-5. **Disposal:** When the user closes the panel, the listener is removed and the `currentPanel` variable is set to `null`, releasing its resources.
+5. **Disposal:** When the user closes the panel, any pending debounced update is cancelled and `currentPanel` and `currentDocument` are reset to `undefined`. The document-change and theme-change listeners stay registered for the life of the extension and do nothing while no panel is open.
 
 ## Content Processing Pipeline
 
-1. **Extraction:** Mermaid and math blocks are extracted and preserved before markdown parsing (prevents escaping of special syntax)
+1. **Extraction:** `renderMarkdown()` removes Mermaid blocks, then block math, then inline math, before parsing, so `marked` cannot alter their syntax. Mermaid goes first because diagram labels can contain `$`.
    - Mermaid supports dual syntax: GitHub-style (` ```mermaid `) and Azure DevOps-style (`::: mermaid`)
-2. **Rendering:** `marked` converts markdown to HTML
-3. **Restoration:** Preserved blocks are restored with original delimiters intact
+2. **Rendering:** `marked` converts the remaining markdown to HTML
+3. **Restoration:** Preserved blocks return in place, HTML-escaped, with original delimiters intact. MathJax is configured to recognize both `$...$` and `\(...\)` as inline delimiters.
 4. **Path Resolution:** Image `src` attributes are converted to webview-accessible URIs, handling:
    - Relative paths (`./images/photo.png`)
    - Parent directory paths (`../docs/diagram.png`)
    - Workspace-root paths (`/assets/icon.png`)
    - HTTPS URLs and data URIs (unchanged)
+
+## Scroll Position Retention
+
+Every edit replaces the whole webview page, which resets the browser's scroll position to the top. To keep the reading position, the page saves `window.scrollY` with the webview state API (`acquireVsCodeApi().setState`) on a 100 ms debounce. After Mermaid and MathJax finish and the layout has its final height, the page restores that position. A 4-second timeout bounds the wait when the CDN is offline or blocked.
 
 ## Performance Characteristics
 
@@ -117,14 +123,14 @@ The extension provides an optional table of contents sidebar that users can togg
 - **Close:** Click sidebar close button, overlay backdrop, or press Escape key
 - **Navigate:** Click any outline link for smooth scroll to heading
 - **Track:** Current heading highlighted automatically as user scrolls content
-- **Collapse/Expand:** Parent headings with children show a disclosure triangle; sections collapsed by default; clicking the triangle toggles visibility; scrolling to a heading auto-expands its collapsed parent sections
+- **Collapse/Expand:** Parent headings with children show a disclosure triangle; H1 sections start expanded and deeper levels start collapsed; clicking the triangle toggles visibility; scrolling to a heading auto-expands its collapsed parent sections
 - **Hierarchy indicators:** Pound-sign prefixes (#, ##, ###) indicate heading depth at a glance, styled in muted monospace to avoid visual clutter
 
 #### Collapsible TOC Implementation
 
 The TOC uses native HTML `<details>/<summary>` elements for collapsibility:
 - **Zero-JS toggle:** Browser-native toggle mechanism, no custom JavaScript for expand/collapse
-- **Collapsed by default:** No `open` attribute on `<details>` elements, keeping the outline compact on first open
+- **Collapsed below H1:** Only H1 `<details>` elements carry the `open` attribute, which keeps the outline compact on first open while showing the top level
 - **Tree-based generation:** Headings are built into a parent-child tree (via `buildTOCTree()`), then rendered recursively (via `renderTOCNode()`). Parent nodes wrap children in `<details>/<summary>`, leaf nodes render as plain items.
 - **Link/toggle separation:** `e.stopPropagation()` on link clicks prevents `<details>` toggle when navigating, so clicking the heading text scrolls without collapsing
 - **Auto-expand on scroll:** When IntersectionObserver activates a heading inside a collapsed section, `updateActiveTOC()` walks up ancestor `<details>` elements and opens them

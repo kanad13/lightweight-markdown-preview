@@ -6,10 +6,10 @@ A minimal VS Code extension for previewing Markdown with Mermaid diagrams and Ma
 
 ## Why This Extension?
 
-- **Lightest:** The smallest full-featured markdown preview extension available
-- **Fastest:** Instant live preview updates as you type
+- **Light:** One bundled dependency and a package under 100 KB
+- **Live:** The preview updates as you type and keeps your scroll position
 - **Universal Mermaid:** Renders both GitHub-style (```) and Azure DevOps-style (:::) diagrams
-- **Privacy-Friendly:** No tracking, no analytics, no data collection
+- **Privacy-Friendly:** No telemetry or analytics, and your document text never leaves your machine. Mermaid, MathJax, and highlight.js load from the jsDelivr CDN, so that service sees the library requests (your document content stays local)
 - **Secure:** Content Security Policy with nonce-based script execution
 - **Zero Configuration:** Install and use. No themes, no plugins, no bloat.
 
@@ -23,7 +23,8 @@ A minimal VS Code extension for previewing Markdown with Mermaid diagrams and Ma
 - Full Mermaid diagram support with dual syntax compatibility:
   - GitHub/CommonMark style: ` ```mermaid `
   - Azure DevOps style: `::: mermaid`
-- MathJax support for LaTeX equations
+- MathJax support for LaTeX equations, both block (`$$ ... $$`) and inline (`$ ... $`)
+- Preview keeps your reading position while you edit
 
 ![Lightweight Markdown Preview Screenshot](./assets/markdown-preview.png)
 
@@ -50,7 +51,8 @@ This README is all you need to install and use the extension.
 
 **Before making any code changes:**
 1. Read [architecture.md](docs/architecture.md) - understand design decisions, security model, and why things are structured as they are
-2. This ensures changes align with the existing design and don't introduce security issues
+2. Read [dependencies.md](docs/dependencies.md) before changing any library version
+3. This ensures changes align with the existing design and don't introduce security issues
 
 **While developing and releasing:**
 1. Follow [development.md](docs/development.md) for the complete workflow:
@@ -62,5 +64,7 @@ This README is all you need to install and use the extension.
 
 **At a glance:**
 - `architecture.md` - WHY design decisions were made
+- `dependencies.md` - HOW dependency versions are chosen and reviewed
+- `feature-decisions.md` - WHICH ideas were evaluated and not built, and why
 - `development.md` - HOW to develop and release code
 - `CHANGELOG.md` - WHAT changed in each version
