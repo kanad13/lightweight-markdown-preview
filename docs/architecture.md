@@ -26,30 +26,51 @@ Webview displays rendered content with Mermaid/MathJax
 
 ## Security Model
 
-The security model assumes that any markdown file could be malicious. The extension uses a defense-in-depth strategy to mitigate risks, primarily Cross-Site Scripting (XSS).
+The security model assumes that any Markdown file could be malicious. The extension layers its defenses, mainly against Cross-Site Scripting (XSS).
 
 ### Layer 1: Content Security Policy (CSP) with Nonces
 
-The extension enforces a strict CSP that only allows scripts with a unique, randomly-generated `nonce` (number used once) to run.
+The extension enforces a strict CSP that runs only scripts with a unique, random `nonce` (number used once).
 
-- **How it works:** A new cryptographic nonce is generated for every preview render. This nonce is included in the CSP `meta` tag and in every legitimate `<script>` tag.
-- **Effect:** Any malicious `<script>` tag injected within the markdown will not have the correct nonce and will be blocked by the browser from executing.
+- **How it works:**
+  - The extension generates a new nonce for every preview render.
+  - The nonce appears in the CSP `meta` tag and in every legitimate `<script>` tag.
+- **Effect:**
+  - A `<script>` tag injected through Markdown lacks the nonce.
+  - The browser blocks that script.
 
 ### Layer 2: Escaping of Generated Markup
 
-Raw HTML in a document passes through `marked` unchanged, so the CSP in Layer 1 is the control that keeps such markup from running scripts. The extension escapes every fragment it builds itself:
+Raw HTML in a document passes through `marked` unchanged, so the CSP in Layer 1 is the control that stops such markup from running scripts. The extension escapes every fragment it builds itself.
 
-- **TOC entries:** heading text is escaped with `escapeHtml()` before it enters the sidebar markup.
-- **Math and Mermaid source:** preserved blocks are escaped, so a diagram or formula cannot close its `<pre>` element or open a new tag. The browser decodes the entities, so MathJax and Mermaid still read the original source.
-- **Mermaid security level:** diagrams render with `securityLevel: 'strict'`, which disables click handlers and sanitizes HTML labels.
+- **Outline entries:**
+  - `escapeHtml()` escapes heading text before it enters the sidebar markup.
+- **Math and Mermaid source:**
+  - The extension escapes preserved blocks, so a diagram or formula cannot close its `<pre>` element or open a new tag.
+  - The browser decodes the entities, so MathJax and Mermaid still read the original source.
+- **Mermaid security level:**
+  - Diagrams render with `securityLevel: 'strict'`.
+  - That level disables click handlers and sanitizes HTML labels.
 
 ### Layer 3: Trusted External Scripts
 
-Mermaid, MathJax, and highlight.js load from jsDelivr at the exact versions in `CDN_VERSIONS`. A new upstream release reaches users only after a maintainer reviews it and changes that constant. The extension never executes user-provided JavaScript.
+Mermaid, MathJax, and highlight.js load from jsDelivr, never from document content.
+
+- **Versions:**
+  - The exact versions live in `CDN_VERSIONS`.
+  - A new upstream release reaches users only after a maintainer reviews it and changes that constant.
+- **User scripts:**
+  - The extension never executes JavaScript from a document.
 
 ### Layer 4: VS Code Sandbox
 
-VS Code runs the preview in an isolated webview. The page can only load local files from the folders listed in `localResourceRoots` (the extension folder and the open workspace folders), and it has no direct access to the extension host.
+VS Code runs the preview in an isolated webview.
+
+- **File access:**
+  - The page loads local files only from the folders in `localResourceRoots`.
+  - Those folders are the extension folder and the open workspace folders.
+- **Extension host:**
+  - The page has no direct access to the extension host.
 
 ## State Management
 
@@ -82,18 +103,30 @@ The extension's state is managed entirely in memory and is reset every time the 
 
 ## Scroll Position Retention
 
-Every edit replaces the whole webview page, which resets the browser's scroll position to the top. To keep the reading position, the page saves `window.scrollY` with the webview state API (`acquireVsCodeApi().setState`) on a 100 ms debounce, together with the URI of the previewed document (`data-doc` on the content element). After Mermaid and MathJax finish and the layout has its final height, the page restores that position when the saved URI matches the document on screen. A different file starts at the top. A 4-second timeout bounds the wait when the CDN is offline or blocked.
+Every edit replaces the whole webview page, which resets the browser's scroll position to the top. The page keeps the reading position in three steps.
+
+- **Save:**
+  - The page saves `window.scrollY` with the webview state API (`acquireVsCodeApi().setState`) after a 100 ms pause in scrolling.
+  - The saved state includes the URI of the previewed document (`data-doc` on the content element).
+- **Restore:**
+  - The page restores the position after Mermaid and MathJax finish and the layout reaches its final height.
+  - The page restores only when the saved URI matches the document on screen, so a different file starts at the top.
+- **Timeout:**
+  - A 4-second timeout bounds the wait when the CDN is offline or blocked.
 
 ## Performance Characteristics
 
 ### Current Approach
+
 - **Full re-render on every change:** The entire markdown is re-parsed and HTML regenerated
 - **Debounced:** 300ms debounce on `onDidChangeTextDocument` batches rapid edits
 - **Why:** Ensures consistency and simplicity. Given typical markdown file sizes (< 10 MB), this is fast enough
 - **Cost:** ~10-50ms for typical documents on modern hardware
 
 ### Optimization Opportunities
+
 For future enhancements with scroll-position syncing or large file support:
+
 - **Virtual rendering:** Only render visible sections of the preview
 - **Incremental updates:** Track which sections changed and re-render only those
 - **Web Worker:** Off-load markdown parsing to a background thread
@@ -107,12 +140,14 @@ The extension provides an optional table of contents sidebar that users can togg
 #### Design Philosophy
 
 **Why Overlay Instead of Fixed Layout:**
+
 - **Content-first:** Content width remains constant regardless of sidebar state, providing consistent reading experience
 - **Simplicity:** Avoids layout reflow complexity, coordinate system bugs, and animation sync issues
 - **Low maintenance:** Fewer CSS rules and interaction states reduce code fragility
 - **User control:** Users get full screen width for reading when they don't need the outline
 
 **Why Collapsible at All:**
+
 - Long documents benefit from quick access to structure without scrolling through headings
 - Users can reference the outline while reading without losing scroll position
 - Keyboard users can navigate via Escape key without reaching for mouse
@@ -129,6 +164,7 @@ The extension provides an optional table of contents sidebar that users can togg
 #### Collapsible TOC Implementation
 
 The TOC uses native HTML `<details>/<summary>` elements for collapsibility:
+
 - **Zero-JS toggle:** Browser-native toggle mechanism, no custom JavaScript for expand/collapse
 - **Collapsed below H1:** Only H1 `<details>` elements carry the `open` attribute, which keeps the outline compact on first open while showing the top level
 - **Tree-based generation:** Headings are built into a parent-child tree (via `buildTOCTree()`), then rendered recursively (via `renderTOCNode()`). Parent nodes wrap children in `<details>/<summary>`, leaf nodes render as plain items.
@@ -149,6 +185,7 @@ To maintain the extension's stability and security, follow these guidelines.
 ### Safe to Modify
 
 The following areas are generally safe for modification and extension:
+
 - **Styling:** Adjusting CSS for elements like the body, code blocks, and tables
 - **Markdown Options:** Passing new configuration options to the `marked()` parser
 - **VS Code Settings:** Adding new user-configurable settings in `package.json`
@@ -158,6 +195,7 @@ The following areas are generally safe for modification and extension:
 ### Requires Security Review
 
 Changes to the following areas are high-risk and **must undergo a security review**. They form the core of the extension's security and stability:
+
 - **Content Security Policy (CSP):** Modifying the CSP header can instantly create security vulnerabilities
 - **Nonce Generation:** The cryptographic token logic is critical for preventing XSS
 - **Mermaid/Math Preprocessing:** The regex logic is delicate and handles untrusted input

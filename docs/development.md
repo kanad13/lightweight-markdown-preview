@@ -79,6 +79,7 @@ git checkout -b feat/your-feature-name
 ```
 
 Branch naming convention:
+
 - `feat/` - New features
 - `fix/` - Bug fixes
 - `docs/` - Documentation updates
@@ -89,7 +90,7 @@ Branch naming convention:
 1. **Edit Code:** Make changes to `src/extension.js` or other source files.
 2. **Launch Dev Host:** Press `F5` in VS Code to open a dev window with the extension loaded.
 3. **Test Locally:** Open `examples/test.md` and run `Markdown: Show Lightweight Markdown Preview` from the Command Palette (`Ctrl+Shift+P`). Changes apply in real-time.
-4. **Test Before Committing:** Run `npm test` to run unit tests and lint.
+4. **Test Before Committing:** Run `npm test`, which builds the bundle, runs the unit, lifecycle, and bundle tests, then lints. See [testing.md](testing.md) for the strategy and the manual smoke check.
 
 ### Step 3: Commit Changes
 
@@ -112,10 +113,12 @@ Keep commits atomic and logical. Write commit messages that explain _why_ the ch
 - `const`/`let` only (no `var`)
 - Keep functions simple with clear JSDoc comments
 - No console logs in production code (unless debugging is explicitly required)
+- **Formatting:** `.prettierrc` matches the ESLint rules (tabs, double quotes, semicolons), so a Prettier run and `npm run lint` agree. Prettier skips `src/webview.html`, `.github/`, and `.vscode/` (see `.prettierignore`)
 
 ### JSDoc Standards
 
 All exported functions **must** have JSDoc comments describing:
+
 - Purpose and behavior
 - Parameters with types
 - Return values
@@ -130,13 +133,14 @@ All exported functions **must** have JSDoc comments describing:
  * @returns {string} A random 32-character hexadecimal nonce
  */
 function getNonce() {
-	return crypto.randomBytes(16).toString("hex");
+  return crypto.randomBytes(16).toString("hex");
 }
 ```
 
 ### Dependencies
 
 **Avoid adding new NPM dependencies.** This keeps the extension lightweight. If absolutely necessary:
+
 1. Justify the need
 2. Check bundle size impact (`npm run package` and review dist/)
 3. Consider using a CDN instead
@@ -156,6 +160,7 @@ npm run package
 ```
 
 Open the dev host and verify:
+
 - All elements render correctly (headings, lists, tables, code blocks, images)
 - Mermaid diagrams render properly
 - MathJax equations display correctly (both block `$$...$$` and inline `$...$`)
@@ -180,6 +185,7 @@ git push origin main
 ```
 
 After pushing, verify that:
+
 1. GitHub Actions builds pass (check the Actions tab)
 2. The build produces valid .vsix files
 3. No new warnings or errors in the CI logs
@@ -231,16 +237,20 @@ Add entry at the **very top** (after the header) in this exact format:
 ## [X.Y.Z] - YYYY-MM-DD
 
 ### Added
+
 - New feature description (if any)
 
 ### Changed
+
 - Enhancement description (if any)
 
 ### Fixed
+
 - Bug fix description (if any)
 ```
 
 **Important notes:**
+
 - Use the actual date (YYYY-MM-DD format)
 - Only include **user-facing changes**
 - Do NOT include: dependency updates (unless security fix), internal refactoring, test improvements, or build process changes
@@ -372,6 +382,7 @@ git ls-remote origin refs/tags/vX.Y.Z
 ### Troubleshooting
 
 **Tag already exists:**
+
 ```bash
 git tag -d vX.Y.Z                      # Delete local
 git push origin :refs/tags/vX.Y.Z      # Delete remote
@@ -380,10 +391,12 @@ git push origin vX.Y.Z                 # Push new
 ```
 
 **Version already on marketplace:**
+
 - Verify package.json has NEW version (not old)
 - If correct, marketplace API cached old data; wait 10 minutes and refresh
 
 **Tag points to wrong commit:**
+
 ```bash
 git show vX.Y.Z --quiet | head -3  # Check what tag points to
 git log -1 --oneline               # Check current commit
@@ -412,6 +425,7 @@ These are high-risk areas where mistakes can introduce bugs or security vulnerab
 **Problem:** The CSP header controls what scripts can execute in the webview. Loosening it creates XSS vulnerabilities.
 
 **What NOT to do:**
+
 ```javascript
 // ❌ BAD: Allows any script to run
 <meta http-equiv="Content-Security-Policy" content="script-src *;">
@@ -421,6 +435,7 @@ These are high-risk areas where mistakes can introduce bugs or security vulnerab
 ```
 
 **Safe approach:**
+
 - Only allow scripts with the correct nonce: `script-src 'nonce-${nonce}'`
 - Only allow trusted CDNs: `https://cdn.jsdelivr.net`
 - **Always** require a security review before changing CSP
@@ -430,20 +445,22 @@ These are high-risk areas where mistakes can introduce bugs or security vulnerab
 **Problem:** The nonce must be cryptographically random and unique per render. Predictable nonces defeat the entire security model.
 
 **What NOT to do:**
+
 ```javascript
 // ❌ BAD: Predictable nonce
 function getNonce() {
-	return "fixed-nonce-123";
+  return "fixed-nonce-123";
 }
 
 // ❌ BAD: Reusing nonce across renders
 let globalNonce = getNonce();
 function updateWebviewContent() {
-	const html = `<script nonce="${globalNonce}">...</script>`;
+  const html = `<script nonce="${globalNonce}">...</script>`;
 }
 ```
 
 **Safe approach:**
+
 - Generate a **new** nonce for every `updateWebviewContent()` call
 - Use the operating system's random source (`crypto.randomBytes`); `Math.random()` output is predictable
 
@@ -452,6 +469,7 @@ function updateWebviewContent() {
 **Problem:** The extension uses closure variables (`currentPanel`, `currentDocument`) to track state. Mismanaging these can cause crashes or unexpected behavior.
 
 **What NOT to do:**
+
 ```javascript
 // ❌ BAD: Not checking if panel exists before using it
 currentPanel.webview.html = newHtml; // Crashes if panel was closed
@@ -461,6 +479,7 @@ vscode.workspace.onDidChangeTextDocument(() => { ... }); // Memory leak
 ```
 
 **Safe approach:**
+
 - **Always** check `if (currentPanel)` before accessing
 - **Always** dispose listeners when panel is closed
 - Follow the existing pattern in `extension.js`
@@ -470,6 +489,7 @@ vscode.workspace.onDidChangeTextDocument(() => { ... }); // Memory leak
 **Problem:** Webviews have restricted file access. Image paths must be converted to special `vscode-resource:` URIs.
 
 **What NOT to do:**
+
 ```javascript
 // ❌ BAD: Direct file path won't load
 <img src="./images/photo.png">
@@ -479,6 +499,7 @@ vscode.workspace.onDidChangeTextDocument(() => { ... }); // Memory leak
 ```
 
 **Safe approach:**
+
 ```javascript
 // ✅ GOOD: Convert to webview URI
 const imageUri = currentPanel.webview.asWebviewUri(vscode.Uri.file(imagePath));
@@ -490,6 +511,7 @@ html = html.replace(/src="([^"]+)"/, `src="${imageUri}"`);
 **Problem:** Code changes without documentation updates lead to drift and confusion.
 
 **When to update documentation:**
+
 - **README.md:** Update if user-facing features or install instructions change
 - **architecture.md:** Update if design patterns or security model changes
 - **development.md:** Update if workflow, tooling, or standards change
@@ -502,6 +524,7 @@ html = html.replace(/src="([^"]+)"/, `src="${imageUri}"`);
 This means duplicate files with different casing exist (e.g., `README.md` and `readme.md`). Git tracks them separately.
 
 **Fix:**
+
 ```bash
 # Remove duplicates (keep lowercase version)
 git rm -f README.md
@@ -511,12 +534,14 @@ git commit -m "fix: remove duplicate file with wrong case"
 ### VSIX Package Already Exists on Marketplace
 
 If you try to publish an already-published version, vsce will fail. Always:
+
 1. Increment version in `package.json` first
 2. Create a new git tag for the new version
 
 ### GitHub Actions Build Fails
 
 Check the Actions tab on GitHub:
+
 1. Click the failed workflow
 2. Review the build logs
 3. Common causes:

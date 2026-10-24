@@ -35,7 +35,7 @@ Before adding, upgrading, or auditing any dependency (npm package, CDN library, 
 
 ## Git Commits
 
-Concise, imperative mood. Describe *what changed*. Commit at meaningful intervals.
+Concise, imperative mood. Describe _what changed_. Commit at meaningful intervals.
 
 ## Multi-File Change Protocol
 
@@ -49,6 +49,7 @@ When a task touches 3+ files or requires multiple related edits:
 
 ## Testing
 
+- The testing strategy, commands, and manual smoke check live in `docs/testing.md`; update it when a workflow, contract, or tool changes
 - Manual testing via F5 debug launch
 - Test file at `examples/test.md` with diverse Markdown content, Mermaid diagrams, and MathJax equations
 - `npm test` and `npm audit --omit=dev` must pass before any work is considered complete

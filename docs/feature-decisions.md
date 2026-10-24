@@ -1,12 +1,22 @@
 # Feature Decisions
 
-This page records ideas that were evaluated and are **not implemented**, with the reason and the condition that would justify reopening each. It is a decision log, not a backlog: no entry is scheduled, and nobody should implement one unless the maintainer asks for it.
+This page records ideas that were evaluated and are **not implemented**. Each entry gives the reason and the condition that would justify reopening it. The page is a decision log, not a backlog.
 
-Features that exist are described in [readme.md](../readme.md) and [architecture.md](architecture.md). Release history is in [CHANGELOG.md](../CHANGELOG.md).
+- **Scheduling:**
+  - No entry is scheduled.
+  - Implement an entry only when the maintainer asks for it.
+- **Related pages:**
+  - [readme.md](../readme.md) and [architecture.md](architecture.md) describe the features that exist.
+  - [CHANGELOG.md](../CHANGELOG.md) lists release history.
 
 ## How Ideas Are Judged
 
-Each idea is compared on value to users (does it fix a real failure or add a capability people need) and cost (code, risk, and upkeep). The project goals set the limits: small, private, and zero configuration.
+Each idea is compared on two measures:
+
+- **Value:** Does it fix a real failure or add a capability people need?
+- **Cost:** What does it add in code, risk, and upkeep?
+
+The project goals set the limits: small, private, and zero configuration.
 
 ## Status Meanings
 
@@ -20,35 +30,53 @@ Each idea is compared on value to users (does it fix a real failure or add a cap
 
 ### Reliable heading anchors
 
-Heading IDs include a line number (`heading-intro-12`), so an author-written link such as `[see intro](#intro)` does not scroll to its heading. Headings are found with a regular expression that ignores setext headings (a title underlined with `====`) and shows raw characters for formatted headings such as `## **Bold** text`.
-
-The fix reads headings from the `marked` token stream and generates GitHub-style slugs, with a numeric suffix for duplicates. The TOC and the rendered headings then share one source. The change is medium-sized because `extractHeadings()` and its tests change.
+- **Problem:**
+  - Heading IDs include a line number (`heading-intro-12`), so a link such as `[see intro](#intro)` does not scroll to its heading.
+  - A regular expression finds headings, and it ignores setext headings (a title underlined with `====`).
+  - Formatted headings such as `## **Bold** text` show raw characters in the outline.
+- **Approach:**
+  - Read headings from the `marked` token stream.
+  - Generate GitHub-style slugs, with a numeric suffix for duplicates.
+  - The outline and the rendered headings then share one source.
+- **Cost:**
+  - Medium. `extractHeadings()` and its tests change.
 
 ## Deferred
 
 ### Editor-to-preview scroll sync
 
-**What it is.** Scrolling the editor scrolls the preview to the matching place, and the reverse.
-
-**Why it waits.** The preview has to know which source line produced each rendered element. Mermaid and math blocks are swapped for placeholders before parsing, and `marked` reflows the rest, so no line mapping exists today. Building one means tagging every rendered block with its source line and adding two-way messages between the editor and the webview. Messages are a new channel for the security review to cover. Scroll position already survives edits, which removes the most frequent annoyance.
-
-**Reopen when.** Heading anchors are rebuilt on the token stream, because that work produces the line mapping.
+- **What it is:**
+  - Scrolling the editor scrolls the preview to the matching place, and the reverse.
+- **Why it waits:**
+  - The preview must know which source line produced each rendered element.
+  - Mermaid and math blocks are swapped for placeholders before parsing, and `marked` reflows the rest, so no line mapping exists.
+  - A mapping needs every rendered block tagged with its source line, plus two-way messages between the editor and the webview.
+  - The messages are a new channel for the security review to cover.
+  - Scroll position already survives edits, which removes the most frequent annoyance.
+- **Reopen when:**
+  - Heading anchors are rebuilt on the token stream, because that work produces the line mapping.
 
 ### Images outside the workspace
 
-**What it is.** Images beside a Markdown file that is not inside an open workspace folder do not load, because the webview may only read folders listed when the panel opens.
-
-**Why it waits.** Fixing it means recreating the panel whenever the file moves to a new folder, which flashes the preview. Files outside a workspace are uncommon.
-
-**Reopen when.** A user reports it.
+- **What it is:**
+  - Images beside a Markdown file outside every open workspace folder do not load.
+  - The webview may read only the folders listed when the panel opens.
+- **Why it waits:**
+  - A fix recreates the panel whenever the file moves to a new folder, which flashes the preview.
+  - Files outside a workspace are uncommon.
+- **Reopen when:**
+  - A user reports it.
 
 ### Links to other Markdown files
 
-**What it is.** Clicking `[guide](other.md)` opens that file.
-
-**Why it waits.** It needs a message from the webview to the extension, which opens a new input path to the extension host. The extension would then need to validate every target path.
-
-**Reopen when.** A concrete workflow needs it. Plan it together with scroll sync, since both add the message channel.
+- **What it is:**
+  - Clicking `[guide](other.md)` opens that file.
+- **Why it waits:**
+  - It needs a message from the webview to the extension, which opens a new input path to the extension host.
+  - The extension then has to validate every target path.
+- **Reopen when:**
+  - A concrete workflow needs it.
+  - Plan it together with scroll sync, since both add the message channel.
 
 ## Declined
 
