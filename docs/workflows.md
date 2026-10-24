@@ -58,7 +58,7 @@ The goal is a repository whose dependencies, support floor, tests, and documents
 - **Editor floor:**
   - Apply the [Editor Support Policy](dependencies.md#editor-support-policy). Check forks before you raise the floor.
 - **Registries and authentication:**
-  - Confirm that the publishing steps in [development.md](development.md#3-release-to-marketplace) still match the stores' current rules.
+  - Confirm that the publishing steps in [development.md](development.md#release-to-marketplace) still match the stores' current rules.
 - **Verify:**
   - Run `npm test`, `npm audit --omit=dev`, and the manual smoke check in light and dark themes.
 - **Sync:**
@@ -94,7 +94,7 @@ The goal is a published version that matches a tagged commit.
 - **Local proof:**
   - Build the `.vsix`, give the maintainer the install command, and wait for confirmation that it works.
 - **Procedure:**
-  - Follow [Release to Marketplace](development.md#3-release-to-marketplace). It covers the Marketplace and Open VSX.
+  - Follow [Release to Marketplace](development.md#release-to-marketplace). It covers the Marketplace and Open VSX.
 - **Tag:**
   - Tag the exact commit that is published. If a fix lands after tagging, report it and ask before you move the tag.
 - **Verify:**
