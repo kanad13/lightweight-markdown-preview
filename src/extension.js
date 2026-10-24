@@ -182,7 +182,9 @@ function resolveImagePath(imagePath, document, panel) {
 
 	try {
 		const documentPath = document.uri;
-		const documentDir = documentPath.with({ path: documentPath.path.substring(0, documentPath.path.lastIndexOf("/")) });
+		const documentDir = documentPath.with({
+			path: documentPath.path.substring(0, documentPath.path.lastIndexOf("/")),
+		});
 
 		// Resolve relative path against document directory
 		let imagePath_parsed;
@@ -387,7 +389,7 @@ function renderTOCNode(node) {
 		const openAttr = h.level <= 1 ? " open" : "";
 		html += `<details class="toc-details"${openAttr}>`;
 		html += `<summary class="toc-summary"><a href="#${h.id}" class="toc-link"><span class="toc-prefix">${prefix}</span>${escapeHtml(h.text)}</a></summary>`;
-		html += "<ul class=\"toc-list\">";
+		html += '<ul class="toc-list">';
 		node.children.forEach((child) => {
 			html += renderTOCNode(child);
 		});
@@ -413,10 +415,10 @@ function renderTOCNode(node) {
  */
 function generateTOC(headings) {
 	if (headings.length === 0)
-		return "<p style=\"font-size: 0.9em; color: var(--vscode-descriptionForeground);\">No headings found</p>";
+		return '<p style="font-size: 0.9em; color: var(--vscode-descriptionForeground);">No headings found</p>';
 
 	const tree = buildTOCTree(headings);
-	let tocHtml = "<ul class=\"toc-list\">";
+	let tocHtml = '<ul class="toc-list">';
 	tree.forEach((node) => {
 		tocHtml += renderTOCNode(node);
 	});
