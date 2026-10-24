@@ -1,5 +1,7 @@
 # Lightweight Markdown Preview - VS Code Extension
 
+This file is the shared instruction set for every AI agent and harness that works in this repository.
+
 ## Key Context
 
 This extension provides a lightweight, privacy-friendly Markdown preview in a VS Code webview panel. It renders Markdown with Mermaid diagrams, MathJax equations, and syntax-highlighted code blocks. Package name: `lightweight-markdown-preview`, command prefix: `lightweightMarkdownViewer`.
@@ -19,7 +21,7 @@ Before adding, upgrading, or auditing any dependency (npm package, CDN library, 
 - All extension logic in `src/extension.js` unless it exceeds ~1500 lines
 - Single webview panel, reused across files
 - No TypeScript, no frameworks, no bundled webview scripts
-- CDN-loaded (Mermaid 11.x, MathJax 4.x, highlight.js 11.x) at exact versions defined in `CDN_VERSIONS` in `src/extension.js`
+- CDN-loaded (Mermaid, MathJax, highlight.js) at exact versions defined in `CDN_VERSIONS` in `src/extension.js`
 - Mermaid extraction: backtick (```) and Azure DevOps (:::) syntaxes
 - Math extraction: inline ($...$) and block ($$...$$); preserved source is HTML-escaped
 - TOC sidebar: overlay pattern, slides from right, no layout reflow
