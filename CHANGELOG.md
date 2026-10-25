@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.0] - 2026-10-25
+
+### Changed
+
+- Maintenance release that checks publishing to Open VSX through the shared release workflow. The extension is unchanged.
+
 ## [1.4.3] - 2026-10-25
 
 ### Changed
