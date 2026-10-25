@@ -117,6 +117,26 @@ The goal is one truth across code, documents, and tests.
 - **Stopping point:**
   - Commit on a branch and list the drift items that you found and fixed.
 
+## Share With Sibling Extensions
+
+The goal is that a shared improvement reaches every extension that benefits from it.
+
+- **Trigger:**
+  - Run this workflow after you change a shared file, or when the maintainer asks whether the other extensions need a change.
+  - [sibling-extensions.md](sibling-extensions.md) lists the shared files and the sibling repositories.
+- **Compare:**
+  - Run the comparison command in [sibling-extensions.md](sibling-extensions.md#compare-a-shared-file-with-the-siblings) for each changed shared file.
+  - For a shared practice, read the matching file in each sibling and decide whether it has the same gap.
+- **Propose:**
+  - List each sibling with one outcome: apply the change, or no change needed and why.
+  - Wait for the maintainer to approve before you edit any sibling.
+- **Apply:**
+  - Follow [Carry a change to a sibling](sibling-extensions.md#carry-a-change-to-a-sibling) for each approved sibling.
+  - Run the sibling's `npm test`.
+- **Stopping point:**
+  - Report each sibling's branch and test result.
+  - Do not push, merge, tag, or release a sibling without the maintainer's instruction.
+
 ## Change Documentation
 
 The goal is documents that describe the current state and read at a glance.
