@@ -6,7 +6,7 @@ This guide covers setup, the daily workflow, and the release procedure. [workflo
 
 ### Install the tools
 
-Local development needs only Node and `npm ci`. Publishing to the Marketplace needs two command-line tools. Open VSX publishing runs in CI and needs no local tool:
+Local development needs only Node and `npm ci`. Use the version in `.nvmrc` or newer. CI runs on exactly that version, which is the `engines.node` floor. Publishing to the Marketplace needs two command-line tools. Open VSX publishing runs in CI and needs no local tool:
 
 ```bash
 npm install -g @vscode/vsce   # Visual Studio Marketplace

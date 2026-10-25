@@ -24,3 +24,4 @@ assets/markdown-preview.gif
 assets/markdown-preview.png
 .prettierrc
 .prettierignore
+.nvmrc

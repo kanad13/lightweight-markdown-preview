@@ -1,7 +1,9 @@
 name: Release
 
-# Publishes a version to GitHub Releases and Open VSX. Identical in every extension repo except
-# NODE_VERSION, so a fix to the release process is copied across, not re-derived five times.
+# Publishes a version to GitHub Releases and Open VSX.
+#
+# This file is shared with the other extensions published as KunalPathak and must stay identical
+# in all of them. Read docs/sibling-extensions.md before you change it.
 #
 # A pushed vX.Y.Z tag starts it. Run it by hand with an existing tag to publish a version that was
 # tagged before this workflow existed, or to retry a failed publish. Re-publishing is safe:
@@ -18,9 +20,7 @@ on:
         required: true
         type: string
 
-# The Node floor from package.json engines, so the release runs on the oldest supported version.
 env:
-  NODE_VERSION: "22.13.0"
   # The tag arrives through env, never through ${{ }} inside a script, so its text cannot become shell.
   RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
 
@@ -51,9 +51,10 @@ jobs:
           ref: refs/tags/${{ env.RELEASE_TAG }}
           fetch-depth: 0
 
+      # .nvmrc holds the lowest Node that package.json engines allows, so the release runs on the oldest supported version.
       - uses: actions/setup-node@v7
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Check the tag is on main

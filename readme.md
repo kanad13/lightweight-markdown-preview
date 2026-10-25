@@ -97,6 +97,7 @@ Start with the documents below. Each one answers a different question.
 - **Work with dependencies:** [dependencies.md](docs/dependencies.md) sets the rules for choosing and reviewing versions.
 - **Build and release:** [development.md](docs/development.md) covers setup and publishing.
 - **Pick a task procedure:** [workflows.md](docs/workflows.md) maps each kind of request to its steps.
+- **Find the sibling extensions:** [sibling-extensions.md](docs/sibling-extensions.md) lists the other extensions published as KunalPathak and the files they share.
 - **Test:** [testing.md](docs/testing.md) maps workflows to checks and lists the manual smoke check.
 - **Check past decisions:** [decisions.md](docs/decisions.md) lists ideas that were evaluated and not built.
 - **See what changed:** [CHANGELOG.md](CHANGELOG.md) lists changes by version.

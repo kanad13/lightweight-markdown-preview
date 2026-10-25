@@ -25,6 +25,7 @@ Match the maintainer's request to a workflow in `docs/workflows.md` and run it. 
 | "Release", "publish", "ship it"                              | Release                  |
 | "Check for drift", "sync the repo", "are the docs accurate?" | Sync and Audit           |
 | "Update the docs", "rewrite the README"                      | Change Documentation     |
+| "Do the other extensions need this?", "share this change", "check the sibling extensions" | Share With Sibling Extensions |
 
 - **No match:**
   - A question about the code or the docs gets an answer and no file changes.
@@ -34,6 +35,8 @@ Match the maintainer's request to a workflow in `docs/workflows.md` and run it. 
   - Report a check as passed only if you ran it.
 - **Authority:**
   - Treat `docs/decisions.md` as context, not as a task list.
+- **Shared files:**
+  - After you change a file listed in [docs/sibling-extensions.md](docs/sibling-extensions.md), run Share With Sibling Extensions before you finish.
 
 ## Dependencies
 

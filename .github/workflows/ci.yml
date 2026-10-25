@@ -1,6 +1,7 @@
 name: CI
 
-# Identical in every extension repo except NODE_VERSION (and any extra suite a repo documents).
+# This file is shared with the other extensions published as KunalPathak and must stay identical
+# in all of them. Read docs/sibling-extensions.md before you change it.
 
 on:
   push:
@@ -11,20 +12,25 @@ on:
 permissions:
   contents: read
 
-# The Node floor from package.json engines, so CI catches use of newer-only features.
-env:
-  NODE_VERSION: "22.13.0"
-
 jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
 
+      # .nvmrc holds the lowest Node that package.json engines allows, so CI catches use of newer-only features.
       - uses: actions/setup-node@v7
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version-file: .nvmrc
           cache: npm
+
+      - name: Check .nvmrc matches engines.node
+        run: |
+          FLOOR=$(node -p "require('./package.json').engines.node.replace('>=', '')")
+          if [[ "$(tr -d '[:space:]' < .nvmrc)" != "$FLOOR" ]]; then
+            echo "::error::.nvmrc does not match engines.node in package.json."
+            exit 1
+          fi
 
       - run: npm ci
 
