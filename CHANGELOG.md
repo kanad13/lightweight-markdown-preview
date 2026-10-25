@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.3] - 2026-10-25
+
+### Changed
+
+- The extension is published on the Open VSX registry, for VSCodium, Cursor and other editors that do not use the Visual Studio Marketplace. It includes the fixes from 1.4.2.
+
 ## [1.4.2] - 2026-10-24
 
 ### Fixed
