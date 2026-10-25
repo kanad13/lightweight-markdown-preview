@@ -113,13 +113,14 @@ jobs:
         run: |
           ID=$(node -p "const p = require('./package.json'); p.publisher + '/' + p.name")
           VERSION="${RELEASE_TAG#v}"
-          for _ in 1 2 3 4 5 6 7 8 9 10; do
-            LIVE=$(curl -fsS "https://open-vsx.org/api/$ID/$VERSION" | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version" || true)
+          # A new version can take several minutes to appear after the publish reports success.
+          for _ in $(seq 1 40); do
+            LIVE=$(curl -fsS "https://open-vsx.org/api/$ID/$VERSION" 2>/dev/null | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version" 2>/dev/null || true)
             if [[ "$LIVE" == "$VERSION" ]]; then
               echo "$ID $VERSION is live on Open VSX."
               exit 0
             fi
             sleep 15
           done
-          echo "::error::$ID $VERSION did not appear on Open VSX."
+          echo "::error::$ID $VERSION did not appear on Open VSX within ten minutes."
           exit 1
