@@ -20,7 +20,7 @@ The extension has two halves, and each half has its own kind of check.
 
 | Command                              | What it does                                                                                                                                                | When to run                  |
 | :----------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------- |
-| `npm test`                           | Builds the bundle, runs every automated test, then lints. The runner takes the `test/` directory, not a glob, because Node 20 does not expand glob patterns | Before every commit          |
+| `npm test`                           | Builds the bundle, runs every automated test, then lints. The runner takes a quoted glob, so Node expands it the same way on every platform | Before every commit          |
 | `node --test test/lifecycle.test.js` | Runs one suite without a build (the bundle suite needs `dist/` to exist)                                                                                    | While developing a handler   |
 | `npm audit --omit=dev`               | Checks shipped dependencies for advisories                                                                                                                  | Before every release, and CI |
 | `npm run package`                    | Builds the `.vsix`                                                                                                                                          | Before manual install checks |

@@ -6,11 +6,10 @@ This guide covers setup, the daily workflow, and the release procedure. [workflo
 
 ### Install the tools
 
-Local development needs only Node and `npm ci`. Publishing needs three command-line tools:
+Local development needs only Node and `npm ci`. Publishing to the Marketplace needs two command-line tools. Open VSX publishing runs in CI and needs no local tool:
 
 ```bash
 npm install -g @vscode/vsce   # Visual Studio Marketplace
-npm install -g ovsx           # Open VSX registry
 brew install gh               # GitHub CLI
 ```
 
@@ -22,9 +21,10 @@ Local development needs no credentials.
   - Create a Personal Access Token with the scope `Marketplace > Manage`.
   - Run `vsce login KunalPathak`, then check with `vsce ls-publishers`.
   - If the token expires, run `vsce login KunalPathak` again with a new one.
-- **Open VSX (`ovsx`):**
-  - Create an access token at https://open-vsx.org under **Settings > Access Tokens**.
-  - Export it as `OVSX_PAT`, or pass it with `-p`. Check it with `npx ovsx verify-pat -p <token>`.
+- **Open VSX (CI):**
+  - The release workflow publishes to Open VSX. It signs in with a short-lived OIDC token that Open VSX issues to the registered trusted publisher (repository `kanad13/lightweight-markdown-preview`, workflow `release.yml`). No stored token is needed.
+  - The repository secret `OVSX_PAT` is a fallback. When it is set, the workflow uses it instead of OIDC. Delete it once a release has published through OIDC.
+  - To publish by hand, export a token from https://open-vsx.org under **Settings > Access Tokens** as `OVSX_PAT`, check it with `npx ovsx verify-pat KunalPathak`, then run `npx ovsx publish <file>.vsix`.
 - **GitHub (`gh`):**
   - Run `gh auth login`, then check with `gh auth status`.
 
@@ -130,15 +130,14 @@ Release only from `main`, only when the maintainer asks, and only after CI passe
    git push origin vX.Y.Z
    ```
 
-   - The tag push starts `.github/workflows/release.yml`, which builds the `.vsix` and creates the GitHub release.
+   - The tag push starts `.github/workflows/release.yml`. It runs the tests, checks that the tag matches `package.json` and `CHANGELOG.md`, builds the `.vsix`, creates the GitHub release, and publishes to Open VSX.
+   - If the run fails after the tag exists, fix the cause and start the workflow again from the Actions tab (**Release > Run workflow**, from `main`, with the tag). Open VSX ignores a version it already has, so repeating a run is safe.
 
 7. **Publish to the Marketplace:**
    - Run `npm run publish`. The command builds first.
-8. **Publish to Open VSX:**
-   - Run `npx ovsx publish lightweight-markdown-preview-X.Y.Z.vsix`, with `OVSX_PAT` set or `-p <token>`.
-9. **Verify:**
+8. **Verify:**
    - The [Marketplace page](https://marketplace.visualstudio.com/items?itemName=KunalPathak.lightweight-markdown-preview) shows the new version (allow 5 to 10 minutes).
-   - `npx ovsx show KunalPathak.lightweight-markdown-preview` shows it on Open VSX.
+   - The release workflow ends green, and its last step confirms the version on Open VSX. `npx ovsx show KunalPathak.lightweight-markdown-preview` shows it too.
    - The GitHub release exists with the `.vsix` attached, and CI is green.
 
 ## Troubleshooting

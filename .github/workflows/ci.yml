@@ -1,40 +1,48 @@
-name: CI Quality Checks
+name: CI
+
+# Identical in every extension repo except NODE_VERSION (and any extra suite a repo documents).
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
+
+permissions:
+  contents: read
+
+# The Node floor from package.json engines, so CI catches use of newer-only features.
+env:
+  NODE_VERSION: "22.13.0"
 
 jobs:
-  lint:
+  verify:
     runs-on: ubuntu-latest
-    
     steps:
       - uses: actions/checkout@v7
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
+
+      - uses: actions/setup-node@v7
         with:
-          node-version: '20'
-          cache: 'npm'
-      
-      - name: Install dependencies
-        run: npm ci
-      
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Tests, lint and format check
+        run: npm test
+
       - name: Audit shipped dependencies
         run: npm audit --omit=dev
 
-      - name: Run tests and linter
-        run: npm test
-      
       - name: Package extension
         run: npm run package
-      
-      - name: Verify .vsix created
+
+      - name: Confirm exactly one .vsix was created
         run: |
-          if [ ! -f *.vsix ]; then
-            echo "Error: .vsix file not created"
+          shopt -s nullglob
+          FILES=(*.vsix)
+          if [[ ${#FILES[@]} -ne 1 ]]; then
+            echo "::error::Expected exactly one .vsix, found ${#FILES[@]}."
             exit 1
           fi
-          echo "Package created successfully"
+          echo "Package created: ${FILES[0]}"

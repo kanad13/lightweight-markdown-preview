@@ -1,34 +1,124 @@
-name: Package Extension
+name: Release
+
+# Publishes a version to GitHub Releases and Open VSX. Identical in every extension repo except
+# NODE_VERSION, so a fix to the release process is copied across, not re-derived five times.
+#
+# A pushed vX.Y.Z tag starts it. Run it by hand with an existing tag to publish a version that was
+# tagged before this workflow existed, or to retry a failed publish. Re-publishing is safe:
+# --skip-duplicate makes Open VSX ignore a version it already has.
 
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - "v[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to publish, for example v1.2.3"
+        required: true
+        type: string
+
+# The Node floor from package.json engines, so the release runs on the oldest supported version.
+env:
+  NODE_VERSION: "22.13.0"
+  # The tag arrives through env, never through ${{ }} inside a script, so its text cannot become shell.
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+
+# One release per tag at a time, and a running publish is never cancelled half way.
+concurrency:
+  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  cancel-in-progress: false
 
 jobs:
-  build:
+  release:
+    # A manual run must start from main so a branch cannot ship a modified workflow.
+    if: github.event_name == 'push' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write # create the GitHub Release
+      id-token: write # exchange an OIDC token for a short-lived Open VSX token
 
     steps:
+      - name: Validate tag format
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::'$RELEASE_TAG' is not a vX.Y.Z tag."
+            exit 1
+          fi
+
       - uses: actions/checkout@v7
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
         with:
-          node-version: '20'
-          cache: 'npm'
+          ref: refs/tags/${{ env.RELEASE_TAG }}
+          fetch-depth: 0
 
-      - name: Install dependencies
-        run: npm ci
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Check the tag is on main
+        run: |
+          git fetch origin main
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "::error::$RELEASE_TAG is not reachable from main."
+            exit 1
+          fi
+
+      - name: Check the tag matches package.json and CHANGELOG.md
+        run: |
+          VERSION="${RELEASE_TAG#v}"
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          if [[ "$PACKAGE_VERSION" != "$VERSION" ]]; then
+            echo "::error::package.json version ($PACKAGE_VERSION) does not match tag $RELEASE_TAG."
+            exit 1
+          fi
+          if ! grep -qF "## [$VERSION]" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no '## [$VERSION]' entry."
+            exit 1
+          fi
+
+      - run: npm ci
+
+      - name: Tests, lint and format check
+        run: npm test
 
       - name: Package extension
         run: npm run package
 
-      - name: Create Release
+      - name: Locate the package
+        run: |
+          shopt -s nullglob
+          FILES=(*.vsix)
+          if [[ ${#FILES[@]} -ne 1 ]]; then
+            echo "::error::Expected exactly one .vsix, found ${#FILES[@]}."
+            exit 1
+          fi
+          echo "VSIX=${FILES[0]}" >> "$GITHUB_ENV"
+
+      - name: Create or update the GitHub Release
         uses: softprops/action-gh-release@v3
         with:
-          files: '*.vsix'
+          tag_name: ${{ env.RELEASE_TAG }}
+          files: ${{ env.VSIX }}
+          generate_release_notes: true
+
+      # OVSX_PAT is empty once the secret is deleted, and ovsx then uses the OIDC token instead.
+      - name: Publish to Open VSX
+        run: npx ovsx publish "$VSIX" --skip-duplicate
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+
+      - name: Confirm the version is live on Open VSX
+        run: |
+          ID=$(node -p "const p = require('./package.json'); p.publisher + '/' + p.name")
+          VERSION="${RELEASE_TAG#v}"
+          for _ in 1 2 3 4 5 6 7 8 9 10; do
+            LIVE=$(curl -fsS "https://open-vsx.org/api/$ID/$VERSION" | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version" || true)
+            if [[ "$LIVE" == "$VERSION" ]]; then
+              echo "$ID $VERSION is live on Open VSX."
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "::error::$ID $VERSION did not appear on Open VSX."
+          exit 1

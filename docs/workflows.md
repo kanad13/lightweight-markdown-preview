@@ -94,7 +94,7 @@ The goal is a published version that matches a tagged commit.
 - **Local proof:**
   - Build the `.vsix`, give the maintainer the install command, and wait for confirmation that it works.
 - **Procedure:**
-  - Follow [Release to Marketplace](development.md#release-to-marketplace). It covers the Marketplace and Open VSX.
+  - Follow [Release to Marketplace](development.md#release-to-marketplace). The release workflow publishes to Open VSX. The Marketplace step is manual.
 - **Tag:**
   - Tag the exact commit that is published. If a fix lands after tagging, report it and ask before you move the tag.
 - **Verify:**
