@@ -66,6 +66,12 @@ npm test
 - **`.prettierrc`:** it matches the ESLint rules for editors that format on save. The repository has no formatter script.
 - **JSDoc:** every exported function states its purpose, parameters with types, return value, and side effects.
 - **Comments:** explain why. Leave no `TODO` comments and no debugging output in shipped code.
+- **Readme images:**
+  - Link each image by an absolute `https://raw.githubusercontent.com/kanad13/lightweight-markdown-preview/main/assets/<file>` URL.
+  - The package leaves `assets/` out, so a relative link breaks on the Marketplace and Open VSX pages. A `github.com/.../blob/...` link returns an HTML page, not the image.
+  - Use PNG or JPEG, because the Marketplace rejects SVG. Give every image alt text that names what it shows.
+  - Add the file to `assets/` on the same branch. The image URL works for readers only after the branch merges to `main`.
+  - `examples/showcase.md` is the document behind the screenshots. Open it in VS Code to retake them.
 
 ### Dependencies
 

@@ -32,7 +32,7 @@ The extension has two halves, and each half has its own kind of check.
 | `test/extension.test.js`      | Pure functions: heading extraction and IDs, outline tree, escaping, math, Mermaid and image handling, nonce, template substitution, page contract | `.html` loader and `vscode` shim |
 | `test/lifecycle.test.js`      | Command, active-editor following, debounce, disposal, theme change, image paths (including `%20` and raw HTML), error notification | Fake panel, mock timers          |
 | `test/bundle.test.js`         | The webpack output renders a complete page with CSP, pinned CDN versions, and no unreplaced placeholders                | Fake `vscode` only               |
-| `test/docs.test.js`           | Relative links and heading anchors in every Markdown file; the routing table in `AGENTS.md` matches `docs/workflows.md` | None                             |
+| `test/docs.test.js`           | Relative links and heading anchors in every Markdown file; the routing table in `AGENTS.md` matches `docs/workflows.md`; readme images use absolute raw URLs, exist in `assets/`, and have alt text | None                             |
 | `test/helpers/fake-vscode.js` | Shared `vscode` and `.html` shims, handler capture, fake documents and panel                                            | Not a suite                      |
 
 ## Workflow Map
