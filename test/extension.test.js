@@ -351,6 +351,16 @@ describe("renderMarkdown math", () => {
 		assert.ok(!out.includes("PRESERVED"));
 	});
 
+	it("shows complete math expressions inside code spans as written", () => {
+		const out = html(
+			"1. Writing `$x$` and `$$ math here $$` shows source.\n\n| a |\n| - |\n| `$x$` |\n\n- `$a$ and $b$`\n"
+		);
+		assert.ok(out.includes("<code>$x$</code>"));
+		assert.ok(out.includes("<code>$$ math here $$</code>"));
+		assert.ok(out.includes("<code>$a$ and $b$</code>"));
+		assert.ok(!out.includes("math-") && !out.includes("PRESERVED"));
+	});
+
 	it("does not treat underscores or asterisks in a formula as emphasis", () => {
 		const out = html("$a_b + c_d$ and $a*b*c$");
 		assert.ok(out.includes("\\(a_b + c_d\\)"));
