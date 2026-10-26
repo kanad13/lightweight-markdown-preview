@@ -9,7 +9,7 @@ This page holds the procedure for each kind of request. [AGENTS.md](../AGENTS.md
 The goal is a verdict with evidence, not code.
 
 - **Ground:**
-  - Read [decisions.md](decisions.md) for earlier decisions on the same idea.
+  - Read [decisions.md](decisions.md) for earlier decisions on the same idea. Re-check its evidence against the code, because an entry is a dated judgment and not a rule.
   - Read [architecture.md](architecture.md) and the code the change would touch.
   - For a new dependency, read [Adding a Dependency](dependencies.md#adding-a-dependency).
 - **Weigh:**

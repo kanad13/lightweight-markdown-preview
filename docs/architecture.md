@@ -36,8 +36,12 @@ The extension enforces a strict CSP that runs only scripts with a unique, random
   - The extension generates a new nonce for every preview render.
   - The nonce appears in the CSP `meta` tag and in every legitimate `<script>` tag.
 - **Effect:**
-  - A `<script>` tag injected through Markdown lacks the nonce.
-  - The browser blocks that script.
+  - An inline `<script>` tag injected through Markdown lacks the nonce, and the browser blocks it.
+- **Limit:**
+  - The CSP also allows scripts from `https://cdn.jsdelivr.net` by host, because the page loads its libraries from there.
+  - A `<script src="https://cdn.jsdelivr.net/...">` tag in a document therefore runs. In a test page, such a tag loaded jQuery.
+  - The damage is bounded: the CSP sets no `connect-src`, and the page sends no messages to the extension host.
+  - [decisions.md](decisions.md#raw-html-in-documents-and-the-script-allowlist) tracks the open question. Settle it before any page-to-host message exists.
 
 ### Layer 2: Escaping of Generated Markup
 
@@ -130,8 +134,8 @@ Every edit replaces the whole webview page, which resets the browser's scroll po
 
 - **Full re-render on every change:** The entire markdown is re-parsed and HTML regenerated
 - **Debounced:** 300ms debounce on `onDidChangeTextDocument` batches rapid edits
-- **Why:** Ensures consistency and simplicity. Given typical markdown file sizes (< 10 MB), this is fast enough
-- **Cost:** ~10-50ms for typical documents on modern hardware
+- **Why:** Ensures consistency and simplicity. Rendering on the host is fast enough that the cost is not worth an incremental design
+- **Cost:** Measured on 2026-10-26 under Node: about 0.1 ms for `examples/test.md` and about 15 ms for a 79 KB document. Host rendering is not the bottleneck. The visible delay comes from the webview reloading and from Mermaid and MathJax typesetting, which are not included in these numbers
 
 ### Optimization Opportunities
 
