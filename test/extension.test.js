@@ -68,19 +68,58 @@ describe("extractHeadings", () => {
 		);
 	});
 
-	it("generates URL-friendly IDs", () => {
-		const md = "# Hello World!";
-		const result = extractHeadings(md);
-		assert.match(result[0].id, /^heading-hello-world-0$/);
+	it("generates GitHub-style IDs", () => {
+		assert.equal(extractHeadings("# Hello World!")[0].id, "hello-world");
+		assert.equal(extractHeadings("## C++ & Java: A Comparison")[0].id, "c--java-a-comparison");
+		assert.equal(extractHeadings("# \u00dcberblick")[0].id, "\u00fcberblick");
 	});
 
-	it("strips special characters from IDs", () => {
-		const md = "## C++ & Java: A Comparison";
-		const result = extractHeadings(md);
-		// Special chars stripped, spaces become hyphens
-		assert.ok(!result[0].id.includes("&"));
-		assert.ok(!result[0].id.includes(":"));
-		assert.ok(!result[0].id.includes("+"));
+	it("numbers duplicate IDs so every anchor is unique", () => {
+		const ids = extractHeadings("# Intro\n\n## Intro\n\n## Intro").map((h) => h.id);
+		assert.deepEqual(ids, ["intro", "intro-1", "intro-2"]);
+	});
+
+	it("falls back to a stable ID when the text has no usable characters", () => {
+		const ids = extractHeadings("# !!!\n\n# ???").map((h) => h.id);
+		assert.deepEqual(ids, ["section", "section-1"]);
+	});
+
+	it("uses the visible text of formatted headings", () => {
+		const [bold, link, code, entity] = extractHeadings(
+			"## **Bold** and _soft_ text\n\n## [Docs](https://example.test)\n\n## `a<b`\n\n## Tom &amp; Jerry"
+		);
+		assert.equal(bold.text, "Bold and soft text");
+		assert.equal(bold.id, "bold-and-soft-text");
+		assert.equal(link.text, "Docs");
+		assert.equal(code.text, "a<b");
+		assert.equal(entity.text, "Tom & Jerry");
+	});
+
+	it("finds setext headings", () => {
+		const result = extractHeadings("Title\n=====\n\nSub\n---\n");
+		assert.deepEqual(
+			result.map((h) => [h.level, h.text]),
+			[
+				[1, "Title"],
+				[2, "Sub"],
+			]
+		);
+	});
+
+	it("finds headings inside blockquotes and list items", () => {
+		const result = extractHeadings("> # Quoted\n\n- # Listed\n");
+		assert.deepEqual(
+			result.map((h) => h.text),
+			["Quoted", "Listed"]
+		);
+	});
+
+	it("ignores headings inside tilde and indented fences", () => {
+		const md = "~~~\n# Tilde\n~~~\n\n  ```\n# Indented\n  ```\n\n# Real";
+		assert.deepEqual(
+			extractHeadings(md).map((h) => h.text),
+			["Real"]
+		);
 	});
 
 	it("requires a space after the hash marks", () => {
@@ -259,41 +298,209 @@ describe("generateTOC escaping", () => {
 // ============================================================================
 // renderMarkdown
 // ============================================================================
-describe("renderMarkdown", () => {
-	it("preserves inline and block math with delimiters intact", () => {
-		const { html } = renderMarkdown("Energy $E = mc^2$ here\n\n$$\n\\int x\n$$\n");
-		assert.ok(html.includes("$E = mc^2$"));
-		assert.ok(html.includes("$$\n\\int x\n$$"));
+describe("renderMarkdown math", () => {
+	const html = (md) => renderMarkdown(md).html;
+
+	it("wraps inline math in MathJax inline delimiters", () => {
+		assert.ok(html("Energy $E = mc^2$ here").includes('<span class="math-inline">\\(E = mc^2\\)</span>'));
+	});
+
+	it("wraps block math in MathJax display delimiters, on one line or several", () => {
+		const multi = html("$$\n\\int x\n$$\n");
+		assert.ok(multi.includes('<div class="math-block">\\[\n\\int x\n\\]</div>'), multi);
+		const single = html("$$ x^2 + y^2 $$");
+		assert.ok(single.includes('<div class="math-block">\\[ x^2 + y^2 \\]</div>'), single);
+	});
+
+	it("renders display math written inside a sentence", () => {
+		assert.ok(html("so $$x$$ holds").includes('<span class="math-display">\\[x\\]</span>'));
+	});
+
+	it("emits no dollar delimiters, so the page cannot pair stray dollar signs", () => {
+		const out = html("$a$ and $$\nb\n$$\n\nIt costs $5 and $10.");
+		assert.ok(!/math-(inline|block)">\$/.test(out));
+		assert.ok(out.includes("It costs $5 and $10."));
+		assert.equal((out.match(/math-/g) || []).length, 2, "only the real formulas are marked");
+	});
+
+	it("keeps prices as text", () => {
+		const out = html("It costs $5 and $10 total, or $5.");
+		assert.ok(!out.includes("math-"));
+		assert.ok(out.includes("$5 and $10 total"));
+	});
+
+	it("does not start a formula on a dollar sign followed by a space", () => {
+		assert.ok(!html("a $ b + c$ d").includes("math-"));
+	});
+
+	it("does not end a formula on a dollar sign that is followed by a digit", () => {
+		assert.ok(!html("US$5 and US$10").includes("math-"));
+	});
+
+	it("keeps an escaped dollar sign as text", () => {
+		const out = html("price \\$5 and \\$6");
+		assert.ok(!out.includes("math-"));
+		assert.ok(out.includes("price $5 and $6"));
+	});
+
+	it("leaves dollar signs in code spans and fences alone", () => {
+		const out = html("use `$HOME` and `$PATH` vars\n\n```bash\necho $HOME $PATH\n```\n");
+		assert.ok(!out.includes("math-"));
+		assert.ok(out.includes("<code>$HOME</code>"));
+		assert.ok(out.includes("echo $HOME $PATH"));
+		assert.ok(!out.includes("PRESERVED"));
+	});
+
+	it("does not treat underscores or asterisks in a formula as emphasis", () => {
+		const out = html("$a_b + c_d$ and $a*b*c$");
+		assert.ok(out.includes("\\(a_b + c_d\\)"));
+		assert.ok(out.includes("\\(a*b*c\\)"));
+		assert.ok(!out.includes("<em>"));
 	});
 
 	it("escapes HTML characters inside math", () => {
-		const { html } = renderMarkdown("$a<b$");
-		assert.ok(html.includes("$a&lt;b$"));
+		const out = html("$a<b$ and $$\nx & y\n$$");
+		assert.ok(out.includes("\\(a&lt;b\\)"));
+		assert.ok(out.includes("x &amp; y"));
 	});
 
-	it("keeps dollar signs inside Mermaid blocks out of math extraction", () => {
-		const { html } = renderMarkdown('```mermaid\ngraph TD\n  A["$5"] --> B["$6"]\n```\n');
-		assert.ok(html.includes('<pre class="mermaid">'));
-		assert.ok(html.includes("$5") && html.includes("$6"));
-		assert.ok(!html.includes("PRESERVED_"));
+	it("does not let a block formula run across a blank line", () => {
+		const out = html("$$ open\n\ntext\n\nclose $$");
+		assert.ok(!out.includes("math-block"));
+	});
+
+	it("leaves a lone dollar sign untouched", () => {
+		assert.equal(html("a $ b"), "<p>a $ b</p>\n");
+	});
+
+	it("keeps math out of heading text", () => {
+		const { headings } = renderMarkdown("## Area $\\pi r^2$\n");
+		assert.equal(headings[0].text, "Area $\\pi r^2$");
+	});
+});
+
+describe("renderMarkdown Mermaid", () => {
+	const html = (md) => renderMarkdown(md).html;
+
+	it("keeps dollar signs inside Mermaid blocks out of math handling", () => {
+		const out = html('```mermaid\ngraph TD\n  A["$5"] --> B["$6"]\n```\n');
+		assert.ok(out.includes('<pre class="mermaid">'));
+		assert.ok(out.includes("$5") && out.includes("$6"));
+		assert.ok(!out.includes("math-"));
 	});
 
 	it("renders both Mermaid syntaxes identically", () => {
-		const a = renderMarkdown("```mermaid\ngraph TD\n  A-->B\n```\n").html;
-		const b = renderMarkdown("::: mermaid\ngraph TD\n  A-->B\n:::\n").html;
+		const a = html("```mermaid\ngraph TD\n  A-->B\n```\n");
+		const b = html("::: mermaid\ngraph TD\n  A-->B\n:::\n");
 		assert.equal(a, b);
+		assert.ok(a.includes('<pre class="mermaid">graph TD\n  A--&gt;B</pre>'));
+	});
+
+	it("accepts a tilde fence and a closing colon fence at the end of the file", () => {
+		assert.ok(html("~~~mermaid\ngraph TD\n  A-->B\n~~~\n").includes('<pre class="mermaid">'));
+		assert.ok(html("::: mermaid\ngraph TD\n  A-->B\n:::").includes('<pre class="mermaid">'));
 	});
 
 	it("escapes markup in Mermaid source so it cannot break out of the pre element", () => {
-		const { html } = renderMarkdown("```mermaid\ngraph TD\n  A[</pre><img src=x>]\n```\n");
-		assert.ok(!html.includes("<img src=x>"));
+		const out = html("```mermaid\ngraph TD\n  A[</pre><img src=x>]\n```\n");
+		assert.ok(!out.includes("<img src=x>"));
 	});
 
+	it("keeps a diagram inside its list item", () => {
+		const out = html("- item\n\n  ```mermaid\n  graph TD\n    A-->B\n  ```\n- next\n");
+		assert.match(out, /<li><p>item<\/p>\s*<pre class="mermaid">[\s\S]*<\/pre>\s*<\/li>\s*<li><p>next<\/p>/);
+	});
+
+	it("leaves other fenced languages as highlighted code", () => {
+		assert.ok(html("```js\nlet a = 1;\n```\n").includes('<code class="language-js">'));
+	});
+
+	it("does not render a placeholder-like comment from the document as content", () => {
+		const out = html("<!--PRESERVED_0-->\n\n$x$");
+		assert.ok(out.includes("<!--PRESERVED_0-->"));
+		assert.ok(out.includes("math-inline"));
+	});
+});
+
+describe("renderMarkdown headings", () => {
 	it("adds heading IDs matching the extracted headings", () => {
 		const { html, headings } = renderMarkdown("# Title\n\n## Sub\n");
 		assert.equal(headings.length, 2);
 		for (const h of headings) {
 			assert.ok(html.includes(`<h${h.level} id="${h.id}">`));
+		}
+	});
+
+	it("keeps every ID on its own heading when fences, setext headings and quotes are mixed in", () => {
+		const md = "~~~\n# Fake\n~~~\n\nTitle\n=====\n\n> # Quoted\n\n# Real\n";
+		const { html, headings } = renderMarkdown(md);
+		assert.deepEqual(
+			headings.map((h) => h.text),
+			["Title", "Quoted", "Real"]
+		);
+		assert.ok(html.includes('<h1 id="title">Title</h1>'));
+		assert.ok(html.includes('<h1 id="quoted">Quoted</h1>'));
+		assert.ok(html.includes('<h1 id="real">Real</h1>'));
+		assert.ok(!html.includes('id="fake"'));
+	});
+
+	it("makes an in-page link point at the heading it names", () => {
+		const { html } = renderMarkdown("# Intro\n\nSee [the intro](#intro).\n");
+		assert.ok(html.includes('<a href="#intro">the intro</a>'));
+		assert.ok(html.includes('<h1 id="intro">'));
+	});
+
+	it("renders formatted headings with their markup and plain-text outline entries", () => {
+		const { html, headings } = renderMarkdown("## **Bold** text\n");
+		assert.ok(html.includes('<h2 id="bold-text"><strong>Bold</strong> text</h2>'));
+		assert.equal(headings[0].text, "Bold text");
+	});
+
+	it("records the source line of each top-level heading", () => {
+		const { headings } = renderMarkdown("para\n\n# First\n\n```\ncode\n```\n\n## Second\n");
+		assert.deepEqual(
+			headings.map((h) => h.lineIndex),
+			[2, 8]
+		);
+	});
+});
+
+describe("renderMarkdown images", () => {
+	it("passes each Markdown image address through resolveImage", () => {
+		const { html } = renderMarkdown('![alt](./a.png "Title") and [link](./a.png)', {
+			resolveImage: (href) => `resolved:${href}`,
+		});
+		assert.ok(html.includes('<img src="resolved:./a.png" alt="alt" title="Title">'));
+		assert.ok(html.includes('<a href="./a.png">link</a>'), "links are not images");
+	});
+
+	it("resolves raw HTML images, whatever the attribute order or quote style", () => {
+		const resolveImage = (href) => `r:${href}`;
+		const md = "<img src=\"a.png\" width=\"300\">\n\ntext <img alt='x' src='b.png'> more\n\n<p><img\n  src=\"c.png\"></p>\n";
+		const { html } = renderMarkdown(md, { resolveImage });
+		for (const name of ["a", "b", "c"]) {
+			assert.ok(html.includes(`src="r:${name}.png"`) || html.includes(`src='r:${name}.png'`), name);
+		}
+		assert.ok(html.includes('width="300"'));
+	});
+
+	it("does not rewrite image-looking text in code", () => {
+		const { html } = renderMarkdown('`<img src="a.png">`\n\n```html\n<img src="b.png">\n```\n', {
+			resolveImage: (href) => `r:${href}`,
+		});
+		assert.ok(!html.includes("r:"));
+	});
+
+	it("leaves image addresses alone when no resolver is given", () => {
+		assert.ok(renderMarkdown("![a](./a.png)").html.includes('<img src="./a.png"'));
+	});
+
+	it("reaches images nested in links, lists and tables", () => {
+		const resolveImage = (href) => `r:${href}`;
+		const md = "[![b](b.png)](https://example.test)\n\n- ![c](c.png)\n\n| h |\n| - |\n| ![d](d.png) |\n";
+		const { html } = renderMarkdown(md, { resolveImage });
+		for (const name of ["b", "c", "d"]) {
+			assert.ok(html.includes(`src="r:${name}.png"`), name);
 		}
 	});
 });
@@ -314,6 +521,19 @@ describe("getWebviewContent", () => {
 		assert.ok(page.includes(`mathjax@${CDN_VERSIONS.mathjax}/`));
 		assert.ok(page.includes(`cdn-assets@${CDN_VERSIONS.highlightjs}/`));
 		assert.ok(!/(mermaid|mathjax)@\d+\//.test(page), "floating major version found");
+	});
+
+	it("lets MathJax read only the delimiters the renderer emits", () => {
+		assert.ok(page.includes("inlineMath: [['\\\\(', '\\\\)']]"));
+		assert.ok(page.includes("displayMath: [['\\\\[', '\\\\]']]"));
+		assert.ok(!page.includes("['$'"), "a dollar delimiter would pair prices and shell variables");
+	});
+
+	it("wires the outline sidebar before it waits for Mermaid", () => {
+		const wiring = page.indexOf("classList.add('sidebar-open')");
+		const mermaidImport = page.indexOf("await import(");
+		assert.ok(wiring > 0 && mermaidImport > 0);
+		assert.ok(wiring < mermaidImport, "a slow Mermaid load would leave the sidebar dead");
 	});
 
 	it("puts the nonce on every script tag and in the CSP", () => {

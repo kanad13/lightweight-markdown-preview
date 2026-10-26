@@ -186,6 +186,20 @@ describe("image paths", () => {
 		assert.ok(render("![a](../up.png)").includes('<img src="webview:/up.png"'));
 	});
 
+	it("decodes %20 so the folder name is not encoded twice", () => {
+		assert.ok(render("![a](./my%20img/a%20b.png)").includes('<img src="webview:/docs/my%20img/a%20b.png"'));
+	});
+
+	it("keeps a path with a stray percent sign instead of failing", () => {
+		assert.ok(render("![a](./100%.png)").includes('<img src="webview:/docs/100%.png"'));
+	});
+
+	it("resolves images written as raw HTML", () => {
+		assert.ok(
+			render('<img src="./img/a.png" width="40">').includes('<img src="webview:/docs/img/a.png" width="40">')
+		);
+	});
+
 	it("treats a leading slash as workspace-relative", () => {
 		vscode.workspace.workspaceFolders = [{ uri: { path: "/ws" } }];
 		assert.ok(render("![a](/assets/i.png)").includes('<img src="webview:/ws/assets/i.png"'));
