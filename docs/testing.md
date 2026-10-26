@@ -29,8 +29,8 @@ The extension has two halves, and each half has its own kind of check.
 
 | File                          | Scope                                                                                                                   | Fake used                        |
 | :---------------------------- | :---------------------------------------------------------------------------------------------------------------------- | :------------------------------- |
-| `test/extension.test.js`      | Pure functions: heading extraction, outline tree, escaping, math and Mermaid preservation, nonce, template substitution | `.html` loader and `vscode` shim |
-| `test/lifecycle.test.js`      | Command, active-editor following, debounce, disposal, theme change, image paths, error notification                     | Fake panel, mock timers          |
+| `test/extension.test.js`      | Pure functions: heading extraction and IDs, outline tree, escaping, math, Mermaid and image handling, nonce, template substitution, page contract | `.html` loader and `vscode` shim |
+| `test/lifecycle.test.js`      | Command, active-editor following, debounce, disposal, theme change, image paths (including `%20` and raw HTML), error notification | Fake panel, mock timers          |
 | `test/bundle.test.js`         | The webpack output renders a complete page with CSP, pinned CDN versions, and no unreplaced placeholders                | Fake `vscode` only               |
 | `test/docs.test.js`           | Relative links and heading anchors in every Markdown file; the routing table in `AGENTS.md` matches `docs/workflows.md` | None                             |
 | `test/helpers/fake-vscode.js` | Shared `vscode` and `.html` shims, handler capture, fake documents and panel                                            | Not a suite                      |
@@ -44,20 +44,20 @@ The extension has two halves, and each half has its own kind of check.
 | Close the panel                          | `lifecycle`: pending update cancelled, later events ignored                            | None                                     |
 | Switch to another Markdown file          | `lifecycle`: preview follows; ignores no-editor, non-Markdown, `git` scheme, same file | Scroll reset is manual (see below)       |
 | Change the VS Code color theme           | `lifecycle`: Mermaid and highlight.js themes switch                                    | Visual result is manual                  |
-| Show local and remote images             | `lifecycle`: relative, parent, workspace-root, `https`, `data` paths                   | Loading through a real webview is manual |
-| Hostile document text                    | `extension`: escaping of outline, math, Mermaid; placeholder text in content           | CSP enforcement is manual                |
-| Inline and block math, Mermaid, code     | `extension`: source is preserved for the browser libraries                             | Rendering in the browser is manual       |
+| Show local and remote images             | `lifecycle`: relative, parent, workspace-root, `https`, `data`, `%20` and raw HTML paths | Loading through a real webview is manual |
+| Hostile document text                    | `extension`: escaping of outline, math, Mermaid; placeholder-like text in content      | CSP enforcement is manual                |
+| Inline and block math, Mermaid, code     | `extension`: dollar signs in code and prices stay text, formulas and diagrams reach the libraries as `\(..\)`, `\[..\]` and `pre.mermaid`; heading IDs match anchors | Rendering in the browser is manual       |
 | Bundled extension starts and renders     | `bundle`: complete page from `dist/extension.js`                                       | Install in a real editor is manual       |
 | Documents agree with each other          | `docs`: links, anchors, and task routing resolve                                       | Claims about behavior are manual (Sync)  |
-| Outline sidebar, scroll save and restore | None automated                                                                         | Manual smoke check                       |
+| Outline sidebar, in-page links, scroll save and restore | Page contract: sidebar wired before the Mermaid import | Behavior is the manual smoke check       |
 
 ## Manual Smoke Check
 
 Run this check before a release and after any change to `src/webview.html`. Use the F5 dev host or an installed `.vsix`, and open `examples/test.md`.
 
-1. Confirm that block math, inline math, and both Mermaid syntaxes render.
+1. Confirm that block math, inline math, and both Mermaid syntaxes render. Add a line with `` `echo $HOME $PATH` `` and "costs $5 and $10" and confirm both stay plain text.
 2. Confirm that code blocks are highlighted.
-3. Open the outline sidebar, select a heading, and confirm the page scrolls to it.
+3. Open the outline sidebar, select a heading, and confirm the page scrolls to it. Select an in-page link such as `[end](#the-end)` and confirm it scrolls too. Open the sidebar while diagrams are still loading and confirm it responds.
 4. Scroll down, type in the editor, and confirm the preview keeps its position.
 5. Open a second Markdown file in another tab. Confirm the preview switches and starts at the top.
 6. Switch the VS Code color theme. Confirm diagrams and code colors follow it.
@@ -73,6 +73,10 @@ A check proves something only if it can fail. When you add or change a test for 
   - Removing the same-document guard fails the no-re-render test.
   - Skipping `escapeHtml` on math fails the escaping tests.
   - Dropping the `git` scheme guard fails the diff test.
+  - Dropping the digit rule or the leading-space rule from inline math fails the price tests.
+  - Skipping duplicate numbering fails the heading ID tests.
+  - Enabling a dollar delimiter in the page template fails the page contract test.
+  - Removing `decodeURI` from image resolution fails the `%20` test.
 
 ## Rules for Changing Tests
 

@@ -31,33 +31,6 @@ The project goals set the limits: small, private, and zero configuration.
 | Deferred      | The value is real but too small for the current cost. Reopen when the condition holds. |
 | Declined      | Conflicts with a project goal. Do not reopen without changing the goal.                |
 
-## Recommended
-
-### Rebuild the renderer on the `marked` token stream
-
-Last reviewed: 2026-10-26.
-
-- **Problem:**
-  - The renderer cuts math and Mermaid out of the text with regular expressions, parks them in `<!--PRESERVED_n-->` placeholders, and puts them back after `marked` runs. A separate regular expression finds headings, and the page matches them to `<hN>` tags by position.
-  - Confirmed failures, checked in a real browser and in Node:
-    - `` `echo $HOME $PATH` `` in inline code or a fenced block renders as `<!--PRESERVED_n-->PATH`, because the math pattern runs before `marked` knows the text is code. This has been present since inline math shipped in 1.4.0.
-    - "It costs $5 and $10" renders `5and10` as math, and `\$5` is corrupted.
-    - A `#` line inside a `~~~` fence takes a real heading's slot, so the real heading gets the wrong ID and the outline shows a phantom entry. Setext headings, indented fences, and headings inside blockquotes shift the IDs in the same way.
-    - A `$$ ... $$` equation on one line works only because the inline pattern catches the inside and MathJax pairs the leftover `$` signs. No test covers it.
-    - A Mermaid fence inside a list item loses its list structure.
-    - Heading IDs end in a line number, so `[see intro](#intro)` does not scroll.
-- **Approach:**
-  - Add `marked` extensions for block math (`$$`), inline math (`$`), and Mermaid (both fence styles). `marked` already knows which text is code, so those cases stop being special.
-  - Read headings from the token stream and generate GitHub-style slugs with a numeric suffix for duplicates. The outline and the rendered headings then share one source.
-  - Rewrite Markdown image paths in the renderer instead of with a regular expression on the finished HTML.
-  - A closing `$` followed by a digit does not end inline math, so prices stay text.
-- **Evidence for feasibility:**
-  - Summing the newline count of each `raw` field from `marked.lexer()` gave the correct source line for every top-level block in a probe (heading, paragraph, fence, list, math, setext). A line map for scroll sync falls out of this work.
-- **Cost:**
-  - Medium. `renderMarkdown()` and `extractHeadings()` change, and their tests change with them. Placeholder-specific tests are replaced by behavior tests.
-- **Open detail:**
-  - Raw HTML images (`<img width=... src=...>`) are outside this change. They are rare in practice, and the current rewrite already misses them.
-
 ## Open question
 
 ### Raw HTML in documents and the script allowlist
@@ -90,14 +63,14 @@ Last reviewed: 2026-10-26.
 - **Decision:**
   - Build both directions or neither. Editor-to-preview alone would feel half-finished and could confuse people who expect the reverse.
 - **Why it waits:**
-  - The preview needs a source line for every rendered block. The renderer rebuild above provides it.
+  - The preview needs a source line for every rendered block. The renderer now runs on the `marked` token stream, and a probe showed that summing the newlines in each token's `raw` text gives the line of every top-level block. Headings already record it as `lineIndex`. Tagging every block is the remaining step.
   - Preview-to-editor needs a message from the page to the extension host. That is a new input path, so it needs the CSP question above settled and a security review, and the host must accept only a whole-number line.
   - Both directions need loop guards, so that a programmatic scroll does not trigger the reverse scroll.
   - Mermaid and MathJax change block heights after the first render, so positions are measured at scroll time. A long code block needs interpolation between its first and last line.
   - The page script has no automated tests, so the manual smoke check grows.
   - Nobody has asked for it. The one open issue is about math.
 - **Reopen when:**
-  - The renderer rebuild has shipped, and the maintainer or a user asks for sync.
+  - The maintainer or a user asks for sync.
 
 ### Update the page without replacing it
 

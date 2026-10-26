@@ -50,7 +50,7 @@ Raw HTML in a document passes through `marked` unchanged, so the CSP in Layer 1 
 - **Outline entries:**
   - `escapeHtml()` escapes heading text before it enters the sidebar markup.
 - **Math and Mermaid source:**
-  - The extension escapes preserved blocks, so a diagram or formula cannot close its `<pre>` element or open a new tag.
+  - The extension escapes formula and diagram source, so a diagram or formula cannot close its element or open a new tag.
   - The browser decodes the entities, so MathJax and Mermaid still read the original source.
 - **Mermaid security level:**
   - Diagrams render with `securityLevel: 'strict'`.
@@ -105,11 +105,14 @@ The extension's state is managed entirely in memory and is reset every time the 
 
 ## Content Processing Pipeline
 
-1. **Extraction:** `renderMarkdown()` removes Mermaid blocks, then block math, then inline math, before parsing, so `marked` cannot alter their syntax. Mermaid goes first because diagram labels can contain `$`.
-   - Mermaid supports dual syntax: GitHub-style (` ```mermaid `) and Azure DevOps-style (`::: mermaid`)
-2. **Rendering:** `marked` converts the remaining markdown to HTML
-3. **Restoration:** Preserved blocks return in place, HTML-escaped, with original delimiters intact. MathJax is configured to recognize both `$...$` and `\(...\)` as inline delimiters.
-4. **Path Resolution:** Image `src` attributes are converted to webview-accessible URIs, handling:
+1. **Lexing:** `marked.lexer()` turns the source into tokens. Three parser extensions teach it the syntax `marked` lacks, so it knows what is code and never reads math or a diagram inside a code span or fence.
+   - Block math: `$$ ... $$`, on one line or several. The body may not contain a blank line.
+   - Inline math: `$...$`, and `$$...$$` written inside a sentence. The opening `$` must touch the formula, the closing `$` must not follow a space or precede a digit, so "costs $5 and $10" stays text. This is Pandoc's rule.
+   - Mermaid: GitHub-style (` ```mermaid `, also `~~~`) and Azure DevOps-style (`::: mermaid`). The second form becomes an ordinary `code` token with the language `mermaid`, so both render identically and both nest in lists and quotes.
+2. **Headings:** `collectHeadings()` walks the tokens, builds each outline entry from the visible text, and gives it a GitHub-style ID (`intro`, `intro-1` for duplicates). The ID is written onto the token and the heading renderer reads it from there, so the outline and the page cannot disagree. Each entry also records `lineIndex`, the source line of its top-level block.
+3. **Images:** When `renderMarkdown` receives `resolveImage`, it rewrites Markdown image addresses on the tokens, and the `src` of raw `<img>` tags inside HTML tokens. Code and prose are never touched.
+4. **Rendering:** `marked.parser()` renders the tokens. Math is emitted as `\(...\)` and `\[...\]` and Mermaid as `<pre class="mermaid">`, with the source HTML-escaped. The page configures MathJax with only those delimiters, so a stray dollar sign in the text is never paired.
+5. **Path Resolution:** `resolveImagePath()` decodes percent escapes (`%20`), then converts the address to a webview-accessible URI, handling:
    - Relative paths (`./images/photo.png`)
    - Parent directory paths (`../docs/diagram.png`)
    - Workspace-root paths (`/assets/icon.png`)
@@ -212,6 +215,6 @@ Changes to the following areas are high-risk and **must undergo a security revie
 
 - **Content Security Policy (CSP):** Modifying the CSP header can instantly create security vulnerabilities
 - **Nonce Generation:** The cryptographic token logic is critical for preventing XSS
-- **Mermaid/Math Preprocessing:** The regex logic is delicate and handles untrusted input
+- **Math, Mermaid, heading and image handling:** The parser extensions and token passes in `renderMarkdown()` handle untrusted input
 - **State Management:** Altering the data flow could introduce bugs or race conditions
 - **Script Execution:** Any addition of user script execution or dynamic eval operations
