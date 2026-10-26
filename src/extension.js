@@ -8,12 +8,15 @@
  * Approach and invariants:
  * - One webview panel, reused across files; state lives in the `activate` closure.
  * - Markdown is rendered in the extension host, then injected as a whole page.
+ * - `marked` is the only parser. Math, Mermaid, heading IDs and image addresses
+ *   are handled as parser extensions and token passes, never by rewriting the
+ *   text before or the HTML after, so code spans and fences stay untouched.
  * - Untrusted text reaches HTML only through `marked` or `escapeHtml`, and the
  *   CSP runs only scripts that carry the per-render nonce.
  */
 const crypto = require("crypto");
 const vscode = require("vscode");
-const { marked } = require("marked");
+const { Marked } = require("marked");
 const webviewTemplate = require("./webview.html");
 
 /**
@@ -186,19 +189,27 @@ function resolveImagePath(imagePath, document, panel) {
 			path: documentPath.path.substring(0, documentPath.path.lastIndexOf("/")),
 		});
 
+		// Markdown writes spaces as %20; Uri.joinPath would encode the percent sign again and the file would not load
+		let decodedPath = imagePath;
+		try {
+			decodedPath = decodeURI(imagePath);
+		} catch {
+			// A stray percent sign is a literal character
+		}
+
 		// Resolve relative path against document directory
 		let imagePath_parsed;
 		if (imagePath.startsWith("/")) {
 			// Absolute path - treat as workspace-relative
 			const workspaceFolders = vscode.workspace.workspaceFolders;
 			if (workspaceFolders && workspaceFolders.length > 0) {
-				imagePath_parsed = vscode.Uri.joinPath(workspaceFolders[0].uri, imagePath);
+				imagePath_parsed = vscode.Uri.joinPath(workspaceFolders[0].uri, decodedPath);
 			} else {
 				return imagePath;
 			}
 		} else {
 			// Relative path - resolve against document directory
-			imagePath_parsed = vscode.Uri.joinPath(documentDir, imagePath);
+			imagePath_parsed = vscode.Uri.joinPath(documentDir, decodedPath);
 		}
 
 		// Convert to webview-accessible URI
@@ -210,114 +221,266 @@ function resolveImagePath(imagePath, document, panel) {
 }
 
 /**
- * Extracts headings from markdown raw text
+ * Block math: `$$ ... $$` on one line or across several lines
  *
- * Parses markdown headings and returns a nested structure
- * for generating a table of contents.
- *
- * Importantly, this function ignores headings inside code blocks (```...```)
- * to avoid including comment lines from code samples in the TOC.
- *
- * @param {string} raw - The raw markdown text
- * @returns {Array} Array of heading objects with level, text, and id
+ * Why a parser extension: `marked` already knows which text is code, so a `$$`
+ * inside a fence or code span never reaches this tokenizer. The body may not
+ * contain a blank line, so a stray `$$` cannot swallow the rest of the page.
+ * The output uses MathJax's `\[ \]` delimiters, which the page enables instead
+ * of any dollar delimiter (see webview.html).
  */
-function extractHeadings(raw) {
-	const headings = [];
-	const lines = raw.split("\n");
-	let insideCodeBlock = false;
-	let insideColonBlock = false;
-
-	lines.forEach((line, index) => {
-		// Track if we're entering or exiting a backtick code block
-		if (line.match(/^```/)) {
-			insideCodeBlock = !insideCodeBlock;
-			return; // Don't process code fence lines
+const mathBlock = {
+	name: "mathBlock",
+	level: "block",
+	start(src) {
+		const at = src.search(/(?:^|\n)\$\$/);
+		return at < 0 ? undefined : src[at] === "\n" ? at + 1 : at;
+	},
+	tokenizer(src) {
+		const match = /^\$\$((?:(?!\n[ \t]*\n)[\s\S])+?)\$\$[ \t]*(?:\n|$)/.exec(src);
+		if (match) {
+			return { type: "mathBlock", raw: match[0], text: match[1] };
 		}
+		return undefined;
+	},
+	renderer(token) {
+		return `<div class="math-block">\\[${escapeHtml(token.text)}\\]</div>\n`;
+	},
+};
 
-		// Track triple-colon blocks (Azure DevOps / Fenced Div style)
-		if (line.match(/^:::\s*mermaid/)) {
-			insideColonBlock = true;
-			return;
+/**
+ * Inline math: `$...$`, plus `$$...$$` written inside a sentence
+ *
+ * Why the extra rules: the opening `$` must touch the formula, the closing `$`
+ * must not follow a space or precede a digit. That is Pandoc's rule, and it is
+ * what keeps "costs $5 and $10" as text. An escaped `\$` is consumed by
+ * `marked`'s own escape rule before this tokenizer sees it.
+ */
+const mathInline = {
+	name: "mathInline",
+	level: "inline",
+	start(src) {
+		return src.indexOf("$");
+	},
+	tokenizer(src) {
+		const display = /^\$\$((?:\\[\s\S]|[^$\\])+?)\$\$/.exec(src);
+		if (display) {
+			return { type: "mathInline", raw: display[0], text: display[1], display: true };
 		}
-		if (insideColonBlock && line.match(/^:::\s*$/)) {
-			insideColonBlock = false;
-			return;
+		const inline = /^\$(?!\s)((?:\\[\s\S]|[^$\\\n])+?)(?<!\s)\$(?!\d)/.exec(src);
+		if (inline) {
+			return { type: "mathInline", raw: inline[0], text: inline[1], display: false };
 		}
+		return undefined;
+	},
+	renderer(token) {
+		const [open, close, kind] = token.display ? ["\\[", "\\]", "math-display"] : ["\\(", "\\)", "math-inline"];
+		return `<span class="${kind}">${open}${escapeHtml(token.text)}${close}</span>`;
+	},
+};
 
-		// Only extract headings if we're NOT inside any block
-		if (!insideCodeBlock && !insideColonBlock) {
-			const match = line.match(/^(#{1,6})\s+(.+)$/);
-			if (match) {
-				const level = match[1].length;
-				const text = match[2].trim();
-				// Create a URL-friendly ID from heading text
-				const id = `heading-${text
-					.toLowerCase()
-					.replace(/[^\w\s-]/g, "")
-					.replace(/\s+/g, "-")}-${index}`;
+/**
+ * Azure DevOps Mermaid fence (`::: mermaid` ... `:::`)
+ *
+ * Emits an ordinary `code` token with the language `mermaid`, so it renders
+ * exactly like the backtick form and nests inside lists and quotes.
+ */
+const mermaidColonFence = {
+	name: "mermaidColonFence",
+	level: "block",
+	start(src) {
+		const at = src.search(/(?:^|\n):::[ \t]*mermaid[ \t]*\n/);
+		return at < 0 ? undefined : src[at] === "\n" ? at + 1 : at;
+	},
+	tokenizer(src) {
+		const match = /^:::[ \t]*mermaid[ \t]*\n((?:[\s\S]*?\n)??):::[ \t]*(?:\n|$)/.exec(src);
+		if (match) {
+			return { type: "code", raw: match[0], text: match[1], lang: "mermaid" };
+		}
+		return undefined;
+	},
+};
 
-				headings.push({ level, text, id, lineIndex: index });
+const markdown = new Marked({
+	extensions: [mathBlock, mathInline, mermaidColonFence],
+	renderer: {
+		code(token) {
+			if ((token.lang || "").split(/\s/)[0] !== "mermaid") {
+				return false;
 			}
+			return `<pre class="mermaid">${escapeHtml(token.text.trim())}</pre>\n`;
+		},
+		heading(token) {
+			if (!token.id) {
+				return false;
+			}
+			return `<h${token.depth} id="${token.id}">${this.parser.parseInline(token.tokens)}</h${token.depth}>\n`;
+		},
+	},
+});
+
+const NAMED_ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
+
+/**
+ * Decodes the entities `marked` leaves in inline text tokens
+ *
+ * Inline `text` tokens keep the source spelling (`&amp;`), but the outline and
+ * the heading ID need what the reader sees.
+ *
+ * @param {string} text - Inline text as written in the Markdown source
+ * @returns {string} Text with named and numeric entities decoded
+ */
+function decodeEntities(text) {
+	return text.replace(/&(?:#(\d+)|#x([0-9a-f]+)|([a-z]+));/gi, (match, dec, hex, name) => {
+		if (name) {
+			return NAMED_ENTITIES[name.toLowerCase()] ?? match;
 		}
+		const code = dec ? parseInt(dec, 10) : parseInt(hex, 16);
+		return code <= 0x10ffff ? String.fromCodePoint(code) : match;
+	});
+}
+
+/**
+ * Returns the text a reader sees for a list of inline tokens
+ *
+ * @param {Array} tokens - Inline tokens from `marked`
+ * @returns {string} Plain text without formatting markers
+ */
+function plainText(tokens) {
+	return tokens
+		.map((token) => {
+			if (token.tokens) {
+				return plainText(token.tokens);
+			}
+			if (token.type === "text") {
+				return decodeEntities(token.text);
+			}
+			// A formula keeps its delimiters, so the outline shows what the author wrote
+			return token.type === "mathInline" ? token.raw : (token.text ?? token.raw);
+		})
+		.join("");
+}
+
+/**
+ * Builds a GitHub-style anchor from heading text
+ *
+ * @param {string} text - Plain heading text
+ * @returns {string} Lowercase text with punctuation removed and whitespace turned into hyphens
+ */
+function slugify(text) {
+	return text
+		.trim()
+		.toLowerCase()
+		.replace(/[^\p{L}\p{N}\p{M}\s_-]/gu, "")
+		.replace(/\s/g, "-");
+}
+
+/**
+ * Collects headings from the token stream and assigns each one its anchor ID
+ *
+ * The parser decides what a heading is, so fences, setext headings, quotes and
+ * list items need no special cases here. The ID is written onto the token, and
+ * the heading renderer reads it from there, so the outline and the page cannot
+ * disagree.
+ *
+ * @param {Array} tokens - Block tokens from `marked.lexer`
+ * @returns {Array} Heading objects with level, text, id and lineIndex (source line of the enclosing top-level block)
+ */
+function collectHeadings(tokens) {
+	const headings = [];
+	const used = new Set();
+	let line = 0;
+
+	tokens.forEach((block) => {
+		markdown.walkTokens([block], (token) => {
+			if (token.type !== "heading") {
+				return;
+			}
+			const text = plainText(token.tokens);
+			const base = slugify(text) || "section";
+			let id = base;
+			for (let n = 1; used.has(id); n++) {
+				id = `${base}-${n}`;
+			}
+			used.add(id);
+			token.id = id;
+			headings.push({ level: token.depth, text, id, lineIndex: line });
+		});
+		line += block.raw.split("\n").length - 1;
 	});
 
 	return headings;
 }
 
 /**
+ * Extracts headings from markdown raw text
+ *
+ * Parses the text with the same parser that renders it, so headings inside
+ * code, Mermaid blocks and other containers are never reported.
+ *
+ * @param {string} raw - The raw markdown text
+ * @returns {Array} Array of heading objects with level, text, id and lineIndex
+ */
+function extractHeadings(raw) {
+	return collectHeadings(markdown.lexer(raw));
+}
+
+/**
+ * Rewrites the `src` of `<img>` tags written as raw HTML in a document
+ *
+ * Authors use raw tags to size images (`<img src="a.png" width="300">`). The
+ * rewrite is confined to HTML tokens, so it never touches code or prose, and a
+ * changed address is re-escaped for the attribute it lands in.
+ *
+ * @param {string} html - Text of one `marked` HTML token
+ * @param {(href: string) => string} resolveImage - Maps an image address to the address the page should load
+ * @returns {string} The HTML with local image addresses resolved
+ */
+function resolveHtmlImages(html, resolveImage) {
+	return html.replace(/(<img\b[^>]*?\ssrc=)(["'])(.*?)\2/gis, (match, before, quote, href) => {
+		const resolved = resolveImage(href);
+		return `${before}${quote}${resolved === href ? href : escapeHtml(resolved)}${quote}`;
+	});
+}
+
+/**
  * Converts markdown source to body HTML plus the heading list for the TOC
  *
  * Pipeline:
- * 1. Extract Mermaid blocks, then block and inline math, before parsing
- * 2. Convert the remaining markdown to HTML with marked
- * 3. Attach heading IDs and restore the preserved blocks
+ * 1. Lex the source into tokens; math and Mermaid are parser extensions
+ * 2. Collect headings and write their IDs onto the tokens
+ * 3. Optionally rewrite image addresses on the tokens, in Markdown images and raw `<img>` tags
+ * 4. Render the tokens to HTML
  *
- * Why extraction happens first:
- * - marked would escape or reflow the backticks, delimiters and operators in Mermaid and math source
- * - Mermaid goes first because diagram labels may contain "$", which the math passes would swallow
- * - Preserved source is HTML-escaped; the browser decodes it, so Mermaid and MathJax read the original text
+ * Why tokens and not text rewriting: the parser already knows what is code, so
+ * `$HOME` in a fence or a heading marker in a `~~~` block cannot be mistaken
+ * for math or a heading, and no placeholder has to survive a round trip.
  *
  * @param {string} source - Raw markdown text
+ * @param {{ resolveImage?: (href: string) => string }} [options] - `resolveImage` maps each Markdown image address to the address the page should load
  * @returns {{ html: string, headings: Array }} Rendered HTML and extracted headings
  */
-function renderMarkdown(source) {
-	let raw = source;
-	const preservedBlocks = [];
-	const preserve = (content) => {
-		preservedBlocks.push(content);
-		return `<!--PRESERVED_${preservedBlocks.length - 1}-->`;
-	};
+function renderMarkdown(source, options = {}) {
+	const tokens = markdown.lexer(source);
+	const headings = collectHeadings(tokens);
 
-	const headings = extractHeadings(raw);
+	if (options.resolveImage) {
+		markdown.walkTokens(tokens, (token) => {
+			if (token.type === "image") {
+				token.href = options.resolveImage(token.href);
+			} else if (token.type === "html") {
+				token.text = resolveHtmlImages(token.text, options.resolveImage);
+			}
+		});
+	}
 
-	// Both the backtick (```) and triple-colon (:::) forms render, for GitHub and Azure DevOps compatibility
-	const preserveMermaid = (match, code) => preserve(`<pre class="mermaid">${escapeHtml(code.trim())}</pre>`);
-	raw = raw.replace(/```mermaid\s*\n([\s\S]*?)```/g, preserveMermaid);
-	raw = raw.replace(/:::\s*mermaid\s*\n([\s\S]*?):::/g, preserveMermaid);
-
-	// Block math ($$...$$) must come before inline math ($...$)
-	const preserveMath = (match) => preserve(escapeHtml(match));
-	raw = raw.replace(/\$\$\s*\n[\s\S]*?\$\$/g, preserveMath);
-	raw = raw.replace(/\$[^$\n]+\$/g, preserveMath);
-
-	let html = marked(raw);
-
-	// Add IDs to headings for anchor linking
-	headings.forEach((heading) => {
-		html = html.replace(`<h${heading.level}>`, `<h${heading.level} id="${heading.id}">`);
-	});
-
-	html = html.replace(/<!--PRESERVED_(\d+)-->/g, (match, index) => {
-		return preservedBlocks[parseInt(index, 10)] ?? match;
-	});
-
-	return { html, headings };
+	return { html: markdown.parser(tokens), headings };
 }
 
 /**
  * Renders a markdown document into the webview
  *
- * Runs renderMarkdown, rewrites image paths to webview URIs, then injects the
+ * Runs renderMarkdown with image paths resolved to webview URIs, then injects the
  * result into the HTML template with a fresh CSP nonce. Errors surface as a
  * VS Code notification, so a failed render is visible.
  *
@@ -326,11 +489,8 @@ function renderMarkdown(source) {
  */
 function updateWebviewContent(panel, document) {
 	try {
-		const { html: renderedHtml, headings } = renderMarkdown(document.getText());
-
-		const html = renderedHtml.replace(/<img\s+src="([^"]+)"/g, (match, imagePath) => {
-			const resolvedPath = resolveImagePath(imagePath, document, panel);
-			return `<img src="${resolvedPath}"`;
+		const { html, headings } = renderMarkdown(document.getText(), {
+			resolveImage: (href) => resolveImagePath(href, document, panel),
 		});
 
 		panel.webview.html = getWebviewContent(html, getNonce(), headings, resolveTheme(), document.uri.toString());

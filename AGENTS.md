@@ -48,8 +48,8 @@ Before adding, upgrading, or auditing any dependency (npm package, CDN library, 
 - Single webview panel, reused across files
 - No TypeScript, no frameworks, no bundled webview scripts
 - CDN-loaded (Mermaid, MathJax, highlight.js) at exact versions defined in `CDN_VERSIONS` in `src/extension.js`
-- Mermaid extraction: backtick (```) and Azure DevOps (:::) syntaxes
-- Math extraction: inline ($...$) and block ($$...$$); preserved source is HTML-escaped
+- Mermaid: backtick (```) and Azure DevOps (:::) syntaxes, handled as `marked` extensions
+- Math: inline ($...$) and block ($$...$$) as `marked` extensions; source is HTML-escaped and emitted as `\(..\)` / `\[..\]`
 - TOC sidebar: overlay pattern, slides from right, no layout reflow
 
 ## Code Style (enforced by ESLint)

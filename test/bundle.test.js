@@ -17,13 +17,15 @@ describe("webpack bundle", () => {
 
 	it("renders a complete page from the bundled code", () => {
 		const bundle = require(bundlePath);
-		const markdown = "# Bundle heading\n\nInline $a<b$.\n\n```mermaid\ngraph TD\n  A-->B\n```\n";
+		const markdown =
+			"# Bundle heading\n\nInline $a<b$ and `echo $HOME $PATH`.\n\n```mermaid\ngraph TD\n  A-->B\n```\n";
 		const html = openPreview(bundle.activate, makeDoc("/docs/bundle.md", markdown)).webview.html;
 
 		assert.ok(html.startsWith("<!DOCTYPE html>"));
 		assert.ok(html.includes("Content-Security-Policy"));
-		assert.ok(html.includes('<h1 id="heading-bundle-heading-0">Bundle heading</h1>'));
-		assert.ok(html.includes("$a&lt;b$"));
+		assert.ok(html.includes('<h1 id="bundle-heading">Bundle heading</h1>'));
+		assert.ok(html.includes('<span class="math-inline">\\(a&lt;b\\)</span>'));
+		assert.ok(html.includes("<code>echo $HOME $PATH</code>"), "dollar signs in code survive the bundled parser");
 		assert.ok(html.includes('<pre class="mermaid">'));
 		assert.ok(!/\{\{[A-Z_]+\}\}/.test(html), "unreplaced template placeholder");
 		assert.ok(html.includes(`mermaid@${bundle.CDN_VERSIONS.mermaid}/`));

@@ -66,6 +66,12 @@ npm test
 - **`.prettierrc`:** it matches the ESLint rules for editors that format on save. The repository has no formatter script.
 - **JSDoc:** every exported function states its purpose, parameters with types, return value, and side effects.
 - **Comments:** explain why. Leave no `TODO` comments and no debugging output in shipped code.
+- **Readme images:**
+  - Link each image by an absolute `https://raw.githubusercontent.com/kanad13/lightweight-markdown-preview/main/assets/<file>` URL.
+  - The package leaves `assets/` out, so a relative link breaks on the Marketplace and Open VSX pages. A `github.com/.../blob/...` link returns an HTML page, not the image.
+  - Use PNG or JPEG, because the Marketplace rejects SVG. Give every image alt text that names what it shows.
+  - Add the file to `assets/` on the same branch. The image URL works for readers only after the branch merges to `main`.
+  - `examples/showcase.md` is the document behind the screenshots. Open it in VS Code to retake them.
 
 ### Dependencies
 
@@ -142,13 +148,13 @@ Release only from `main`, only when the maintainer asks, and only after CI passe
 
 ## Troubleshooting
 
-| Symptom                                                  | Cause and fix                                                                                                                                                                         |
-| :------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `npm test` fails after a pull                            | Run `rm -rf node_modules && npm ci`                                                                                                                                                   |
-| CI fails                                                 | Open the failed run on the Actions tab. Reproduce lint errors with `npm run lint`, and check that every required file is tracked                                                      |
-| Build fails with "same case insensitive path"            | Two tracked files differ only in letter case, such as `README.md` and `readme.md`. Remove the one with the wrong case with `git rm`                                                   |
-| Packaging fails with ".env files should not be packaged" | A local `.env` is present. List `.env` and `.env*` in `.vscodeignore`                                                                                                                 |
-| Publish fails with "authorization failed"                | Run `vsce login KunalPathak` with a new token, then publish again                                                                                                                     |
-| Publish fails because the version exists                 | The version in `package.json` was not bumped. Bump it, commit, tag the new commit, and publish again                                                                                  |
-| The tag already exists or points at the wrong commit     | Check with `git show vX.Y.Z --quiet`. Ask the maintainer before you delete or move a pushed tag |
-| `gh` reports no authentication                           | Run `gh auth login`                                                                                                                                                                   |
+| Symptom                                                  | Cause and fix                                                                                                                       |
+| :------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------- |
+| `npm test` fails after a pull                            | Run `rm -rf node_modules && npm ci`                                                                                                 |
+| CI fails                                                 | Open the failed run on the Actions tab. Reproduce lint errors with `npm run lint`, and check that every required file is tracked    |
+| Build fails with "same case insensitive path"            | Two tracked files differ only in letter case, such as `README.md` and `readme.md`. Remove the one with the wrong case with `git rm` |
+| Packaging fails with ".env files should not be packaged" | A local `.env` is present. List `.env` and `.env*` in `.vscodeignore`                                                               |
+| Publish fails with "authorization failed"                | Run `vsce login KunalPathak` with a new token, then publish again                                                                   |
+| Publish fails because the version exists                 | The version in `package.json` was not bumped. Bump it, commit, tag the new commit, and publish again                                |
+| The tag already exists or points at the wrong commit     | Check with `git show vX.Y.Z --quiet`. Ask the maintainer before you delete or move a pushed tag                                     |
+| `gh` reports no authentication                           | Run `gh auth login`                                                                                                                 |

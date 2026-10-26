@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.6.0] - 2026-10-26
+
+### Added
+
+- A rewritten readme that leads with screenshots, and an example document (`examples/showcase.md`) behind them.
+
+### Fixed
+
+- Dollar signs in code no longer break the page. `echo $HOME $PATH` in a code span or a fenced block showed placeholder text before.
+- Prices such as "costs $5 and $10" stay text instead of becoming a formula, and `\$` shows a dollar sign.
+- Outline entries and heading anchors stay correct when a document has `~~~` fences, setext headings (underlined with `===`), headings in quotes or lists, or duplicate titles. A `#` line inside a `~~~` fence used to give the next real heading the wrong anchor.
+- A Mermaid diagram inside a list item stays inside it.
+- Images with `%20` in the path load, and `<img src="...">` tags written as HTML resolve whatever the attribute order.
+- The outline sidebar works while diagrams are still loading, and one invalid diagram no longer stops the diagrams after it.
+
+### Changed
+
+- Anchor links such as `[see intro](#intro)` scroll to the heading. Heading anchors now follow GitHub's style (`intro`, `intro-1`), so the old `heading-intro-12` form no longer exists.
+- Inline math needs no space after the opening `$` or before the closing `$`, and no digit after the closing `$`, as in Pandoc. `$ x $` with inner spaces is now text. `$$ x $$` and `$$` on separate lines still render as block math.
+- Formatted headings (`## **Bold** text`) show plain text in the outline.
+- Math, Mermaid, heading anchors and image paths are handled by the Markdown parser itself, not by rewriting the text before and after it.
+
 ## [1.5.0] - 2026-10-25
 
 ### Changed

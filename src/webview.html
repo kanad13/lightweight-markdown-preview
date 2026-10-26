@@ -319,42 +319,19 @@
 		{{CONTENT}}
 	</main>
 	<script nonce="{{NONCE}}">
-		// MathJax ships with only \( \) inline delimiters; enable $...$ to match the extraction in extension.js
+		// extension.js decides what is math and writes \( \) and \[ \] around it. Dollar delimiters stay off, so prices and shell variables in the text are never paired
 		let resolveMath;
 		// Settles when MathJax finishes typesetting; the timeout keeps an offline or blocked CDN from stalling scroll restore
 		window.mathReady = new Promise((resolve) => { resolveMath = resolve; setTimeout(resolve, 4000); });
 		window.MathJax = {
-			tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+			tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
 			startup: { pageReady: () => MathJax.startup.defaultPageReady().then(resolveMath) }
 		};
 	</script>
 	<script async src="https://cdn.jsdelivr.net/npm/mathjax@{{MATHJAX_VERSION}}/tex-mml-chtml.js" nonce="{{NONCE}}"></script>
 	<script src="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@{{HLJS_VERSION}}/highlight.min.js" nonce="{{NONCE}}"></script>
 	<script type="module" nonce="{{NONCE}}">
-		// Initialize highlight.js for syntax highlighting
-		try {
-			document.querySelectorAll('pre code').forEach((block) => {
-				hljs.highlightElement(block);
-			});
-		} catch (error) {
-			console.error('Syntax highlighting failed:', error);
-		}
-
-		// Dynamic import: a failed CDN fetch must not abort this script, or the TOC sidebar below would stop working too
-		try {
-			const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@{{MERMAID_VERSION}}/dist/mermaid.esm.min.mjs');
-			mermaid.initialize({
-				startOnLoad: false,
-				theme: '{{MERMAID_THEME}}',
-				securityLevel: 'strict'
-			});
-			await mermaid.run({
-				querySelector: '.mermaid'
-			});
-		} catch (error) {
-			console.error('Mermaid rendering failed:', error);
-		}
-
+		// The sidebar is wired first: Mermaid below can take seconds on a slow network, and the controls must work meanwhile
 		// Sidebar toggle functionality
 		const toggleBtn = document.querySelector('.sidebar-toggle');
 		const closeBtn = document.querySelector('.toc-close');
@@ -464,6 +441,51 @@
 				observer.observe(heading);
 			}
 		});
+
+		// In-page links such as [intro](#intro) scroll to their heading; the webview has no document URL to resolve them against
+		document.querySelector('.content').addEventListener('click', (e) => {
+			const link = e.target.closest('a[href^="#"]');
+			if (!link) {
+				return;
+			}
+			let id;
+			try {
+				id = decodeURIComponent(link.getAttribute('href').substring(1));
+			} catch (error) {
+				return;
+			}
+			const target = id && document.getElementById(id);
+			if (target) {
+				e.preventDefault();
+				target.scrollIntoView({ behavior: 'smooth' });
+			}
+		});
+
+		// Initialize highlight.js for syntax highlighting
+		try {
+			document.querySelectorAll('pre code').forEach((block) => {
+				hljs.highlightElement(block);
+			});
+		} catch (error) {
+			console.error('Syntax highlighting failed:', error);
+		}
+
+		// Dynamic import: a failed CDN fetch must not abort the script that restores the scroll position
+		try {
+			const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@{{MERMAID_VERSION}}/dist/mermaid.esm.min.mjs');
+			mermaid.initialize({
+				startOnLoad: false,
+				theme: '{{MERMAID_THEME}}',
+				securityLevel: 'strict'
+			});
+			// suppressErrors: one invalid diagram must not stop the diagrams after it
+			await mermaid.run({
+				querySelector: '.mermaid',
+				suppressErrors: true
+			});
+		} catch (error) {
+			console.error('Mermaid rendering failed:', error);
+		}
 
 		// Every edit replaces the whole page, so restore the reading position once Mermaid and MathJax have settled the layout
 		const vscodeApi = typeof acquireVsCodeApi === 'function' ? acquireVsCodeApi() : undefined;
