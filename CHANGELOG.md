@@ -2,7 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [1.6.0] - 2026-10-26
+
+### Added
+
+- A rewritten readme that leads with screenshots, and an example document (`examples/showcase.md`) behind them.
 
 ### Fixed
 
