@@ -486,7 +486,8 @@ describe("renderMarkdown images", () => {
 
 	it("resolves raw HTML images, whatever the attribute order or quote style", () => {
 		const resolveImage = (href) => `r:${href}`;
-		const md = "<img src=\"a.png\" width=\"300\">\n\ntext <img alt='x' src='b.png'> more\n\n<p><img\n  src=\"c.png\"></p>\n";
+		const md =
+			'<img src="a.png" width="300">\n\ntext <img alt=\'x\' src=\'b.png\'> more\n\n<p><img\n  src="c.png"></p>\n';
 		const { html } = renderMarkdown(md, { resolveImage });
 		for (const name of ["a", "b", "c"]) {
 			assert.ok(html.includes(`src="r:${name}.png"`) || html.includes(`src='r:${name}.png'`), name);
@@ -584,4 +585,3 @@ describe("package.json manifest capabilities", () => {
 		assert.equal(pkg.capabilities?.untrustedWorkspaces?.supported, true);
 	});
 });
-

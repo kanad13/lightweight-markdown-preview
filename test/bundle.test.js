@@ -17,7 +17,8 @@ describe("webpack bundle", () => {
 
 	it("renders a complete page from the bundled code", () => {
 		const bundle = require(bundlePath);
-		const markdown = "# Bundle heading\n\nInline $a<b$ and `echo $HOME $PATH`.\n\n```mermaid\ngraph TD\n  A-->B\n```\n";
+		const markdown =
+			"# Bundle heading\n\nInline $a<b$ and `echo $HOME $PATH`.\n\n```mermaid\ngraph TD\n  A-->B\n```\n";
 		const html = openPreview(bundle.activate, makeDoc("/docs/bundle.md", markdown)).webview.html;
 
 		assert.ok(html.startsWith("<!DOCTYPE html>"));

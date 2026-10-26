@@ -18,38 +18,38 @@ The extension has two halves, and each half has its own kind of check.
 
 ## Commands
 
-| Command                              | What it does                                                                                                                                                | When to run                  |
-| :----------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------- |
+| Command                              | What it does                                                                                                                                | When to run                  |
+| :----------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------ | :--------------------------- |
 | `npm test`                           | Builds the bundle, runs every automated test, then lints. The runner takes a quoted glob, so Node expands it the same way on every platform | Before every commit          |
-| `node --test test/lifecycle.test.js` | Runs one suite without a build (the bundle suite needs `dist/` to exist)                                                                                    | While developing a handler   |
-| `npm audit --omit=dev`               | Checks shipped dependencies for advisories                                                                                                                  | Before every release, and CI |
-| `npm run package`                    | Builds the `.vsix`                                                                                                                                          | Before manual install checks |
+| `node --test test/lifecycle.test.js` | Runs one suite without a build (the bundle suite needs `dist/` to exist)                                                                    | While developing a handler   |
+| `npm audit --omit=dev`               | Checks shipped dependencies for advisories                                                                                                  | Before every release, and CI |
+| `npm run package`                    | Builds the `.vsix`                                                                                                                          | Before manual install checks |
 
 ## Automated Suites
 
-| File                          | Scope                                                                                                                   | Fake used                        |
-| :---------------------------- | :---------------------------------------------------------------------------------------------------------------------- | :------------------------------- |
-| `test/extension.test.js`      | Pure functions: heading extraction and IDs, outline tree, escaping, math, Mermaid and image handling, nonce, template substitution, page contract | `.html` loader and `vscode` shim |
-| `test/lifecycle.test.js`      | Command, active-editor following, debounce, disposal, theme change, image paths (including `%20` and raw HTML), error notification | Fake panel, mock timers          |
-| `test/bundle.test.js`         | The webpack output renders a complete page with CSP, pinned CDN versions, and no unreplaced placeholders                | Fake `vscode` only               |
+| File                          | Scope                                                                                                                                                                                               | Fake used                        |
+| :---------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------- |
+| `test/extension.test.js`      | Pure functions: heading extraction and IDs, outline tree, escaping, math, Mermaid and image handling, nonce, template substitution, page contract                                                   | `.html` loader and `vscode` shim |
+| `test/lifecycle.test.js`      | Command, active-editor following, debounce, disposal, theme change, image paths (including `%20` and raw HTML), error notification                                                                  | Fake panel, mock timers          |
+| `test/bundle.test.js`         | The webpack output renders a complete page with CSP, pinned CDN versions, and no unreplaced placeholders                                                                                            | Fake `vscode` only               |
 | `test/docs.test.js`           | Relative links and heading anchors in every Markdown file; the routing table in `AGENTS.md` matches `docs/workflows.md`; readme images use absolute raw URLs, exist in `assets/`, and have alt text | None                             |
-| `test/helpers/fake-vscode.js` | Shared `vscode` and `.html` shims, handler capture, fake documents and panel                                            | Not a suite                      |
+| `test/helpers/fake-vscode.js` | Shared `vscode` and `.html` shims, handler capture, fake documents and panel                                                                                                                        | Not a suite                      |
 
 ## Workflow Map
 
-| Workflow                                 | Evidence                                                                               | Gap                                      |
-| :--------------------------------------- | :------------------------------------------------------------------------------------- | :--------------------------------------- |
-| Run the command on a Markdown file       | `lifecycle`: renders the file; errors for no editor and non-Markdown                   | None                                     |
-| Edit the file and see the preview update | `lifecycle`: debounce at 300 ms, rapid edits collapse, other files ignored             | None                                     |
-| Close the panel                          | `lifecycle`: pending update cancelled, later events ignored                            | None                                     |
-| Switch to another Markdown file          | `lifecycle`: preview follows; ignores no-editor, non-Markdown, `git` scheme, same file | Scroll reset is manual (see below)       |
-| Change the VS Code color theme           | `lifecycle`: Mermaid and highlight.js themes switch                                    | Visual result is manual                  |
-| Show local and remote images             | `lifecycle`: relative, parent, workspace-root, `https`, `data`, `%20` and raw HTML paths | Loading through a real webview is manual |
-| Hostile document text                    | `extension`: escaping of outline, math, Mermaid; placeholder-like text in content      | CSP enforcement is manual                |
-| Inline and block math, Mermaid, code     | `extension`: dollar signs in code and prices stay text, formulas and diagrams reach the libraries as `\(..\)`, `\[..\]` and `pre.mermaid`; heading IDs match anchors | Rendering in the browser is manual       |
-| Bundled extension starts and renders     | `bundle`: complete page from `dist/extension.js`                                       | Install in a real editor is manual       |
-| Documents agree with each other          | `docs`: links, anchors, and task routing resolve                                       | Claims about behavior are manual (Sync)  |
-| Outline sidebar, in-page links, scroll save and restore | Page contract: sidebar wired before the Mermaid import | Behavior is the manual smoke check       |
+| Workflow                                                | Evidence                                                                                                                                                             | Gap                                      |
+| :------------------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------- |
+| Run the command on a Markdown file                      | `lifecycle`: renders the file; errors for no editor and non-Markdown                                                                                                 | None                                     |
+| Edit the file and see the preview update                | `lifecycle`: debounce at 300 ms, rapid edits collapse, other files ignored                                                                                           | None                                     |
+| Close the panel                                         | `lifecycle`: pending update cancelled, later events ignored                                                                                                          | None                                     |
+| Switch to another Markdown file                         | `lifecycle`: preview follows; ignores no-editor, non-Markdown, `git` scheme, same file                                                                               | Scroll reset is manual (see below)       |
+| Change the VS Code color theme                          | `lifecycle`: Mermaid and highlight.js themes switch                                                                                                                  | Visual result is manual                  |
+| Show local and remote images                            | `lifecycle`: relative, parent, workspace-root, `https`, `data`, `%20` and raw HTML paths                                                                             | Loading through a real webview is manual |
+| Hostile document text                                   | `extension`: escaping of outline, math, Mermaid; placeholder-like text in content                                                                                    | CSP enforcement is manual                |
+| Inline and block math, Mermaid, code                    | `extension`: dollar signs in code and prices stay text, formulas and diagrams reach the libraries as `\(..\)`, `\[..\]` and `pre.mermaid`; heading IDs match anchors | Rendering in the browser is manual       |
+| Bundled extension starts and renders                    | `bundle`: complete page from `dist/extension.js`                                                                                                                     | Install in a real editor is manual       |
+| Documents agree with each other                         | `docs`: links, anchors, and task routing resolve                                                                                                                     | Claims about behavior are manual (Sync)  |
+| Outline sidebar, in-page links, scroll save and restore | Page contract: sidebar wired before the Mermaid import                                                                                                               | Behavior is the manual smoke check       |
 
 ## Manual Smoke Check
 

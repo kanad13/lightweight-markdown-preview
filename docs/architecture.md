@@ -45,7 +45,7 @@ The extension enforces a strict CSP that runs only scripts with a unique, random
 
 ### Layer 2: Escaping of Generated Markup
 
-Raw HTML in a document passes through `marked` unchanged, so the CSP in Layer 1 is the control that stops such markup from running scripts. The extension escapes every fragment it builds itself.
+Raw HTML in a document passes through `marked` unchanged, so the CSP in Layer 1 is the control that stops such markup from running inline scripts. Its limit for scripts hosted on jsDelivr is described there. The extension escapes every fragment it builds itself.
 
 - **Outline entries:**
   - `escapeHtml()` escapes heading text before it enters the sidebar markup.

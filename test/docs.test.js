@@ -139,7 +139,9 @@ describe("task routing", () => {
 describe("readme images", () => {
 	const source = fs.readFileSync(path.join(root, "readme.md"), "utf8");
 	// Markdown images and raw <img> tags, outside code
-	const images = [...source.matchAll(/!\[([^\]]*)\]\(([^)\s]+)\)|<img\b[^>]*?\bsrc="([^"]+)"[^>]*?(?:\balt="([^"]*)")?[^>]*>/g)].map((m) => ({
+	const images = [
+		...source.matchAll(/!\[([^\]]*)\]\(([^)\s]+)\)|<img\b[^>]*?\bsrc="([^"]+)"[^>]*?(?:\balt="([^"]*)")?[^>]*>/g),
+	].map((m) => ({
 		alt: m[1] ?? m[4] ?? "",
 		src: m[2] ?? m[3],
 	}));

@@ -51,6 +51,6 @@ Azure DevOps style:
 
 ::: mermaid
 sequenceDiagram
-  Alice->>Bob: Hello Bob
-  Bob-->>Alice: Hi Alice
+Alice->>Bob: Hello Bob
+Bob-->>Alice: Hi Alice
 :::
