@@ -104,6 +104,7 @@
 		"build": "webpack",
 		"lint": "eslint .",
 		"test": "npm run build && node --test \"test/*.test.js\" && npm run lint",
+		"test:live": "node --test \"test/live/*.live.js\"",
 		"package": "npm run build && vsce package",
 		"publish": "npm run build && vsce publish"
 	},

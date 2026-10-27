@@ -17,6 +17,8 @@ const {
 	install,
 	handlers,
 	settings,
+	errors,
+	configSections,
 	settingUpdates,
 	prompts,
 	vscode,
@@ -212,24 +214,48 @@ describe("D2 fence detection", () => {
 	});
 });
 
-describe("D2 without a usable renderer", () => {
-	it("shows a setup message and the source when nothing is set", () => {
+describe("D2 fence while no renderer is set", () => {
+	const codeBlock = '<pre><code class="language-d2">x -&gt; y\n</code></pre>\n';
+
+	it("stays the ordinary code block it was before D2 support, plus one hint", () => {
 		const { html, d2Origin } = renderMarkdown("```d2\nx -> y\n```", { d2: { rendererUrl: "" } });
-		assert.ok(html.includes("No D2 renderer is set."));
-		assert.ok(html.includes("lightweightMarkdownViewer.d2.rendererUrl"));
-		assert.ok(html.includes("x -&gt; y"));
-		assert.ok(!html.includes("<img"));
+		assert.ok(html.startsWith(codeBlock), html);
+		assert.equal((html.match(/class="d2-hint"/g) || []).length, 1);
+		assert.ok(html.includes("Markdown: Choose D2 Renderer"));
+		assert.ok(html.includes("/blob/main/docs/d2.md"));
+		assert.ok(!html.includes("<img") && !html.includes("d2-notice"));
 		assert.equal(d2Origin, undefined);
 	});
 
-	it("shows a setup message when renderMarkdown gets no D2 options", () => {
-		assert.ok(renderMarkdown("```d2\nx\n```").html.includes("No D2 renderer is set."));
+	it("renders exactly what another language's fence renders", () => {
+		const d2 = renderMarkdown("```d2\nx -> y\n```", { d2: { rendererUrl: "" } }).html;
+		const other = renderMarkdown("```text\nx -> y\n```").html;
+		assert.equal(d2.split('<p class="d2-hint">')[0], other.replace("language-text", "language-d2"));
 	});
 
-	it("explains why a URL was refused and never emits an image for it", () => {
+	it("shows one hint per document, however many D2 blocks it holds", () => {
+		const { html } = renderMarkdown("```d2\na\n```\n\n```d2\nb\n```\n\n```D2\nc\n```", { d2: { rendererUrl: "  " } });
+		assert.equal((html.match(/class="d2-hint"/g) || []).length, 1);
+		assert.equal((html.match(/language-d2/gi) || []).length, 3);
+	});
+
+	it("applies when renderMarkdown gets no D2 options", () => {
+		assert.ok(renderMarkdown("```d2\nx\n```").html.includes("d2-hint"));
+	});
+
+	it("keeps the source of a D2 block and its fence kind in lists and quotes", () => {
+		const { html } = renderMarkdown("- item\n\n  ```d2\n  x -> y\n  ```\n\n> ~~~d2\n> a -> b\n> ~~~", { d2: { rendererUrl: "" } });
+		assert.ok(html.includes("x -&gt; y") && html.includes("a -&gt; b"));
+		assert.ok(!html.includes("<img"));
+	});
+});
+
+describe("D2 with a renderer URL that cannot be used", () => {
+	it("explains why, shows the source, and never emits an image", () => {
 		const { html, d2Origin } = renderMarkdown("```d2\nx -> y\n```", { d2: { rendererUrl: "javascript:alert(1)" } });
 		assert.ok(html.includes("not usable"));
 		assert.ok(html.includes("Only http: and https: URLs are accepted."));
+		assert.ok(html.includes("x -&gt; y"));
 		assert.ok(!html.includes("<img"));
 		assert.equal(d2Origin, undefined);
 	});
@@ -239,6 +265,80 @@ describe("D2 without a usable renderer", () => {
 		assert.ok(/<div class="d2-error"[^>]* hidden>/.test(html));
 		assert.ok(html.includes('<pre hidden class="d2-source">x -&gt; y</pre>'));
 		assert.ok(html.includes(`The renderer at ${BASE} sent no picture`));
+	});
+});
+
+describe("people who never use D2 see no change", () => {
+	// The CSP the extension shipped before D2 support, with the nonce replaced; a change here changes what every existing user's page may load
+	const CSP_BEFORE_D2 =
+		"default-src 'none'; img-src https: data: vscode-resource:; script-src 'nonce-N' https://cdn.jsdelivr.net; style-src 'unsafe-inline' https://cdn.jsdelivr.net; font-src https: data:;";
+	const root = path.join(__dirname, "..");
+	const documents = ["examples/test.md", "examples/showcase.md", "docs/dependencies.md", "docs/development.md"].map((file) => [file, fs.readFileSync(path.join(root, file), "utf8")]);
+	documents.push([
+		"text that only mentions d2",
+		"# d2\n\nUse `d2` or d2lang, see https://d2lang.com.\n\n```d2lang\nx\n```\n\n```d\ny\n```\n\n````markdown\n```d2\nx -> y\n```\n````\n\n$a$ and $5 and $10.",
+	]);
+
+	for (const [name, text] of documents) {
+		it(`renders ${name} identically with D2 unset, set to a renderer, or not configured at all`, () => {
+			const plain = renderMarkdown(text);
+			for (const d2 of [{ rendererUrl: "" }, { rendererUrl: BASE, theme: 200, sketch: true, layout: "elk" }, { rendererUrl: "javascript:x" }]) {
+				const other = renderMarkdown(text, { d2 });
+				assert.equal(other.html, plain.html);
+				assert.deepEqual(other.headings, plain.headings);
+			}
+			assert.ok(!/d2-(diagram|img|hint|notice|error|source)/.test(plain.html), "no D2 markup in a document without D2");
+		});
+	}
+
+	it("keeps the Content Security Policy exactly as before", () => {
+		const csp = /Content-Security-Policy" content="([^"]*)"/.exec(getWebviewContent("", "N", [], {}, "doc", undefined))[1];
+		assert.equal(csp, CSP_BEFORE_D2);
+		assert.equal(/Content-Security-Policy" content="([^"]*)"/.exec(getWebviewContent("", "N", [], {}, "doc", ""))[1], CSP_BEFORE_D2);
+	});
+
+	it("opens a preview, edits and switches themes without prompts, messages or reads of other settings", () => {
+		const doc = makeDoc("/docs/plain.md", "# Plain\n\n```mermaid\ngraph TD\n A-->B\n```\n\n$x$");
+		const panel = openPreview(activate, doc);
+		vscode.window.activeColorTheme.kind = 2;
+		handlers.theme();
+		handlers.docChange({ document: doc });
+		assert.ok(panel.webview.html.includes("Plain"));
+		assert.deepEqual(errors, []);
+		assert.equal(prompts.quickPickItems, undefined, "no quick pick opened by itself");
+		assert.deepEqual(settingUpdates, [], "no setting written by itself");
+		assert.ok(configSections.every((section) => section === "lightweightMarkdownViewer.d2"), configSections.join());
+	});
+
+	it("keeps the 300 ms wait after an edit in documents without D2, whatever the settings", () => {
+		mock.timers.enable({ apis: ["setTimeout"] });
+		try {
+			const doc = makeDoc("/docs/plain2.md", "# Plain");
+			for (const url of [undefined, BASE]) {
+				if (url) settings["lightweightMarkdownViewer.d2.rendererUrl"] = url;
+				const panel = openPreview(activate, doc);
+				const before = panel.renders;
+				handlers.docChange({ document: doc });
+				mock.timers.tick(300);
+				assert.equal(panel.renders, before + 1, String(url));
+			}
+		} finally {
+			mock.timers.reset();
+		}
+	});
+
+	it("does not draw the open preview again when an unrelated setting changes", () => {
+		const doc = makeDoc("/docs/plain3.md", "# Plain");
+		const panel = openPreview(activate, doc);
+		const before = panel.renders;
+		handlers.config({ affectsConfiguration: (id) => id === "editor.fontSize" });
+		assert.equal(panel.renders, before);
+	});
+
+	it("adds one command and no activation work: the command that existed still opens the preview", () => {
+		const doc = makeDoc("/docs/plain4.md", "# Plain");
+		assert.ok(openPreview(activate, doc).webview.html.includes("Plain"));
+		assert.equal(typeof handlers.chooseRenderer, "function");
 	});
 });
 
@@ -342,9 +442,10 @@ describe("settings, theme and command", () => {
 		assert.ok(panel.webview.html.includes("img-src https: data: vscode-resource: http://localhost:9999;"));
 	});
 
-	it("shows the setup message when the setting is empty", () => {
+	it("keeps D2 fences as code blocks, with img-src unchanged, when the setting is empty", () => {
 		const panel = openPreview(activate, doc);
-		assert.ok(panel.webview.html.includes("No D2 renderer is set."));
+		assert.ok(panel.webview.html.includes('<pre><code class="language-d2">x -&gt; y'));
+		assert.ok(panel.webview.html.includes("d2-hint"));
 		assert.ok(panel.webview.html.includes("img-src https: data: vscode-resource:;"));
 	});
 

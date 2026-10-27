@@ -24,6 +24,9 @@ const settings = {};
 /** Calls made to `update` on a configuration section, cleared by `reset()`. */
 const settingUpdates = [];
 
+/** Sections passed to `getConfiguration`, cleared by `reset()`; lets tests prove the extension reads only its own settings. */
+const configSections = [];
+
 /** Answers the fake quick-pick and input box give next; set by tests, cleared by `reset()`. */
 const prompts = { quickPick: undefined, inputBox: undefined, quickPickItems: undefined, inputBoxOptions: undefined };
 
@@ -54,7 +57,7 @@ const vscode = {
 	},
 	workspace: {
 		workspaceFolders: undefined,
-		getConfiguration: (section) => ({
+		getConfiguration: (section) => (configSections.push(section), {
 			get: (key, fallback) => (`${section}.${key}` in settings ? settings[`${section}.${key}`] : fallback),
 			update: async (key, value, target) => {
 				settingUpdates.push({ id: `${section}.${key}`, value, target });
@@ -159,6 +162,7 @@ function openPreview(activate, doc) {
 function reset() {
 	errors.length = 0;
 	settingUpdates.length = 0;
+	configSections.length = 0;
 	for (const key of Object.keys(settings)) delete settings[key];
 	prompts.quickPick = undefined;
 	prompts.inputBox = undefined;
@@ -169,4 +173,4 @@ function reset() {
 	vscode.window.activeTextEditor = undefined;
 }
 
-module.exports = { install, handlers, errors, settings, settingUpdates, prompts, vscode, makeDoc, openPreview, reset };
+module.exports = { install, handlers, errors, settings, settingUpdates, configSections, prompts, vscode, makeDoc, openPreview, reset };

@@ -212,7 +212,7 @@ async function chooseD2Renderer() {
 			{
 				label: "Local Docker container",
 				description: "http://localhost:8080",
-				detail: "Stays on your machine: docker run -d -p 8080:8080 ghcr.io/kanad13/d2-renderer",
+				detail: "Your diagrams stay on this machine. The D2 guide shows how to start it.",
 				url: "http://localhost:8080",
 			},
 			{
@@ -222,7 +222,7 @@ async function chooseD2Renderer() {
 				url: "https://kroki.io",
 			},
 			{ label: "Enter another URL...", detail: "Your own server or a cloud deployment", url: undefined },
-			{ label: "Turn D2 rendering off", detail: "D2 blocks show their source and a setup message", url: "" },
+			{ label: "Turn D2 rendering off", detail: "D2 blocks stay ordinary code blocks, with a hint", url: "" },
 		],
 		{ title: "D2 renderer", placeHolder: "Where should D2 diagrams be rendered?" }
 	);
@@ -390,6 +390,10 @@ const D2_DEBOUNCE_MS = 800;
 /** Longest image address the extension emits; common servers refuse request lines beyond about 8 KB */
 const MAX_D2_URL_LENGTH = 8000;
 
+/** One quiet line under the first D2 block of a document while no renderer is set; the guide link is the only address the page opens */
+const D2_HINT =
+	'<p class="d2-hint">This is a D2 diagram. Run <em>Markdown: Choose D2 Renderer</em> to draw it. <a href="https://github.com/kanad13/lightweight-markdown-preview/blob/main/docs/d2.md">D2 guide</a></p>\n';
+
 const D2_LAYOUTS = ["dagre", "elk", "tala"];
 
 /** D2 theme IDs: 0 is "Neutral Default" and 200 is "Dark Mauve" */
@@ -497,7 +501,7 @@ function isD2Fence(token) {
  * compiler message a renderer returns.
  *
  * @param {string} source - D2 source text
- * @param {{ rendererUrl?: string, theme?: number, sketch?: boolean, layout?: string }} d2 - Settings and theme
+ * @param {{ rendererUrl?: string, theme?: number, sketch?: boolean, layout?: string }} d2 - Settings and theme; the caller handles an empty rendererUrl
  * @returns {string} HTML for the block
  */
 function renderD2Block(source, d2) {
@@ -508,11 +512,7 @@ function renderD2Block(source, d2) {
 	const sourceBox = `<pre class="d2-source">${escapeHtml(text)}</pre>`;
 	const renderer = parseRendererUrl(d2.rendererUrl);
 	if (renderer.error) {
-		const why =
-			d2.rendererUrl && d2.rendererUrl.trim()
-				? `The D2 renderer URL is not usable. ${renderer.error}`
-				: "No D2 renderer is set.";
-		return `<div class="d2-notice"><strong>${escapeHtml(why)}</strong> Run <em>Markdown: Choose D2 Renderer</em> from the Command Palette, or set <code>lightweightMarkdownViewer.d2.rendererUrl</code>.${sourceBox}</div>\n`;
+		return `<div class="d2-notice"><strong>${escapeHtml(`The D2 renderer URL is not usable. ${renderer.error}`)}</strong> Run <em>Markdown: Choose D2 Renderer</em> from the Command Palette, or set <code>lightweightMarkdownViewer.d2.rendererUrl</code>.${sourceBox}</div>\n`;
 	}
 	const url = buildD2Url(renderer.url, text, d2);
 	if (url.length > MAX_D2_URL_LENGTH) {
@@ -701,12 +701,26 @@ function renderMarkdown(source, options = {}) {
 
 	// A D2 fence becomes a finished HTML token, so no later pass rewrites its address and the parser emits it as written
 	const renderer = parseRendererUrl(options.d2?.rendererUrl);
+	// With no renderer set, a D2 fence stays the ordinary code block it was before D2 support, so people who never use D2 see no change
+	const unconfigured = !options.d2?.rendererUrl || !options.d2.rendererUrl.trim();
+	let hinted = false;
 	markdown.walkTokens(tokens, (token) => {
-		if (isD2Fence(token)) {
-			token.type = "html";
-			token.block = true;
-			token.text = renderD2Block(token.text, options.d2 || {});
+		if (!isD2Fence(token)) {
+			return;
 		}
+		if (unconfigured) {
+			if (!hinted) {
+				hinted = true;
+				const code = markdown.parser([{ ...token }]);
+				token.type = "html";
+				token.block = true;
+				token.text = code + D2_HINT;
+			}
+			return;
+		}
+		token.type = "html";
+		token.block = true;
+		token.text = renderD2Block(token.text, options.d2);
 	});
 
 	return { html: markdown.parser(tokens), headings, d2Origin: renderer.origin };

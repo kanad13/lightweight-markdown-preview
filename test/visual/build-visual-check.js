@@ -7,8 +7,8 @@
  * `activate` path and the same webview.html), with VS Code's color variables
  * added so light, dark and high-contrast themes look like the editor.
  *
- * Usage: node test/visual/build-visual-check.js <out-dir> [--renderer name=URL]... [--doc file.md]... [--only doc,doc] [--themes light,dark]
- * `--only` and `--themes` keep a run small, which matters for a shared renderer on a small budget.
+ * Usage: node test/visual/build-visual-check.js <out-dir> [--renderer name=URL]... [--doc file.md]... [--only doc,doc] [--themes light,dark] [--layout elk]
+ * `--only` and `--themes` keep a run small, which matters for a shared renderer on a small budget. `--layout` sets the layout setting for every page except the `options` document, which varies it itself.
  * Renderer URLs are arguments, never stored in the repository. Serve <out-dir>
  * over http and open index.html.
  */
@@ -71,7 +71,7 @@ const SCENARIOS = {
 
 /** Settings variants: name, then the d2 settings to apply on top of the renderer URL */
 const VARIANTS = {
-	default: {},
+	default: { layout: "dagre" },
 	sketch: { sketch: true },
 	elk: { layout: "elk" },
 	tala: { layout: "tala" },
@@ -101,17 +101,20 @@ function main() {
 	const args = process.argv.slice(2);
 	const out = args.shift();
 	if (!out) {
-		console.error("usage: node test/visual/build-visual-check.js <out-dir> [--renderer name=URL]... [--doc file.md]... [--only doc,doc] [--themes light,dark]");
+		console.error("usage: node test/visual/build-visual-check.js <out-dir> [--renderer name=URL]... [--doc file.md]... [--only doc,doc] [--themes light,dark] [--layout elk]");
 		process.exit(2);
 	}
 	const renderers = {};
 	const extraDocs = {};
 	let only;
+	const baseVariant = {};
 	let themes = Object.keys(THEME_VARIABLES);
 	for (let i = 0; i < args.length; i += 2) {
 		if (args[i] === "--renderer") {
 			const [name, ...rest] = args[i + 1].split("=");
 			renderers[name] = rest.join("=");
+		} else if (args[i] === "--layout") {
+			baseVariant.layout = args[i + 1];
 		} else if (args[i] === "--only") {
 			only = args[i + 1].split(",");
 		} else if (args[i] === "--themes") {
@@ -137,7 +140,7 @@ function main() {
 					if (variantName !== "default" && doc !== "options") continue;
 					if (theme !== "light" && variantName !== "default") continue;
 					if (theme === "hc" && !["types", "mixed"].includes(doc) && !(doc in extraDocs)) continue;
-					write(`${renderer}--${doc}--${theme}--${variantName}`, renderPage(markdown, url, theme, variant));
+					write(`${renderer}--${doc}--${theme}--${variantName}`, renderPage(markdown, url, theme, doc === "options" ? variant : baseVariant));
 				}
 			}
 		}
