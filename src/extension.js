@@ -2,7 +2,7 @@
  * VS Code extension entry point: a lightweight Markdown preview in a webview.
  *
  * Why it exists: the built-in preview is heavier than needed for people who
- * want Mermaid, MathJax, and a navigable outline with nothing else. This file
+ * want Mermaid, D2, MathJax, and a navigable outline with nothing else. This file
  * holds all extension logic; `webview.html` supplies the page template.
  *
  * Approach and invariants:
@@ -13,8 +13,13 @@
  *   text before or the HTML after, so code spans and fences stay untouched.
  * - Untrusted text reaches HTML only through `marked` or `escapeHtml`, and the
  *   CSP runs only scripts that carry the per-render nonce.
+ * - D2 diagrams become `<img>` tags that point at the renderer URL the user
+ *   chose. The extension itself never contacts that URL, and the CSP admits
+ *   images from that one origin only.
  */
 const crypto = require("crypto");
+const zlib = require("zlib");
+const { URL } = require("url");
 const vscode = require("vscode");
 const { Marked } = require("marked");
 const webviewTemplate = require("./webview.html");
@@ -125,9 +130,15 @@ function activate(context) {
 	const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument((e) => {
 		if (currentPanel && currentDocument && e.document.uri.toString() === currentDocument.uri.toString()) {
 			clearTimeout(updateTimer);
-			updateTimer = setTimeout(() => {
-				updateWebviewContent(currentPanel, e.document);
-			}, 300);
+			// A renderer is asked for a picture of every changed D2 block, so those documents wait longer
+			const hasD2 =
+				/(?:```|~~~)[ \t]*d2\b/i.test(e.document.getText()) && readD2Settings().rendererUrl.trim() !== "";
+			updateTimer = setTimeout(
+				() => {
+					updateWebviewContent(currentPanel, e.document);
+				},
+				hasD2 ? D2_DEBOUNCE_MS : 300
+			);
 		}
 	});
 
@@ -157,10 +168,82 @@ function activate(context) {
 		}
 	});
 
+	// Renderer, layout and sketch change every D2 address, so the open preview is drawn again
+	const configChangeSubscription = vscode.workspace.onDidChangeConfiguration((e) => {
+		if (currentPanel && currentDocument && e.affectsConfiguration("lightweightMarkdownViewer.d2")) {
+			updateWebviewContent(currentPanel, currentDocument);
+		}
+	});
+
 	context.subscriptions.push(disposable);
+	context.subscriptions.push(
+		vscode.commands.registerCommand("lightweightMarkdownViewer.chooseD2Renderer", chooseD2Renderer)
+	);
+	context.subscriptions.push(configChangeSubscription);
 	context.subscriptions.push(changeDocumentSubscription);
 	context.subscriptions.push(activeEditorSubscription);
 	context.subscriptions.push(themeChangeSubscription);
+}
+
+/**
+ * Reads the D2 settings
+ *
+ * @returns {{ rendererUrl: string, sketch: boolean, layout: string }} Current values with defaults applied
+ */
+function readD2Settings() {
+	const config = vscode.workspace.getConfiguration("lightweightMarkdownViewer.d2");
+	return {
+		rendererUrl: config.get("rendererUrl", ""),
+		sketch: config.get("sketch", false) === true,
+		layout: config.get("layout", "dagre"),
+	};
+}
+
+/**
+ * Offers the usual D2 renderers in a quick-pick and stores the choice
+ *
+ * The change event of the setting re-renders the open preview, so this
+ * function only writes the value. The setting has application scope, so a
+ * workspace cannot point diagrams at a server of its own choosing.
+ */
+async function chooseD2Renderer() {
+	const choice = await vscode.window.showQuickPick(
+		[
+			{
+				label: "Local Docker container",
+				description: "http://localhost:8080",
+				detail: "Diagrams stay on this machine. Start it with: docker run -d -p 8080:8080 ghcr.io/kanad13/d2-renderer:latest",
+				url: "http://localhost:8080",
+			},
+			{
+				label: "Kroki public service",
+				description: "https://kroki.io",
+				detail: "Quick way to try D2. This is a third-party service, and your diagram text is sent to it.",
+				url: "https://kroki.io",
+			},
+			{ label: "Enter another URL...", detail: "Your own server or a cloud deployment", url: undefined },
+			{ label: "Turn D2 rendering off", detail: "D2 blocks show their source and a setup message", url: "" },
+		],
+		{ title: "D2 renderer", placeHolder: "Where should D2 diagrams be rendered?" }
+	);
+	if (!choice) {
+		return;
+	}
+	let url = choice.url;
+	if (url === undefined) {
+		url = await vscode.window.showInputBox({
+			title: "D2 renderer URL",
+			prompt: "Base URL of a Kroki-compatible D2 renderer, for example https://d2.example.com",
+			validateInput: (value) => parseRendererUrl(value).error,
+		});
+		if (url === undefined) {
+			return;
+		}
+	}
+	const stored = url ? parseRendererUrl(url).url : "";
+	await vscode.workspace
+		.getConfiguration("lightweightMarkdownViewer.d2")
+		.update("rendererUrl", stored, vscode.ConfigurationTarget.Global);
 }
 
 /**
@@ -300,6 +383,147 @@ const mermaidColonFence = {
 		return undefined;
 	},
 };
+
+/** Debounce for documents that hold D2 blocks, so a renderer is not asked for a picture after every keystroke */
+const D2_DEBOUNCE_MS = 800;
+
+/** Longest image address the extension emits; common servers refuse request lines beyond about 8 KB */
+const MAX_D2_URL_LENGTH = 8000;
+
+const D2_LAYOUTS = ["dagre", "elk", "tala"];
+
+/** D2 theme IDs: 0 is "Neutral Default" and 200 is "Dark Mauve" */
+const D2_THEME_LIGHT = 0;
+const D2_THEME_DARK = 200;
+
+/**
+ * Encodes D2 source for a Kroki-style renderer address
+ *
+ * The format is zlib deflate at level 9, then Base64 with `-` and `_` in place
+ * of `+` and `/`. Padding stays, as in Kroki's reference encoders, because `=`
+ * is legal in a URL path.
+ *
+ * @param {string} source - D2 source text
+ * @returns {string} URL-safe payload
+ */
+function encodeD2Payload(source) {
+	return zlib
+		.deflateSync(Buffer.from(source, "utf8"), { level: 9 })
+		.toString("base64")
+		.replace(/\+/g, "-")
+		.replace(/\//g, "_");
+}
+
+/**
+ * Validates and normalizes the renderer URL from the settings
+ *
+ * Why so strict: the origin is copied into the page's CSP, and diagram text is
+ * sent to it. Only plain http(s) base URLs pass, and the host must be made of
+ * characters that cannot end a CSP source expression (`;`, `,`), so the setting
+ * cannot add directives. Credentials, query strings and fragments are refused
+ * because the extension appends its own path and query.
+ *
+ * @param {unknown} value - The raw setting value
+ * @returns {{ url: string, origin: string } | { error: string }} Base URL without a trailing slash and its origin, or the reason it was refused
+ */
+function parseRendererUrl(value) {
+	const text = typeof value === "string" ? value.trim() : "";
+	if (!text) {
+		return { error: "The URL is empty." };
+	}
+	let parsed;
+	try {
+		parsed = new URL(text);
+	} catch {
+		return { error: "The URL is not valid." };
+	}
+	if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+		return { error: "Only http: and https: URLs are accepted." };
+	}
+	if (parsed.username || parsed.password) {
+		return { error: "The URL must not contain a user name or password." };
+	}
+	if (/[?#]/.test(text)) {
+		return { error: "The URL must not contain a query string or fragment." };
+	}
+	if (!/^(?:(?:[a-z0-9_-]+\.)*[a-z0-9_-]+\.?|\[[0-9a-f:.]+\])$/.test(parsed.hostname)) {
+		return { error: "The host name contains characters that are not allowed." };
+	}
+	return { url: parsed.origin + parsed.pathname.replace(/\/+$/, ""), origin: parsed.origin };
+}
+
+/**
+ * Builds the image address that asks the renderer for one diagram
+ *
+ * Only options that differ from the renderer's defaults are sent, so a theme or
+ * layout the author sets inside the D2 source is not overridden needlessly.
+ * The theme is always sent because it follows the editor.
+ *
+ * @param {string} baseUrl - Normalized renderer URL from parseRendererUrl()
+ * @param {string} source - D2 source text
+ * @param {{ theme?: number, sketch?: boolean, layout?: string }} options - Rendering options
+ * @returns {string} Absolute image address
+ */
+function buildD2Url(baseUrl, source, options = {}) {
+	const query = [`theme=${options.theme ?? D2_THEME_LIGHT}`];
+	if (options.sketch) {
+		query.push("sketch=true");
+	}
+	if (D2_LAYOUTS.includes(options.layout) && options.layout !== "dagre") {
+		query.push(`layout=${options.layout}`);
+	}
+	return `${baseUrl}/d2/svg/${encodeD2Payload(source)}?${query.join("&")}`;
+}
+
+/**
+ * Tells whether a `marked` code token is a D2 fence
+ *
+ * The match ignores case and anything after the language, so `D2` and
+ * `d2 title="x"` both count.
+ *
+ * @param {{ type: string, lang?: string }} token - A token from `marked`
+ * @returns {boolean} True for a fenced block whose language is d2
+ */
+function isD2Fence(token) {
+	return token.type === "code" && /^d2$/i.test((token.lang || "").split(/\s/)[0]);
+}
+
+/**
+ * Renders one D2 fence as markup
+ *
+ * Why an `<img>`: an image cannot run the SVG's scripts and needs no message
+ * from the page to the extension. The failure box and the source stay hidden
+ * until the page script sees the image fail, because an image cannot expose the
+ * compiler message a renderer returns.
+ *
+ * @param {string} source - D2 source text
+ * @param {{ rendererUrl?: string, theme?: number, sketch?: boolean, layout?: string }} d2 - Settings and theme
+ * @returns {string} HTML for the block
+ */
+function renderD2Block(source, d2) {
+	const text = source.trim();
+	if (!text) {
+		return '<div class="d2-notice">This D2 block is empty.</div>\n';
+	}
+	const sourceBox = `<pre class="d2-source">${escapeHtml(text)}</pre>`;
+	const renderer = parseRendererUrl(d2.rendererUrl);
+	if (renderer.error) {
+		const why =
+			d2.rendererUrl && d2.rendererUrl.trim()
+				? `The D2 renderer URL is not usable. ${renderer.error}`
+				: "No D2 renderer is set.";
+		return `<div class="d2-notice"><strong>${escapeHtml(why)}</strong> Run <em>Markdown: Choose D2 Renderer</em> from the Command Palette, or set <code>lightweightMarkdownViewer.d2.rendererUrl</code>.${sourceBox}</div>\n`;
+	}
+	const url = buildD2Url(renderer.url, text, d2);
+	if (url.length > MAX_D2_URL_LENGTH) {
+		return `<div class="d2-notice"><strong>This D2 diagram is too large to send in a URL</strong> (${url.length} characters, limit ${MAX_D2_URL_LENGTH}). Split it into smaller diagrams.${sourceBox}</div>\n`;
+	}
+	return (
+		`<figure class="d2-diagram"><img class="d2-img" src="${escapeHtml(url)}" alt="D2 diagram" referrerpolicy="no-referrer">` +
+		`<div class="d2-error" role="alert" hidden><strong>This D2 diagram did not render.</strong> The renderer at ${escapeHtml(renderer.origin)} sent no picture. ` +
+		`Look for a syntax error in the diagram, and check the renderer URL.</div>${sourceBox.replace("<pre ", "<pre hidden ")}</figure>\n`
+	);
+}
 
 const markdown = new Marked({
 	extensions: [mathBlock, mathInline, mermaidColonFence],
@@ -450,15 +674,16 @@ function resolveHtmlImages(html, resolveImage) {
  * 1. Lex the source into tokens; math and Mermaid are parser extensions
  * 2. Collect headings and write their IDs onto the tokens
  * 3. Optionally rewrite image addresses on the tokens, in Markdown images and raw `<img>` tags
- * 4. Render the tokens to HTML
+ * 4. Turn D2 fences into image markup that points at the configured renderer
+ * 5. Render the tokens to HTML
  *
  * Why tokens and not text rewriting: the parser already knows what is code, so
  * `$HOME` in a fence or a heading marker in a `~~~` block cannot be mistaken
  * for math or a heading, and no placeholder has to survive a round trip.
  *
  * @param {string} source - Raw markdown text
- * @param {{ resolveImage?: (href: string) => string }} [options] - `resolveImage` maps each Markdown image address to the address the page should load
- * @returns {{ html: string, headings: Array }} Rendered HTML and extracted headings
+ * @param {{ resolveImage?: (href: string) => string, d2?: { rendererUrl?: string, theme?: number, sketch?: boolean, layout?: string } }} [options] - `resolveImage` maps each Markdown image address to the address the page should load; `d2` holds the renderer URL and options for D2 fences
+ * @returns {{ html: string, headings: Array, d2Origin?: string }} Rendered HTML, extracted headings, and the validated D2 renderer origin that the CSP must admit
  */
 function renderMarkdown(source, options = {}) {
 	const tokens = markdown.lexer(source);
@@ -474,7 +699,17 @@ function renderMarkdown(source, options = {}) {
 		});
 	}
 
-	return { html: markdown.parser(tokens), headings };
+	// A D2 fence becomes a finished HTML token, so no later pass rewrites its address and the parser emits it as written
+	const renderer = parseRendererUrl(options.d2?.rendererUrl);
+	markdown.walkTokens(tokens, (token) => {
+		if (isD2Fence(token)) {
+			token.type = "html";
+			token.block = true;
+			token.text = renderD2Block(token.text, options.d2 || {});
+		}
+	});
+
+	return { html: markdown.parser(tokens), headings, d2Origin: renderer.origin };
 }
 
 /**
@@ -489,11 +724,13 @@ function renderMarkdown(source, options = {}) {
  */
 function updateWebviewContent(panel, document) {
 	try {
-		const { html, headings } = renderMarkdown(document.getText(), {
+		const theme = resolveTheme();
+		const { html, headings, d2Origin } = renderMarkdown(document.getText(), {
 			resolveImage: (href) => resolveImagePath(href, document, panel),
+			d2: { ...readD2Settings(), theme: theme.d2Theme },
 		});
 
-		panel.webview.html = getWebviewContent(html, getNonce(), headings, resolveTheme(), document.uri.toString());
+		panel.webview.html = getWebviewContent(html, getNonce(), headings, theme, document.uri.toString(), d2Origin);
 	} catch (error) {
 		vscode.window.showErrorMessage(`Failed to render markdown: ${error.message}`);
 	}
@@ -589,16 +826,17 @@ function generateTOC(headings) {
 /**
  * Detects VS Code color theme kind and returns appropriate sub-theme names
  *
- * Maps VS Code's active color theme to Mermaid diagram theme and
- * highlight.js stylesheet URL for consistent appearance.
+ * Maps VS Code's active color theme to the Mermaid diagram theme, the D2 theme
+ * ID and the highlight.js stylesheet URL for consistent appearance.
  *
- * @returns {{ mermaidTheme: string, hljsTheme: string }} Theme configuration
+ * @returns {{ mermaidTheme: string, hljsTheme: string, d2Theme: number }} Theme configuration
  */
 function resolveTheme() {
 	const kind = vscode.window.activeColorTheme.kind;
 	const isDark = kind === vscode.ColorThemeKind.Dark || kind === vscode.ColorThemeKind.HighContrast;
 	return {
 		mermaidTheme: isDark ? "dark" : "default",
+		d2Theme: isDark ? D2_THEME_DARK : D2_THEME_LIGHT,
 		hljsTheme: `https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@${CDN_VERSIONS.highlightjs}/styles/atom-one-${isDark ? "dark" : "light"}.min.css`,
 	};
 }
@@ -615,6 +853,7 @@ function resolveTheme() {
  * - {{NONCE}}: CSP nonce token (appears on every inline and CDN script tag)
  * - {{MERMAID_VERSION}}, {{MATHJAX_VERSION}}, {{HLJS_VERSION}}: pinned CDN versions from CDN_VERSIONS
  * - {{HLJS_THEME}}: highlight.js stylesheet URL
+ * - {{RENDERER_ORIGIN}}: the D2 renderer origin for `img-src`, with a leading space, or empty
  * - {{MERMAID_THEME}}: Mermaid diagram theme name
  * - {{TOC}}: Generated table of contents HTML
  * - {{CONTENT}}: Rendered markdown HTML
@@ -625,9 +864,10 @@ function resolveTheme() {
  * @param {Array} headings - Array of heading objects for TOC generation
  * @param {{ mermaidTheme: string, hljsTheme: string }} theme - Theme config from resolveTheme()
  * @param {string} documentKey - URI of the previewed document; the page keys its saved scroll position to it
+ * @param {string} [d2Origin] - Validated origin of the D2 renderer, from parseRendererUrl(); added to `img-src` and nowhere else
  * @returns {string} Complete HTML page
  */
-function getWebviewContent(markdownHtml, nonce, headings = [], theme = {}, documentKey = "") {
+function getWebviewContent(markdownHtml, nonce, headings = [], theme = {}, documentKey = "", d2Origin = "") {
 	const values = {
 		NONCE: nonce,
 		MERMAID_VERSION: CDN_VERSIONS.mermaid,
@@ -635,6 +875,7 @@ function getWebviewContent(markdownHtml, nonce, headings = [], theme = {}, docum
 		HLJS_VERSION: CDN_VERSIONS.highlightjs,
 		HLJS_THEME: theme.hljsTheme,
 		MERMAID_THEME: theme.mermaidTheme,
+		RENDERER_ORIGIN: d2Origin ? ` ${d2Origin}` : "",
 		DOC_KEY: escapeHtml(documentKey),
 		TOC: generateTOC(headings),
 		CONTENT: markdownHtml,
@@ -670,5 +911,8 @@ module.exports = {
 	escapeHtml,
 	renderMarkdown,
 	getWebviewContent,
+	encodeD2Payload,
+	parseRendererUrl,
+	buildD2Url,
 	CDN_VERSIONS,
 };

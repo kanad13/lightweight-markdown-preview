@@ -1,7 +1,7 @@
 {
 	"name": "lightweight-markdown-preview",
 	"displayName": "Lightweight Markdown Preview",
-	"description": "Lightweight, privacy-friendly Markdown preview with Mermaid diagrams and MathJax equations. No bloat, no tracking.",
+	"description": "Lightweight, privacy-friendly Markdown preview for diagram authors: Mermaid, D2, MathJax equations and highlighted code. No telemetry.",
 	"version": "1.6.0",
 	"icon": "assets/icon.png",
 	"publisher": "KunalPathak",
@@ -33,7 +33,11 @@
 		"render",
 		"documentation",
 		"chart",
-		"flowchart"
+		"flowchart",
+		"d2",
+		"d2lang",
+		"kroki",
+		"architecture-diagram"
 	],
 	"qna": "marketplace",
 	"galleryBanner": {
@@ -48,6 +52,11 @@
 				"title": "Show Lightweight Markdown Preview",
 				"category": "Markdown",
 				"icon": "$(eye)"
+			},
+			{
+				"command": "lightweightMarkdownViewer.chooseD2Renderer",
+				"title": "Choose D2 Renderer",
+				"category": "Markdown"
 			}
 		],
 		"menus": {
@@ -58,6 +67,32 @@
 					"group": "navigation"
 				}
 			]
+		},
+		"configuration": {
+			"title": "Lightweight Markdown Preview",
+			"properties": {
+				"lightweightMarkdownViewer.d2.rendererUrl": {
+					"type": "string",
+					"default": "",
+					"scope": "application",
+					"markdownDescription": "Base URL of a Kroki-compatible D2 renderer, for example `http://localhost:8080` for a local Docker container or `https://kroki.io`. D2 diagrams are sent only to this URL. Leave empty to turn D2 rendering off. Run **Markdown: Choose D2 Renderer** for a guided choice."
+				},
+				"lightweightMarkdownViewer.d2.layout": {
+					"type": "string",
+					"default": "dagre",
+					"enum": [
+						"dagre",
+						"elk",
+						"tala"
+					],
+					"markdownDescription": "Layout engine requested from the renderer. `tala` needs a renderer that bundles it, such as the d2-renderer Docker image; Kroki does not offer it."
+				},
+				"lightweightMarkdownViewer.d2.sketch": {
+					"type": "boolean",
+					"default": false,
+					"markdownDescription": "Draw D2 diagrams in a hand-drawn style."
+				}
+			}
 		}
 	},
 	"capabilities": {

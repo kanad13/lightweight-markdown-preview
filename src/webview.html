@@ -3,7 +3,7 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data: vscode-resource:; script-src 'nonce-{{NONCE}}' https://cdn.jsdelivr.net; style-src 'unsafe-inline' https://cdn.jsdelivr.net; font-src https: data:;">
+	<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data: vscode-resource:{{RENDERER_ORIGIN}}; script-src 'nonce-{{NONCE}}' https://cdn.jsdelivr.net; style-src 'unsafe-inline' https://cdn.jsdelivr.net; font-src https: data:;">
 	<title>Markdown Preview</title>
 	<link rel="stylesheet" href="{{HLJS_THEME}}">
 	<style>
@@ -286,6 +286,30 @@
 			text-align: center;
 		}
 
+		/* D2 diagrams are images from the configured renderer; the notice and error boxes replace them when there is nothing to show */
+		.d2-diagram {
+			margin: 16px 0;
+			text-align: center;
+		}
+
+		.d2-notice, .d2-error {
+			border: 1px solid var(--vscode-inputValidation-warningBorder, var(--vscode-widget-border, var(--vscode-panel-border)));
+			background: var(--vscode-inputValidation-warningBackground, var(--vscode-editorWidget-background));
+			border-radius: 4px;
+			padding: 8px 12px;
+			margin: 16px 0;
+			text-align: left;
+		}
+
+		.d2-error[hidden], .d2-source[hidden] {
+			display: none;
+		}
+
+		.d2-source {
+			text-align: left;
+			margin: 8px 0 0;
+		}
+
 		h1, h2, h3, h4, h5, h6 {
 			scroll-margin-top: 20px;
 		}
@@ -469,6 +493,20 @@
 		} catch (error) {
 			console.error('Syntax highlighting failed:', error);
 		}
+
+		// An image cannot report why the renderer refused a diagram, so a failed one is swapped for a message and the source
+		document.querySelectorAll('img.d2-img').forEach((img) => {
+			const showFailure = () => {
+				img.hidden = true;
+				img.closest('.d2-diagram').querySelectorAll('[hidden]').forEach((element) => { element.hidden = false; });
+			};
+			// A broken image can fail before this listener exists
+			if (img.complete && img.naturalWidth === 0) {
+				showFailure();
+			} else {
+				img.addEventListener('error', showFailure, { once: true });
+			}
+		});
 
 		// Dynamic import: a failed CDN fetch must not abort the script that restores the scroll position
 		try {
