@@ -212,7 +212,7 @@ async function chooseD2Renderer() {
 			{
 				label: "Local Docker container",
 				description: "http://localhost:8080",
-				detail: "Diagrams stay on this machine. Start it with: docker run -d -p 8080:8080 ghcr.io/kanad13/d2-renderer:latest",
+				detail: "Stays on your machine: docker run -d -p 8080:8080 ghcr.io/kanad13/d2-renderer",
 				url: "http://localhost:8080",
 			},
 			{

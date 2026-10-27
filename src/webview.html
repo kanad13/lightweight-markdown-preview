@@ -497,8 +497,9 @@
 		// An image cannot report why the renderer refused a diagram, so a failed one is swapped for a message and the source
 		document.querySelectorAll('img.d2-img').forEach((img) => {
 			const showFailure = () => {
+				// Named elements only: a [hidden] selector would also match the image that has just been hidden
+				img.closest('.d2-diagram').querySelectorAll('.d2-error, .d2-source').forEach((element) => { element.hidden = false; });
 				img.hidden = true;
-				img.closest('.d2-diagram').querySelectorAll('[hidden]').forEach((element) => { element.hidden = false; });
 			};
 			// A broken image can fail before this listener exists
 			if (img.complete && img.naturalWidth === 0) {

@@ -482,6 +482,8 @@ describe("manifest and page contract", () => {
 		assert.ok(template.includes("img-src https: data: vscode-resource:{{RENDERER_ORIGIN}};"));
 		assert.equal((template.match(/\{\{RENDERER_ORIGIN\}\}/g) || []).length, 1);
 		assert.ok(template.includes("img.d2-img"));
+		assert.ok(template.includes("querySelectorAll('.d2-error, .d2-source')"), "unhide the message and source by name");
+		assert.ok(!template.includes("querySelectorAll('[hidden]')"), "a [hidden] selector would un-hide the failed image again");
 		assert.ok(template.includes("img.complete && img.naturalWidth === 0"), "an image that failed before the script ran");
 		assert.ok(template.includes("addEventListener('error', showFailure"), "an image that fails later");
 		assert.ok(template.indexOf("img.d2-img") < template.indexOf("import('https://cdn.jsdelivr.net"));
