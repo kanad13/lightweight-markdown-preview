@@ -67,11 +67,11 @@ Last reviewed: 2026-10-27. Verdict: scoped pursue, approved by the maintainer. B
   - GitHub and VS Code do not render D2, so authors had no preview.
   - The extension is already the maintainer's tool for diagrams in Markdown.
 - **Cost:**
-  - About 150 lines of host code, three settings, one command, and one CSP source.
+  - About 150 lines of host code, one setting, one command, and one CSP source.
   - No new dependency: Node's `zlib` builds the address.
   - No message from the page to the extension host, so the open question below stays unchanged.
 - **Premises checked on 2026-10-27:**
-  - Kroki accepts `theme`, `sketch` and `layout=elk` as query options on `GET /d2/svg/...`. It ignores `layout=tala` and renders dagre.
+  - Kroki and the d2-renderer image accept `layout-engine`, `sketch`, `pad` and `theme-id` written in the diagram's `d2-config`. A diagram that names `tala` fails on Kroki, which does not bundle it.
   - Kroki returns a D2 compile error as an SVG that shows the message, so an `<img>` displays it. The d2-renderer image answers 400 with text, so the page shows its own failure box instead.
   - The d2-renderer image sends `Cache-Control: public, max-age=31536000, immutable` on success, so an unchanged block keeps its address and the browser can reuse the picture.
   - The `?theme=` query overrides a `theme-id` set inside the D2 source on the d2-renderer image. Both were compared by their colors.
@@ -80,9 +80,8 @@ Last reviewed: 2026-10-27. Verdict: scoped pursue, approved by the maintainer. B
   - Default is an empty URL. A preset such as `https://kroki.io` would send diagram text to a third party before anyone chose it, and a preset `http://localhost:8080` fails for most users. While it is empty, a D2 fence stays the ordinary code block it was before D2 support, with one quiet hint under the first one, so people who never use D2 see no change. An invalid URL shows a warning box instead, because the user did set something.
   - The setting has application scope, so a cloned repository cannot choose where its diagrams go.
   - The renderer origin enters `img-src` and nothing else. `http:` is never allowed as a whole scheme.
-  - Only `layout` and `sketch` are settings, because those are the options authors change. The theme follows the editor (light 0, dark and high contrast 200).
-  - The default layout is `dagre`. TALA is often tidier for architecture, but it is randomized (a one-node edit can rearrange the whole diagram, which is jarring in a live preview), slows on large diagrams, and is missing on Kroki. Authors who want it set the layout, or name it inside one diagram.
-  - No default padding. D2 pads every diagram by 100 px. Authors trim it with `vars: { d2-config: { pad: 24 } }`, which Kroki and the d2-renderer image both honor. The renderer does not take a `pad` query, so the extension cannot send one.
+  - The renderer URL is the only setting. Layout, sketch style and padding are written in the diagram (`vars: { d2-config: { ... } }`), where D2 already puts them. The same file then draws the same way in the preview, the playground and a teammate's editor, and the extension carries no style choices of its own. An earlier build had `layout` and `sketch` settings; they were removed before release.
+  - The extension sends the source as written and adds only `?theme=`, which follows the editor (light 0, dark and high contrast 200). On the d2-renderer image the query replaces a `theme-id` in the diagram.
   - A diagram whose address passes 8,000 characters shows its source and a notice, because common servers refuse longer request lines.
   - Documents with D2 wait 800 ms after an edit instead of 300 ms once a renderer is set.
 - **Related:**

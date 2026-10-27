@@ -80,7 +80,7 @@ When a task touches 3+ files or requires multiple related edits:
 ## Testing
 
 - The testing strategy, commands, and manual smoke check live in `docs/testing.md`; update it when a workflow, contract, or tool changes
-- Manual testing via F5 debug launch
+- Manual testing via F5 debug launch. Run real-window checks in VS Code Stable, the build that most users run, and before a release also in the `engines.vscode` floor. Insiders results are provisional; say so when they are all there is
 - Test file at `examples/test.md` with diverse Markdown content, Mermaid diagrams, and MathJax equations
 - `npm test` and `npm audit --omit=dev` must pass before any work is considered complete. The audit cannot see CDN libraries; `docs/workflows.md` covers them under Maintain and Upgrade
 - Build a `.vsix` (`npm run package`) after each phase for manual install testing
