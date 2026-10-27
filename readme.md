@@ -44,6 +44,8 @@ D2 fences work in lists and block quotes, accept `~~~` fences and extra text aft
 
 Until you pick a renderer, a D2 block shows its source and a setup message. Run **Markdown: Choose D2 Renderer** from the Command Palette, or set `lightweightMarkdownViewer.d2.rendererUrl`.
 
+![A D2 block before any renderer is set: a setup message above the diagram source](https://raw.githubusercontent.com/kanad13/lightweight-markdown-preview/main/assets/readme-d2-setup.png)
+
 ![The Choose D2 Renderer quick pick, offering a local Docker container, the Kroki public service, a custom URL, and turning D2 off](https://raw.githubusercontent.com/kanad13/lightweight-markdown-preview/main/assets/readme-d2-choose-renderer.png)
 
 | Option               | URL                     | When to use it                                                                                                                                                                                              |
