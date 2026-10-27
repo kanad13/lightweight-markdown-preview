@@ -7,8 +7,8 @@
  * `activate` path and the same webview.html), with VS Code's color variables
  * added so light, dark and high-contrast themes look like the editor.
  *
- * Usage: node test/visual/build-visual-check.js <out-dir> [--renderer name=URL]... [--doc file.md]... [--only doc,doc] [--themes light,dark] [--layout elk]
- * `--only` and `--themes` keep a run small, which matters for a shared renderer on a small budget. `--layout` sets the layout setting for every page except the `options` document, which varies it itself.
+ * Usage: node test/visual/build-visual-check.js <out-dir> [--renderer name=URL]... [--doc file.md]... [--only doc,doc] [--themes light,dark]
+ * `--only` and `--themes` keep a run small, which matters for a shared renderer on a small budget.
  * Renderer URLs are arguments, never stored in the repository. Serve <out-dir>
  * over http and open index.html.
  */
@@ -34,6 +34,12 @@ function bigGraph(nodes) {
 		if (i > 0) lines.push(`n${Math.floor((i - 1) / 2)} -> n${i}`);
 	}
 	return lines.join("\n");
+}
+
+/** A document that holds only one diagram, with the given lines inside its d2-config, so variants can sit side by side */
+function optionDoc(config) {
+	const body = "direction: right\nclient -> gateway -> auth\ngateway -> orders -> db\norders -> payments -> db\nauth -> db";
+	return "```d2\n" + (config ? `vars: {\n  d2-config: {\n${config}\n  }\n}\n` : "") + body + "\n```";
 }
 
 /** Documents that exercise the cases in the test plan; each is rendered once per renderer and theme */
@@ -65,16 +71,11 @@ const SCENARIOS = {
 		"## Empty block\n```d2\n```",
 		"## Compressible source over the renderer limit (413)\n```d2\n" + "a -> b\n".repeat(50000) + "\n```",
 	].join("\n\n"),
-	// No heading, so the page is only the diagram and the four option variants can be compared side by side
-	options: "```d2\ndirection: right\nclient -> gateway -> auth\ngateway -> orders -> db\norders -> payments -> db\nauth -> db\n```",
-};
-
-/** Settings variants: name, then the d2 settings to apply on top of the renderer URL */
-const VARIANTS = {
-	default: { layout: "dagre" },
-	sketch: { sketch: true },
-	elk: { layout: "elk" },
-	tala: { layout: "tala" },
+	// Layout and sketch belong to the diagram, so each variant writes its own d2-config
+	"option-default": optionDoc(""),
+	"option-elk": optionDoc("    layout-engine: elk"),
+	"option-tala": optionDoc("    layout-engine: tala"),
+	"option-sketch": optionDoc("    sketch: true"),
 };
 
 /**
@@ -83,14 +84,11 @@ const VARIANTS = {
  * @param {string} markdown - Document text
  * @param {string} rendererUrl - Value for the rendererUrl setting
  * @param {string} theme - Key of THEME_VARIABLES
- * @param {{ sketch?: boolean, layout?: string }} variant - Extra D2 settings
  * @returns {string} Complete HTML page
  */
-function renderPage(markdown, rendererUrl, theme, variant) {
+function renderPage(markdown, rendererUrl, theme) {
 	for (const key of Object.keys(settings)) delete settings[key];
 	settings["lightweightMarkdownViewer.d2.rendererUrl"] = rendererUrl;
-	if (variant.sketch) settings["lightweightMarkdownViewer.d2.sketch"] = true;
-	if (variant.layout) settings["lightweightMarkdownViewer.d2.layout"] = variant.layout;
 	vscode.window.activeColorTheme.kind = THEME_VARIABLES[theme].kind;
 	const html = openPreview(activate, makeDoc("/visual/doc.md", markdown)).webview.html;
 	// The editor supplies these variables; outside it the page would have no colors
@@ -101,20 +99,17 @@ function main() {
 	const args = process.argv.slice(2);
 	const out = args.shift();
 	if (!out) {
-		console.error("usage: node test/visual/build-visual-check.js <out-dir> [--renderer name=URL]... [--doc file.md]... [--only doc,doc] [--themes light,dark] [--layout elk]");
+		console.error("usage: node test/visual/build-visual-check.js <out-dir> [--renderer name=URL]... [--doc file.md]... [--only doc,doc] [--themes light,dark]");
 		process.exit(2);
 	}
 	const renderers = {};
 	const extraDocs = {};
 	let only;
-	const baseVariant = {};
 	let themes = Object.keys(THEME_VARIABLES);
 	for (let i = 0; i < args.length; i += 2) {
 		if (args[i] === "--renderer") {
 			const [name, ...rest] = args[i + 1].split("=");
 			renderers[name] = rest.join("=");
-		} else if (args[i] === "--layout") {
-			baseVariant.layout = args[i + 1];
 		} else if (args[i] === "--only") {
 			only = args[i + 1].split(",");
 		} else if (args[i] === "--themes") {
@@ -135,13 +130,9 @@ function main() {
 		for (const [doc, markdown] of Object.entries(docs)) {
 			if (only && !only.includes(doc)) continue;
 			for (const theme of themes) {
-				for (const [variantName, variant] of Object.entries(VARIANTS)) {
-					// Options matter for the 'options' document; other documents only need the default variant
-					if (variantName !== "default" && doc !== "options") continue;
-					if (theme !== "light" && variantName !== "default") continue;
-					if (theme === "hc" && !["types", "mixed"].includes(doc) && !(doc in extraDocs)) continue;
-					write(`${renderer}--${doc}--${theme}--${variantName}`, renderPage(markdown, url, theme, doc === "options" ? variant : baseVariant));
-				}
+				if (theme === "hc" && !["types", "mixed"].includes(doc) && !(doc in extraDocs)) continue;
+				if (theme !== "light" && doc.startsWith("option-")) continue;
+				write(`${renderer}--${doc}--${theme}`, renderPage(markdown, url, theme));
 			}
 		}
 	}

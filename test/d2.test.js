@@ -117,21 +117,17 @@ describe("renderer URL validation", () => {
 });
 
 describe("image address", () => {
-	it("sends the theme and omits default options", () => {
+	it("sends the theme and nothing else", () => {
 		const url = buildD2Url(BASE, "a -> b", { theme: 200 });
 		assert.equal(url, `${BASE}/d2/svg/${encodeD2Payload("a -> b")}?theme=200`);
+		assert.equal(buildD2Url(BASE, "a -> b"), `${BASE}/d2/svg/${encodeD2Payload("a -> b")}?theme=0`);
 	});
 
-	it("adds sketch and a non-default layout", () => {
-		assert.ok(
-			buildD2Url(BASE, "a", { theme: 0, sketch: true, layout: "elk" }).endsWith("?theme=0&sketch=true&layout=elk")
-		);
-		assert.ok(buildD2Url(BASE, "a", { theme: 0, layout: "tala" }).endsWith("?theme=0&layout=tala"));
-	});
-
-	it("ignores dagre and unknown layouts, so a setting cannot inject query text", () => {
-		assert.ok(buildD2Url(BASE, "a", { theme: 0, layout: "dagre" }).endsWith("?theme=0"));
-		assert.ok(buildD2Url(BASE, "a", { theme: 0, layout: "elk&x=1" }).endsWith("?theme=0"));
+	it("sends the author's source as written, so layout, sketch and padding set in d2-config reach the renderer", () => {
+		const source =
+			"vars: {\n  d2-config: {\n    layout-engine: tala\n    sketch: true\n    pad: 24\n  }\n}\na -> b";
+		const payload = buildD2Url(BASE, source, { theme: 0 }).split("/d2/svg/")[1].split("?")[0];
+		assert.equal(decode(payload), source);
 	});
 });
 
@@ -234,7 +230,9 @@ describe("D2 fence while no renderer is set", () => {
 	});
 
 	it("shows one hint per document, however many D2 blocks it holds", () => {
-		const { html } = renderMarkdown("```d2\na\n```\n\n```d2\nb\n```\n\n```D2\nc\n```", { d2: { rendererUrl: "  " } });
+		const { html } = renderMarkdown("```d2\na\n```\n\n```d2\nb\n```\n\n```D2\nc\n```", {
+			d2: { rendererUrl: "  " },
+		});
 		assert.equal((html.match(/class="d2-hint"/g) || []).length, 1);
 		assert.equal((html.match(/language-d2/gi) || []).length, 3);
 	});
@@ -244,7 +242,9 @@ describe("D2 fence while no renderer is set", () => {
 	});
 
 	it("keeps the source of a D2 block and its fence kind in lists and quotes", () => {
-		const { html } = renderMarkdown("- item\n\n  ```d2\n  x -> y\n  ```\n\n> ~~~d2\n> a -> b\n> ~~~", { d2: { rendererUrl: "" } });
+		const { html } = renderMarkdown("- item\n\n  ```d2\n  x -> y\n  ```\n\n> ~~~d2\n> a -> b\n> ~~~", {
+			d2: { rendererUrl: "" },
+		});
 		assert.ok(html.includes("x -&gt; y") && html.includes("a -&gt; b"));
 		assert.ok(!html.includes("<img"));
 	});
@@ -273,7 +273,9 @@ describe("people who never use D2 see no change", () => {
 	const CSP_BEFORE_D2 =
 		"default-src 'none'; img-src https: data: vscode-resource:; script-src 'nonce-N' https://cdn.jsdelivr.net; style-src 'unsafe-inline' https://cdn.jsdelivr.net; font-src https: data:;";
 	const root = path.join(__dirname, "..");
-	const documents = ["examples/test.md", "examples/showcase.md", "docs/dependencies.md", "docs/development.md"].map((file) => [file, fs.readFileSync(path.join(root, file), "utf8")]);
+	const documents = ["examples/test.md", "docs/dependencies.md", "docs/development.md", "docs/workflows.md"].map(
+		(file) => [file, fs.readFileSync(path.join(root, file), "utf8")]
+	);
 	documents.push([
 		"text that only mentions d2",
 		"# d2\n\nUse `d2` or d2lang, see https://d2lang.com.\n\n```d2lang\nx\n```\n\n```d\ny\n```\n\n````markdown\n```d2\nx -> y\n```\n````\n\n$a$ and $5 and $10.",
@@ -282,19 +284,31 @@ describe("people who never use D2 see no change", () => {
 	for (const [name, text] of documents) {
 		it(`renders ${name} identically with D2 unset, set to a renderer, or not configured at all`, () => {
 			const plain = renderMarkdown(text);
-			for (const d2 of [{ rendererUrl: "" }, { rendererUrl: BASE, theme: 200, sketch: true, layout: "elk" }, { rendererUrl: "javascript:x" }]) {
+			for (const d2 of [
+				{ rendererUrl: "" },
+				{ rendererUrl: BASE, theme: 200 },
+				{ rendererUrl: "javascript:x" },
+			]) {
 				const other = renderMarkdown(text, { d2 });
 				assert.equal(other.html, plain.html);
 				assert.deepEqual(other.headings, plain.headings);
 			}
-			assert.ok(!/d2-(diagram|img|hint|notice|error|source)/.test(plain.html), "no D2 markup in a document without D2");
+			assert.ok(
+				!/d2-(diagram|img|hint|notice|error|source)/.test(plain.html),
+				"no D2 markup in a document without D2"
+			);
 		});
 	}
 
 	it("keeps the Content Security Policy exactly as before", () => {
-		const csp = /Content-Security-Policy" content="([^"]*)"/.exec(getWebviewContent("", "N", [], {}, "doc", undefined))[1];
+		const csp = /Content-Security-Policy" content="([^"]*)"/.exec(
+			getWebviewContent("", "N", [], {}, "doc", undefined)
+		)[1];
 		assert.equal(csp, CSP_BEFORE_D2);
-		assert.equal(/Content-Security-Policy" content="([^"]*)"/.exec(getWebviewContent("", "N", [], {}, "doc", ""))[1], CSP_BEFORE_D2);
+		assert.equal(
+			/Content-Security-Policy" content="([^"]*)"/.exec(getWebviewContent("", "N", [], {}, "doc", ""))[1],
+			CSP_BEFORE_D2
+		);
 	});
 
 	it("opens a preview, edits and switches themes without prompts, messages or reads of other settings", () => {
@@ -307,7 +321,10 @@ describe("people who never use D2 see no change", () => {
 		assert.deepEqual(errors, []);
 		assert.equal(prompts.quickPickItems, undefined, "no quick pick opened by itself");
 		assert.deepEqual(settingUpdates, [], "no setting written by itself");
-		assert.ok(configSections.every((section) => section === "lightweightMarkdownViewer.d2"), configSections.join());
+		assert.ok(
+			configSections.every((section) => section === "lightweightMarkdownViewer.d2"),
+			configSections.join()
+		);
 	});
 
 	it("keeps the 300 ms wait after an edit in documents without D2, whatever the settings", () => {
@@ -381,7 +398,9 @@ describe("Content Security Policy for the renderer", () => {
 
 describe("hostile input", () => {
 	// Escaped text may contain "onerror=" harmlessly; only real tags can carry a handler or a script
-	const noScript = (html) => !/<script/i.test(html) && !(html.match(/<[a-z][^>]*>/gi) || []).some((tag) => /\son\w+\s*=|javascript:/i.test(tag));
+	const noScript = (html) =>
+		!/<script/i.test(html) &&
+		!(html.match(/<[a-z][^>]*>/gi) || []).some((tag) => /\son\w+\s*=|javascript:/i.test(tag));
 
 	it("escapes D2 source that tries to close the block and add a script", () => {
 		const source = "</pre><script>alert(1)</script><img src=x onerror=alert(1)>\"'";
@@ -432,14 +451,20 @@ describe("settings, theme and command", () => {
 
 	afterEach(() => mock.timers.reset());
 
-	it("reads the renderer, sketch and layout settings", () => {
+	it("reads the renderer setting and admits only its origin", () => {
 		settings["lightweightMarkdownViewer.d2.rendererUrl"] = "http://localhost:9999/";
-		settings["lightweightMarkdownViewer.d2.sketch"] = true;
-		settings["lightweightMarkdownViewer.d2.layout"] = "elk";
 		const panel = openPreview(activate, doc);
 		assert.ok(src(panel).startsWith("http://localhost:9999/d2/svg/"));
-		assert.ok(src(panel).endsWith("?theme=0&sketch=true&layout=elk"));
+		assert.ok(src(panel).endsWith("?theme=0"));
 		assert.ok(panel.webview.html.includes("img-src https: data: vscode-resource: http://localhost:9999;"));
+	});
+
+	it("ignores layout and sketch settings: those belong to the diagram", () => {
+		settings["lightweightMarkdownViewer.d2.rendererUrl"] = BASE;
+		settings["lightweightMarkdownViewer.d2.layout"] = "elk";
+		settings["lightweightMarkdownViewer.d2.sketch"] = true;
+		assert.ok(src(openPreview(activate, doc)).endsWith("?theme=0"));
+		assert.ok(configSections.every((section) => section === "lightweightMarkdownViewer.d2"));
 	});
 
 	it("keeps D2 fences as code blocks, with img-src unchanged, when the setting is empty", () => {
@@ -559,17 +584,12 @@ describe("manifest and page contract", () => {
 	const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "../package.json"), "utf8"));
 	const template = fs.readFileSync(path.join(__dirname, "../src/webview.html"), "utf8");
 
-	it("declares the command and the three settings", () => {
+	it("declares the command and the one setting", () => {
 		assert.ok(
 			manifest.contributes.commands.some((c) => c.command === "lightweightMarkdownViewer.chooseD2Renderer")
 		);
 		const props = manifest.contributes.configuration.properties;
-		assert.deepEqual(Object.keys(props).sort(), [
-			"lightweightMarkdownViewer.d2.layout",
-			"lightweightMarkdownViewer.d2.rendererUrl",
-			"lightweightMarkdownViewer.d2.sketch",
-		]);
-		assert.deepEqual(props["lightweightMarkdownViewer.d2.layout"].enum, ["dagre", "elk", "tala"]);
+		assert.deepEqual(Object.keys(props), ["lightweightMarkdownViewer.d2.rendererUrl"]);
 	});
 
 	it("keeps the renderer URL out of workspace settings", () => {
@@ -583,9 +603,18 @@ describe("manifest and page contract", () => {
 		assert.ok(template.includes("img-src https: data: vscode-resource:{{RENDERER_ORIGIN}};"));
 		assert.equal((template.match(/\{\{RENDERER_ORIGIN\}\}/g) || []).length, 1);
 		assert.ok(template.includes("img.d2-img"));
-		assert.ok(template.includes("querySelectorAll('.d2-error, .d2-source')"), "unhide the message and source by name");
-		assert.ok(!template.includes("querySelectorAll('[hidden]')"), "a [hidden] selector would un-hide the failed image again");
-		assert.ok(template.includes("img.complete && img.naturalWidth === 0"), "an image that failed before the script ran");
+		assert.ok(
+			template.includes("querySelectorAll('.d2-error, .d2-source')"),
+			"unhide the message and source by name"
+		);
+		assert.ok(
+			!template.includes("querySelectorAll('[hidden]')"),
+			"a [hidden] selector would un-hide the failed image again"
+		);
+		assert.ok(
+			template.includes("img.complete && img.naturalWidth === 0"),
+			"an image that failed before the script ran"
+		);
 		assert.ok(template.includes("addEventListener('error', showFailure"), "an image that fails later");
 		assert.ok(template.indexOf("img.d2-img") < template.indexOf("import('https://cdn.jsdelivr.net"));
 		assert.ok(!template.includes("connect-src"));

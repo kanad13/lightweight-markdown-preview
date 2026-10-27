@@ -8,7 +8,7 @@
  *
  * Usage:
  *   D2_RENDERERS="docker=http://localhost:8080,kroki=https://kroki.io" D2_TALA_RENDERERS=docker npm run test:live
- * D2_TALA_RENDERERS lists the renderers that must honor layout=tala; others may ignore it, as Kroki does.
+ * D2_TALA_RENDERERS lists the renderers that have TALA, so a diagram that names it must draw there.
  */
 /* global fetch */
 const { describe, it } = require("node:test");
@@ -91,26 +91,27 @@ describe("live D2 renderers", { skip: Object.keys(renderers).length ? false : "s
 				assert.notEqual(colors(dark.body), colors(light.body));
 			});
 
-			it("draws a sketch differently from a clean diagram", async () => {
+			const withConfig = (inner, body) => `vars: {\n  d2-config: {\n${inner}\n  }\n}\n${body}`;
+			const GRAPH = "direction: right\nclient -> gateway -> auth\ngateway -> orders -> db\norders -> payments -> db\nauth -> db";
+
+			it("draws a sketch when the diagram asks for one", async () => {
 				const clean = await draw(base, "a -> b: edge");
-				const sketch = await draw(base, "a -> b: edge", { sketch: true });
+				const sketch = await draw(base, withConfig("    sketch: true", "a -> b: edge"));
 				assert.equal(sketch.status, 200);
 				assert.notEqual(sketch.body, clean.body);
 			});
 
-			it("honors layout=elk", async () => {
-				const source = "direction: right\nclient -> gateway -> auth\ngateway -> orders -> db\norders -> payments -> db\nauth -> db";
-				const dagre = await draw(base, source);
-				const elk = await draw(base, source, { layout: "elk" });
+			it("uses the layout engine that the diagram names", async () => {
+				const dagre = await draw(base, GRAPH);
+				const elk = await draw(base, withConfig("    layout-engine: elk", GRAPH));
 				assert.equal(elk.status, 200);
 				assert.notEqual(elk.body, dagre.body);
 			});
 
 			if (talaRenderers.includes(name)) {
-				it("honors layout=tala", async () => {
-					const source = "direction: right\nclient -> gateway -> auth\ngateway -> orders -> db\norders -> payments -> db\nauth -> db";
-					const dagre = await draw(base, source);
-					const tala = await draw(base, source, { layout: "tala" });
+				it("uses TALA when the diagram names it", async () => {
+					const dagre = await draw(base, GRAPH);
+					const tala = await draw(base, withConfig("    layout-engine: tala", GRAPH));
 					assert.equal(tala.status, 200);
 					assert.notEqual(tala.body, dagre.body);
 				});

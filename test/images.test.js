@@ -1,5 +1,5 @@
 /**
- * Tests that every image the readme shows is sharp enough, small enough, and not cut off.
+ * Tests that every image the readme and the D2 guide show is sharp enough, small enough, and not cut off.
  *
  * Why it exists: a screenshot with a fixed crop can slice through a heading or a diagram, and
  * nothing else notices. A cut-off picture leaves ink (text or lines) on the outer edge, while a
@@ -25,7 +25,7 @@ function decodePng(file) {
 	assert.equal(file.subarray(1, 4).toString(), "PNG", "not a PNG");
 	let width, height, channels;
 	const chunks = [];
-	for (let at = 8; at < file.length; ) {
+	for (let at = 8; at < file.length;) {
 		const length = file.readUInt32BE(at);
 		const type = file.subarray(at + 4, at + 8).toString();
 		const data = file.subarray(at + 8, at + 8 + length);
@@ -63,31 +63,51 @@ function decodePng(file) {
 			pixels[y * stride + i] = value & 255;
 		}
 	}
-	return { width, height, pixel: (x, y) => [pixels[y * stride + x * channels], pixels[y * stride + x * channels + 1], pixels[y * stride + x * channels + 2]] };
+	return {
+		width,
+		height,
+		pixel: (x, y) => [
+			pixels[y * stride + x * channels],
+			pixels[y * stride + x * channels + 1],
+			pixels[y * stride + x * channels + 2],
+		],
+	};
 }
 
-/** Fraction of pixels in the outer `band` pixels that differ clearly from the background colour of the picture */
+/**
+ * Share of positions along the four outer edge lines where the colour jumps sharply.
+ *
+ * A picture cut through text or a diagram has strokes that reach the edge, and each stroke is a jump
+ * along the edge line. A plain edge, a dimmed overlay, a panel tint or a thin border are smooth, so
+ * they stay below the threshold however light or dark the page is.
+ */
 function edgeInk(image, band = 3) {
-	const ring = [];
-	for (let y = 0; y < image.height; y++) {
-		for (let x = 0; x < image.width; x++) {
-			if (x < band || y < band || x >= image.width - band || y >= image.height - band) ring.push(image.pixel(x, y));
+	const jump = (a, b) => a.reduce((sum, value, i) => sum + Math.abs(value - b[i]), 0) > 150;
+	let jumps = 0;
+	let examined = 0;
+	for (let k = 0; k < band; k++) {
+		for (let x = 0; x < image.width - 1; x++) {
+			for (const y of [k, image.height - 1 - k]) {
+				examined++;
+				if (jump(image.pixel(x, y), image.pixel(x + 1, y))) jumps++;
+			}
+		}
+		for (let y = 0; y < image.height - 1; y++) {
+			for (const x of [k, image.width - 1 - k]) {
+				examined++;
+				if (jump(image.pixel(x, y), image.pixel(x, y + 1))) jumps++;
+			}
 		}
 	}
-	const counts = new Map();
-	for (const color of ring) counts.set(color.join(), (counts.get(color.join()) || 0) + 1);
-	const background = [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0].split(",").map(Number);
-	// Text and diagram lines are far from the background; borders and tints of panels are not
-	const ink = ring.filter((color) => color.reduce((sum, value, i) => sum + Math.abs(value - background[i]), 0) > 150).length;
-	return ink / ring.length;
+	return jumps / examined;
 }
 
-const readme = fs.readFileSync(path.join(root, "readme.md"), "utf8");
-const images = [...new Set([...readme.matchAll(/assets\/(readme-[\w-]+\.png)/g)].map((match) => match[1]))];
+const pages = ["readme.md", "docs/d2.md"].map((file) => fs.readFileSync(path.join(root, file), "utf8")).join("\n");
+const images = [...new Set([...pages.matchAll(/assets\/(readme-[\w-]+\.png)/g)].map((match) => match[1]))];
 
-describe("readme images", () => {
+describe("readme and guide images", () => {
 	it("are found", () => {
-		assert.ok(images.length >= 10, images.join());
+		assert.ok(images.length >= 9, images.join());
 	});
 
 	for (const name of images) {
@@ -103,7 +123,10 @@ describe("readme images", () => {
 
 			it("has nothing cut off at its edges", () => {
 				const share = edgeInk(image);
-				assert.ok(share < 0.005, `${(share * 100).toFixed(2)}% of the edge ring is ink, so text or a diagram is cut off`);
+				assert.ok(
+					share < 0.005,
+					`${(share * 100).toFixed(2)}% of the edge positions are strokes, so text or a diagram is cut off`
+				);
 			});
 		});
 	}

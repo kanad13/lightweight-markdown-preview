@@ -75,22 +75,7 @@
 					"type": "string",
 					"default": "",
 					"scope": "application",
-					"markdownDescription": "Base URL of a Kroki-compatible D2 renderer, for example `http://localhost:8080` for a local Docker container or `https://kroki.io`. D2 diagrams are sent only to this URL. Leave empty to turn D2 rendering off. Run **Markdown: Choose D2 Renderer** for a guided choice."
-				},
-				"lightweightMarkdownViewer.d2.layout": {
-					"type": "string",
-					"default": "dagre",
-					"enum": [
-						"dagre",
-						"elk",
-						"tala"
-					],
-					"markdownDescription": "Layout engine requested from the renderer. `tala` needs a renderer that bundles it, such as the d2-renderer Docker image; Kroki does not offer it."
-				},
-				"lightweightMarkdownViewer.d2.sketch": {
-					"type": "boolean",
-					"default": false,
-					"markdownDescription": "Draw D2 diagrams in a hand-drawn style."
+					"markdownDescription": "Base URL of a Kroki-compatible D2 renderer, for example `http://localhost:8080` for a local Docker container or `https://kroki.io`. D2 diagrams are sent only to this URL. Leave empty to leave D2 blocks as code. Run **Markdown: Choose D2 Renderer** for a guided choice. Layout, sketch style and other D2 options go in the diagram itself, in `vars: { d2-config: { ... } }`."
 				}
 			}
 		}

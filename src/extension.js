@@ -168,7 +168,7 @@ function activate(context) {
 		}
 	});
 
-	// Renderer, layout and sketch change every D2 address, so the open preview is drawn again
+	// A new renderer changes every D2 address, so the open preview is drawn again
 	const configChangeSubscription = vscode.workspace.onDidChangeConfiguration((e) => {
 		if (currentPanel && currentDocument && e.affectsConfiguration("lightweightMarkdownViewer.d2")) {
 			updateWebviewContent(currentPanel, currentDocument);
@@ -188,15 +188,15 @@ function activate(context) {
 /**
  * Reads the D2 settings
  *
- * @returns {{ rendererUrl: string, sketch: boolean, layout: string }} Current values with defaults applied
+ * Layout, sketch style and every other D2 option belong to the diagram: authors write them in
+ * the source (`vars: { d2-config: { ... } }`) and the renderer applies them, so the same file
+ * draws the same way on every machine.
+ *
+ * @returns {{ rendererUrl: string }} The renderer URL, empty when none is set
  */
 function readD2Settings() {
 	const config = vscode.workspace.getConfiguration("lightweightMarkdownViewer.d2");
-	return {
-		rendererUrl: config.get("rendererUrl", ""),
-		sketch: config.get("sketch", false) === true,
-		layout: config.get("layout", "dagre"),
-	};
+	return { rendererUrl: config.get("rendererUrl", "") };
 }
 
 /**
@@ -394,8 +394,6 @@ const MAX_D2_URL_LENGTH = 8000;
 const D2_HINT =
 	'<p class="d2-hint">This is a D2 diagram. Run <em>Markdown: Choose D2 Renderer</em> to draw it. <a href="https://github.com/kanad13/lightweight-markdown-preview/blob/main/docs/d2.md">D2 guide</a></p>\n';
 
-const D2_LAYOUTS = ["dagre", "elk", "tala"];
-
 /** D2 theme IDs: 0 is "Neutral Default" and 200 is "Dark Mauve" */
 const D2_THEME_LIGHT = 0;
 const D2_THEME_DARK = 200;
@@ -459,24 +457,16 @@ function parseRendererUrl(value) {
 /**
  * Builds the image address that asks the renderer for one diagram
  *
- * Only options that differ from the renderer's defaults are sent, so a theme or
- * layout the author sets inside the D2 source is not overridden needlessly.
- * The theme is always sent because it follows the editor.
+ * The source is sent as written. The only option added is the theme, because an
+ * image cannot follow VS Code's color theme by itself.
  *
  * @param {string} baseUrl - Normalized renderer URL from parseRendererUrl()
  * @param {string} source - D2 source text
- * @param {{ theme?: number, sketch?: boolean, layout?: string }} options - Rendering options
+ * @param {{ theme?: number }} options - The D2 theme ID for the current editor theme
  * @returns {string} Absolute image address
  */
 function buildD2Url(baseUrl, source, options = {}) {
-	const query = [`theme=${options.theme ?? D2_THEME_LIGHT}`];
-	if (options.sketch) {
-		query.push("sketch=true");
-	}
-	if (D2_LAYOUTS.includes(options.layout) && options.layout !== "dagre") {
-		query.push(`layout=${options.layout}`);
-	}
-	return `${baseUrl}/d2/svg/${encodeD2Payload(source)}?${query.join("&")}`;
+	return `${baseUrl}/d2/svg/${encodeD2Payload(source)}?theme=${options.theme ?? D2_THEME_LIGHT}`;
 }
 
 /**
@@ -501,7 +491,7 @@ function isD2Fence(token) {
  * compiler message a renderer returns.
  *
  * @param {string} source - D2 source text
- * @param {{ rendererUrl?: string, theme?: number, sketch?: boolean, layout?: string }} d2 - Settings and theme; the caller handles an empty rendererUrl
+ * @param {{ rendererUrl?: string, theme?: number }} d2 - Settings and theme; the caller handles an empty rendererUrl
  * @returns {string} HTML for the block
  */
 function renderD2Block(source, d2) {
@@ -682,7 +672,7 @@ function resolveHtmlImages(html, resolveImage) {
  * for math or a heading, and no placeholder has to survive a round trip.
  *
  * @param {string} source - Raw markdown text
- * @param {{ resolveImage?: (href: string) => string, d2?: { rendererUrl?: string, theme?: number, sketch?: boolean, layout?: string } }} [options] - `resolveImage` maps each Markdown image address to the address the page should load; `d2` holds the renderer URL and options for D2 fences
+ * @param {{ resolveImage?: (href: string) => string, d2?: { rendererUrl?: string, theme?: number } }} [options] - `resolveImage` maps each Markdown image address to the address the page should load; `d2` holds the renderer URL and options for D2 fences
  * @returns {{ html: string, headings: Array, d2Origin?: string }} Rendered HTML, extracted headings, and the validated D2 renderer origin that the CSP must admit
  */
 function renderMarkdown(source, options = {}) {
