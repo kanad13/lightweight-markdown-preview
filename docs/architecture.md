@@ -65,7 +65,7 @@ D2 diagrams are `<img>` tags whose address points at a renderer that the user se
   - The setting `lightweightMarkdownViewer.d2.rendererUrl` has application scope, so only user settings can set it. A cloned repository cannot choose where diagrams go.
 - **Validation:**
   - `parseRendererUrl()` accepts only `http:` and `https:` URLs without credentials, query string or fragment, and with a host made of letters, digits, `-`, `_` and `.`, or an IPv6 literal. The host rule keeps `;` and `,` out of the CSP.
-  - An invalid value renders a setup message and no image, and adds nothing to the CSP.
+  - An invalid value renders a warning box with the source and no image, and adds nothing to the CSP. An empty value renders ordinary code blocks.
 - **CSP:**
   - The validated origin is appended to `img-src` through the `{{RENDERER_ORIGIN}}` placeholder. `http:` is never allowed as a whole scheme, and `connect-src` stays unset.
 - **Why an image:**
@@ -131,7 +131,7 @@ The extension's state is managed entirely in memory and is reset every time the 
    - D2 needs no extension: a `code` token whose language is `d2` (case-insensitive, with or without text after it) is handled in step 4.
 2. **Headings:** `collectHeadings()` walks the tokens, builds each outline entry from the visible text, and gives it a GitHub-style ID (`intro`, `intro-1` for duplicates). The ID is written onto the token and the heading renderer reads it from there, so the outline and the page cannot disagree. Each entry also records `lineIndex`, the source line of its top-level block.
 3. **Images:** When `renderMarkdown` receives `resolveImage`, it rewrites Markdown image addresses on the tokens, and the `src` of raw `<img>` tags inside HTML tokens. Code and prose are never touched.
-4. **D2:** `renderMarkdown` turns each `d2` code token into a finished `html` token. `renderD2Block()` builds the address `<renderer>/d2/svg/<payload>?theme=..` where the payload is the source deflated at level 9 and encoded as URL-safe Base64 (`encodeD2Payload()`, Node's `zlib`). Only options that differ from the renderer's defaults are added, except the theme, which follows the editor (light 0, dark and high contrast 200). An empty block, a missing or invalid renderer URL, and an address over 8,000 characters each render a notice instead of an image.
+4. **D2:** `renderMarkdown` turns each `d2` code token into a finished `html` token. `renderD2Block()` builds the address `<renderer>/d2/svg/<payload>?theme=..` where the payload is the source deflated at level 9 and encoded as URL-safe Base64 (`encodeD2Payload()`, Node's `zlib`). Only options that differ from the renderer's defaults are added, except the theme, which follows the editor (light 0, dark and high contrast 200). An empty block, an invalid renderer URL, and an address over 8,000 characters each render a notice instead of an image. With no renderer URL set, the token is left as an ordinary code block and the first one gets a one-line hint, so a document renders as it did before D2 support.
 5. **Rendering:** `marked.parser()` renders the tokens. Math is emitted as `\(...\)` and `\[...\]` and Mermaid as `<pre class="mermaid">`, with the source HTML-escaped. The page configures MathJax with only those delimiters, so a stray dollar sign in the text is never paired.
 6. **Path Resolution:** `resolveImagePath()` decodes percent escapes (`%20`), then converts the address to a webview-accessible URI, handling:
    - Relative paths (`./images/photo.png`)

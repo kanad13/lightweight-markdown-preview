@@ -2,7 +2,7 @@
 
 A small, private Markdown preview for VS Code, built for people who write diagrams. It draws **Mermaid** (GitHub and Azure DevOps syntax) and **D2** diagrams, **LaTeX math** and **highlighted code** beside your file. It follows your color theme and sends no telemetry.
 
-![Lightweight Markdown Preview in a dark VS Code theme: one document with a D2 architecture diagram, a Mermaid flowchart and a math formula](https://raw.githubusercontent.com/kanad13/lightweight-markdown-preview/main/assets/readme-hero-dark.png)
+![Lightweight Markdown Preview in a dark VS Code theme: one document with a D2 cloud network diagram of nested containers, a Mermaid flowchart and a math formula](https://raw.githubusercontent.com/kanad13/lightweight-markdown-preview/main/assets/readme-hero-dark.png)
 
 ## What it does
 
@@ -42,21 +42,21 @@ D2 fences work in lists and block quotes, accept `~~~` fences and extra text aft
 
 #### Choose your D2 renderer
 
-Until you pick a renderer, a D2 block shows its source and a setup message. Run **Markdown: Choose D2 Renderer** from the Command Palette, or set `lightweightMarkdownViewer.d2.rendererUrl`.
+Until you pick a renderer, a D2 fence stays an ordinary code block with one quiet hint line, so existing documents look as they did. Run **Markdown: Choose D2 Renderer** from the Command Palette, or set `lightweightMarkdownViewer.d2.rendererUrl`.
 
-![A D2 block before any renderer is set: a setup message above the diagram source](https://raw.githubusercontent.com/kanad13/lightweight-markdown-preview/main/assets/readme-d2-setup.png)
+![A D2 block before any renderer is set: an ordinary code block with a one-line hint to choose a renderer](https://raw.githubusercontent.com/kanad13/lightweight-markdown-preview/main/assets/readme-d2-setup.png)
 
 ![The Choose D2 Renderer quick pick, offering a local Docker container, the Kroki public service, a custom URL, and turning D2 off](https://raw.githubusercontent.com/kanad13/lightweight-markdown-preview/main/assets/readme-d2-choose-renderer.png)
 
-| Option               | URL                     | When to use it                                                                                                                                                                                              |
-| :------------------- | :---------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Local Docker**     | `http://localhost:8080` | Your diagrams never leave your machine. Run `docker run -d --name d2-renderer -p 8080:8080 ghcr.io/kanad13/d2-renderer:latest`. The image comes from [d2-renderer](https://github.com/kanad13/d2-renderer). |
-| **Kroki, to try it** | `https://kroki.io`      | Nothing to install. Kroki is a third-party public service, so your diagram text is sent to it. At the time of writing it runs an older D2 than the Docker image and has no TALA layout.                     |
-| **Your own server**  | Any `https://` URL      | A server that answers `GET /d2/svg/<payload>` with SVG, the format Kroki uses. Run the d2-renderer image on a host or a cloud container service, then use its URL.                                          |
+| Option               | URL                     | When to use it                                                                                                                                                                                                                                                                                                                              |
+| :------------------- | :---------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Local Docker**     | `http://localhost:8080` | Your diagrams never leave your machine. Run `docker run -d --name d2-renderer --platform linux/amd64 -p 8080:8080 ghcr.io/kanad13/d2-renderer:latest`. The image is built for `linux/amd64`, so Apple Silicon Macs need the `--platform` flag. It comes from [d2-renderer](https://github.com/kanad13/d2-renderer) and draws with D2 0.9.0. |
+| **Kroki, to try it** | `https://kroki.io`      | Nothing to install. Kroki is a third-party public service, so your diagram text is sent to it. At the time of writing it runs D2 0.7.1 with no TALA, and complex diagrams come out less tidy, as the comparison below shows.                                                                                                                |
+| **Your own server**  | Any `https://` URL      | A server that answers `GET /d2/svg/<payload>` with SVG, the format Kroki uses. Run the d2-renderer image on a host or a cloud container service, then use its URL.                                                                                                                                                                          |
 
-The same document looks slightly different from each renderer, because each runs its own D2 version:
+The same diagram from each renderer. Both draw it correctly, and the local container, which has TALA, lays out nested containers more clearly:
 
-![The same D2 diagram in the preview, drawn by a local Docker renderer and by Kroki](https://raw.githubusercontent.com/kanad13/lightweight-markdown-preview/main/assets/readme-d2-renderers.png)
+![The same D2 cloud network diagram in the preview, drawn by a local Docker renderer with the TALA layout and by Kroki with the dagre layout](https://raw.githubusercontent.com/kanad13/lightweight-markdown-preview/main/assets/readme-d2-renderers.png)
 
 - **Cloud-hosted renderers:** Any HTTPS URL works, such as a copy of the d2-renderer image on a cloud container service.
 - **Plain `http://`:** Use it for `localhost` or a network you trust. The diagram text travels in the URL.
@@ -68,7 +68,7 @@ Two settings change how every D2 diagram looks. `lightweightMarkdownViewer.d2.la
 
 ![One D2 diagram drawn with the dagre, ELK and TALA layouts and in sketch style](https://raw.githubusercontent.com/kanad13/lightweight-markdown-preview/main/assets/readme-d2-layouts.png)
 
-TALA is included in the d2-renderer image. Its licence terms are unclear to us, so check them before you rely on it. Kroki does not offer TALA.
+TALA, D2's layout engine for architecture diagrams, is open source under the same MPL-2.0 license as D2 and ships with D2 0.9.0, so the d2-renderer image includes it ([announcement](https://d2lang.com/blog/tala-is-open-source/)). It is randomized, so a small edit can rearrange a whole diagram, which is why `dagre` stays the default. Kroki does not offer TALA.
 
 #### When a D2 diagram does not render
 
@@ -79,6 +79,8 @@ A diagram with a syntax error, or a renderer that is down, shows a message and t
 - **Compiler messages:** The preview cannot read an error message from an image. Kroki returns its error as a picture, so you see it. For other renderers, run the same source through `d2` or the renderer's `POST /d2/svg` endpoint to see the message.
 - **Very large diagrams:** A diagram whose address would pass 8,000 characters is not sent, because common servers refuse longer addresses. Split it into smaller diagrams.
 - **Editing:** Only a changed D2 block asks the renderer for a new picture, as long as the renderer sends cache headers, as the d2-renderer image does. After an edit, documents with D2 wait a little longer before they redraw.
+
+More detail, including every default and why it is set, is in the [D2 guide](docs/d2.md).
 
 ## Math and code
 
@@ -136,7 +138,7 @@ The preview needs no setup, except for D2, which needs a renderer. These are all
 2. Select the eye icon in the top-right of the editor title bar. You can also open the Command Palette (`Ctrl+Shift+P` or `Cmd+Shift+P`) and run **Markdown: Show Lightweight Markdown Preview**.
 3. Edit the file. The preview updates after a short pause.
 4. Switch to another Markdown file. The preview switches with you and starts at the top of that file.
-5. To draw D2 diagrams, run **Markdown: Choose D2 Renderer** once. [`examples/d2.md`](examples/d2.md) is a document to try it on.
+5. To draw D2 diagrams, run **Markdown: Choose D2 Renderer** once. [`examples/d2.md`](examples/d2.md) is a document to try it on, and the [D2 guide](docs/d2.md) explains the rest.
 
 ## Privacy and security
 
@@ -160,6 +162,13 @@ The preview needs no setup, except for D2, which needs a renderer. These are all
 - It does not export to HTML or PDF.
 - It does not scroll the editor and the preview together.
 - It does not open other Markdown files when you select a link to them.
+
+## Related projects
+
+These projects by the same author work with this extension.
+
+- **[d2-renderer](https://github.com/kanad13/d2-renderer):** the Docker image behind the local D2 option. It wraps the D2 compiler in a small HTTP service, and its runbook and setup script deploy it to Google Cloud Run from GitHub Actions.
+- **[d2-architect](https://github.com/kanad13/coherent-output/tree/main/skills/d2-architect):** an agent skill that adds a verified D2 diagram, laid out with TALA, under every heading of a document. This preview draws what it writes.
 
 ## Contribute
 

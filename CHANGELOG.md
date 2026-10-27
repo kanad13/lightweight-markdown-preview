@@ -8,11 +8,12 @@ Planned as 1.7.0.
 
 ### Added
 
-- D2 diagrams. A ` ```d2 ` fence (or `~~~d2`, in lists and quotes) renders as an image from a Kroki-compatible renderer that you choose. [D2](https://d2lang.com) is a diagram language that GitHub and VS Code do not render.
+- D2 diagrams. A ` ```d2 ` fence (or `~~~d2`, in lists and quotes) renders as an image from a Kroki-compatible renderer that you choose. [D2](https://d2lang.com) is a text language for architecture, sequence and database diagrams that GitHub and VS Code do not render. The new [D2 guide](docs/d2.md) explains setup, settings and defaults.
+- Renderers to start from: a local Docker container from [d2-renderer](https://github.com/kanad13/d2-renderer), which also documents a deploy to Google Cloud Run, or the Kroki public service to try it. The [d2-architect](https://github.com/kanad13/coherent-output/tree/main/skills/d2-architect) agent skill writes D2 diagrams that this preview draws.
 - The command **Markdown: Choose D2 Renderer** with a local Docker container, the Kroki public service, or your own URL, and the setting `lightweightMarkdownViewer.d2.rendererUrl`. It is a user setting, so a repository cannot choose where your diagrams go.
 - The settings `lightweightMarkdownViewer.d2.layout` (`dagre`, `elk`, `tala`) and `lightweightMarkdownViewer.d2.sketch`.
-- A message and the diagram source in place of a D2 diagram that did not render, a setup message while no renderer is set, and a notice for a diagram too large for a URL.
-- `examples/d2.md`, and a visual check page generator, `test/visual/build-visual-check.js`.
+- A message and the diagram source in place of a D2 diagram that did not render, and a notice for a diagram too large for a URL. While no renderer is set, a D2 fence stays the ordinary code block it was, with one hint line under the first one, so documents without D2 look exactly as before.
+- `examples/d2.md`, with a nested cloud network diagram, and a visual check page generator, `test/visual/build-visual-check.js`. An opt-in live check, `npm run test:live`, draws test diagrams through real renderers, and a test checks that no readme image is cut off.
 
 ### Changed
 

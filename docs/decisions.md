@@ -77,16 +77,31 @@ Last reviewed: 2026-10-27. Verdict: scoped pursue, approved by the maintainer. B
   - The `?theme=` query overrides a `theme-id` set inside the D2 source on the d2-renderer image. Both were compared by their colors.
   - The example payload in the d2-renderer README does not inflate, in Python or in Node. The extension's reference vectors come from Python's encoder instead.
 - **Choices and why:**
-  - Default is an empty URL with an in-preview setup message. A preset such as `https://kroki.io` would send diagram text to a third party before anyone chose it, and a preset `http://localhost:8080` fails for most users. The setup message and the **Markdown: Choose D2 Renderer** command cost one step.
+  - Default is an empty URL. A preset such as `https://kroki.io` would send diagram text to a third party before anyone chose it, and a preset `http://localhost:8080` fails for most users. While it is empty, a D2 fence stays the ordinary code block it was before D2 support, with one quiet hint under the first one, so people who never use D2 see no change. An invalid URL shows a warning box instead, because the user did set something.
   - The setting has application scope, so a cloned repository cannot choose where its diagrams go.
   - The renderer origin enters `img-src` and nothing else. `http:` is never allowed as a whole scheme.
   - Only `layout` and `sketch` are settings, because those are the options authors change. The theme follows the editor (light 0, dark and high contrast 200).
+  - The default layout is `dagre`. TALA is often tidier for architecture, but it is randomized (a one-node edit can rearrange the whole diagram, which is jarring in a live preview), slows on large diagrams, and is missing on Kroki. Authors who want it set the layout, or name it inside one diagram.
+  - No default padding. D2 pads every diagram by 100 px. Authors trim it with `vars: { d2-config: { pad: 24 } }`, which Kroki and the d2-renderer image both honor. The renderer does not take a `pad` query, so the extension cannot send one.
   - A diagram whose address passes 8,000 characters shows its source and a notice, because common servers refuse longer request lines.
   - Documents with D2 wait 800 ms after an edit instead of 300 ms once a renderer is set.
 - **Related:**
-  - TALA is bundled in the d2-renderer image since D2 v0.9.0. Its license status is unclear, so the docs mention it as available and do not recommend it.
+  - TALA is open source under D2's MPL-2.0 license and ships with D2 0.9.0, per D2's announcement (checked 2026-10-27). The d2-renderer image has it and Kroki does not.
+  - The published d2-renderer image is `linux/amd64` only, so Apple Silicon needs `--platform linux/amd64`. The docs say so.
 
 ## Deferred
+
+### A house style prepended to every D2 block
+
+Last reviewed: 2026-10-27.
+
+- **What it is:**
+  - The extension adds a `vars` block (a palette, a padding, a layout) in front of each D2 block, as the d2-architect skill describes for a previewer.
+- **Why it waits:**
+  - D2 merges repeated `vars` blocks (checked on the d2-renderer image), so it would work.
+  - It changes what the author wrote, moves compiler line numbers, and adds settings. The extension has no setting for it and the skill does not need one.
+- **Reopen when:**
+  - The maintainer wants a house look in every preview, or a padding default for all diagrams.
 
 ### Fetch D2 diagrams for error messages and POST
 

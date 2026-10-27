@@ -84,3 +84,4 @@ When a task touches 3+ files or requires multiple related edits:
 - Test file at `examples/test.md` with diverse Markdown content, Mermaid diagrams, and MathJax equations
 - `npm test` and `npm audit --omit=dev` must pass before any work is considered complete. The audit cannot see CDN libraries; `docs/workflows.md` covers them under Maintain and Upgrade
 - Build a `.vsix` (`npm run package`) after each phase for manual install testing
+- D2 checks need a real renderer. Ask the maintainer to start the container from the d2-renderer README (`docker run -d --name d2-test --platform linux/amd64 -p 8080:8080 ghcr.io/kanad13/d2-renderer:latest`) and use `http://localhost:8080`. Do not build or pull one yourself. Run `npm run test:live` against it and against `https://kroki.io`; `docs/testing.md` has the command
