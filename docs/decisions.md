@@ -20,12 +20,13 @@ Each idea is compared on two measures:
 - **Value (the juice):** Does it fix a real failure or add a capability people need?
 - **Cost (the squeeze):** What does it add in code, risk, and upkeep?
 
-The project goals set the limits: small, private, and zero configuration.
+The project goals set the limits: small, private, and no configuration beyond the one setting that D2 rendering needs.
 
 ## Status Meanings
 
 | Status        | Meaning                                                                                |
 | :------------ | :------------------------------------------------------------------------------------- |
+| Built         | Approved and built on a branch. Remove the entry when the change ships.                |
 | Recommended   | Evaluated and worth doing. Waiting for the maintainer's approval.                      |
 | Open question | A problem is confirmed, but the right fix needs a maintainer decision.                 |
 | Deferred      | The value is real but too small for the current cost. Reopen when the condition holds. |
@@ -51,8 +52,68 @@ Last reviewed: 2026-10-26.
   - Escape raw HTML in the renderer. This is the simplest, and it breaks documents that use `<details>`, `<kbd>`, or `<img width>`.
 - **Reopen when:**
   - Any change adds a message from the page to the extension host. Settle this first, because that channel is what makes a hostile script dangerous.
+- **Since D2 support:**
+  - `img-src` also admits the configured D2 renderer origin, so a hostile document can make the preview request an image from that one origin. The request is a plain `GET` for an image. No message channel was added.
+
+## Built
+
+### D2 diagrams through a renderer URL
+
+Last reviewed: 2026-10-27. Verdict: scoped pursue, approved by the maintainer. Built on `feat/d2-diagrams`; remove this entry when it ships.
+
+- **What it is:**
+  - A `d2` fence renders as an `<img>` whose address points at a Kroki-compatible renderer that the user chooses with `lightweightMarkdownViewer.d2.rendererUrl`.
+- **Value:**
+  - GitHub and VS Code do not render D2, so authors had no preview.
+  - The extension is already the maintainer's tool for diagrams in Markdown.
+- **Cost:**
+  - About 150 lines of host code, three settings, one command, and one CSP source.
+  - No new dependency: Node's `zlib` builds the address.
+  - No message from the page to the extension host, so the open question below stays unchanged.
+- **Premises checked on 2026-10-27:**
+  - Kroki accepts `theme`, `sketch` and `layout=elk` as query options on `GET /d2/svg/...`. It ignores `layout=tala` and renders dagre.
+  - Kroki returns a D2 compile error as an SVG that shows the message, so an `<img>` displays it. The d2-renderer image answers 400 with text, so the page shows its own failure box instead.
+  - The d2-renderer image sends `Cache-Control: public, max-age=31536000, immutable` on success, so an unchanged block keeps its address and the browser can reuse the picture.
+  - The `?theme=` query overrides a `theme-id` set inside the D2 source on the d2-renderer image. Both were compared by their colors.
+  - The example payload in the d2-renderer README does not inflate, in Python or in Node. The extension's reference vectors come from Python's encoder instead.
+- **Choices and why:**
+  - Default is an empty URL with an in-preview setup message. A preset such as `https://kroki.io` would send diagram text to a third party before anyone chose it, and a preset `http://localhost:8080` fails for most users. The setup message and the **Markdown: Choose D2 Renderer** command cost one step.
+  - The setting has application scope, so a cloned repository cannot choose where its diagrams go.
+  - The renderer origin enters `img-src` and nothing else. `http:` is never allowed as a whole scheme.
+  - Only `layout` and `sketch` are settings, because those are the options authors change. The theme follows the editor (light 0, dark and high contrast 200).
+  - A diagram whose address passes 8,000 characters shows its source and a notice, because common servers refuse longer request lines.
+  - Documents with D2 wait 800 ms after an edit instead of 300 ms once a renderer is set.
+- **Related:**
+  - TALA is bundled in the d2-renderer image since D2 v0.9.0. Its license status is unclear, so the docs mention it as available and do not recommend it.
 
 ## Deferred
+
+### Fetch D2 diagrams for error messages and POST
+
+Last reviewed: 2026-10-27.
+
+- **What it is:**
+  - The page fetches the SVG itself, shows the compiler message when the renderer answers 400, and sends long diagrams with `POST` instead of a long address.
+- **Why it waits:**
+  - It needs `connect-src` for the renderer origin, and `blob:` in `img-src` if the SVG should still load through an `<img>`. Injecting the SVG into the page would let SVG scripts run and needs a sanitizer.
+  - It needs the renderer to allow cross-origin reads. The d2-renderer image does, and a Kroki-compatible server may not.
+  - The image path already shows the failure box, the source, and Kroki's own error pictures.
+  - It relates to the question under [Open question](#open-question), because a script on the page could then reach the renderer.
+- **Reopen when:**
+  - Users hit the 8,000-character limit, or ask for the compiler message in the preview.
+
+### Bundled D2 through WebAssembly
+
+Last reviewed: 2026-10-27.
+
+- **What it is:**
+  - The `@terrastruct/d2` package renders D2 inside the extension with no server.
+- **Why it waits:**
+  - Version 0.1.33 from August 2025 is 59.8 MB unpacked, which contradicts the lightweight goal. The architecture rules also exclude bundled webview scripts.
+  - It offers dagre and ELK, not TALA.
+  - A local Docker container already keeps diagrams on the machine.
+- **Reopen when:**
+  - Many users cannot run Docker or reach a renderer, and the package size falls or the maintainer accepts the cost.
 
 ### Editor and preview scroll sync
 
@@ -116,4 +177,5 @@ Last reviewed: 2026-10-26.
 | :-------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------- |
 | Bundle Mermaid, MathJax, and highlight.js for offline use | Mermaid alone adds several megabytes, which contradicts the lightweight goal, and the architecture rules exclude bundled webview scripts |
 | Export to HTML or PDF                                     | Other extensions cover it, and it needs a heavy dependency or a headless browser                                                         |
-| User settings for fonts, themes, or width                 | The project promises zero configuration, and the preview already follows the VS Code theme                                               |
+| User settings for fonts, themes, or width                 | The preview follows the VS Code theme, and settings exist only where the user must choose something, as with the D2 renderer             |
+| A preset D2 renderer URL as the default                   | It would send diagram text to a service the user never chose, or fail on a port that most machines do not serve                          |

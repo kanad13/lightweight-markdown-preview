@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+Planned as 1.7.0.
+
+### Added
+
+- D2 diagrams. A ` ```d2 ` fence (or `~~~d2`, in lists and quotes) renders as an image from a Kroki-compatible renderer that you choose. [D2](https://d2lang.com) is a diagram language that GitHub and VS Code do not render.
+- The command **Markdown: Choose D2 Renderer** with a local Docker container, the Kroki public service, or your own URL, and the setting `lightweightMarkdownViewer.d2.rendererUrl`. It is a user setting, so a repository cannot choose where your diagrams go.
+- The settings `lightweightMarkdownViewer.d2.layout` (`dagre`, `elk`, `tala`) and `lightweightMarkdownViewer.d2.sketch`.
+- A message and the diagram source in place of a D2 diagram that did not render, a setup message while no renderer is set, and a notice for a diagram too large for a URL.
+- `examples/d2.md`, and a visual check page generator, `test/visual/build-visual-check.js`.
+
+### Changed
+
+- The preview follows the VS Code theme for D2 as well: theme 0 for light themes and Dark Mauve (200) for dark and the dark high-contrast theme.
+- Documents with D2 wait 800 ms instead of 300 ms after an edit once a renderer is set, so the renderer is not asked after every keystroke.
+- The readme is rewritten around what the extension does for diagram authors, with new screenshots. The package description, keywords and categories match.
+- The Content Security Policy admits the configured renderer origin for images. It never admits `http:` as a whole scheme.
+
 ## [1.6.0] - 2026-10-26
 
 ### Added

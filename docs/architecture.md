@@ -4,7 +4,7 @@ This document describes the design decisions and architectural patterns used in 
 
 ## Overview
 
-The extension provides a lightweight, secure markdown preview directly within VS Code. It prioritizes simplicity, security, and performance over feature breadth. The implementation consists of `src/extension.js` (logic) and `src/webview.html` (template, inlined at build time by webpack). The only bundled dependency is the `marked` markdown parser. Mermaid, MathJax, and highlight.js load in the webview from jsDelivr at exact, pinned versions; [dependencies.md](dependencies.md) explains how those versions are chosen.
+The extension provides a lightweight, secure markdown preview directly within VS Code. It prioritizes simplicity, security, and performance over feature breadth. It draws Mermaid and math in the page, and D2 as images from a renderer that the user chooses. The implementation consists of `src/extension.js` (logic) and `src/webview.html` (template, inlined at build time by webpack). The only bundled dependency is the `marked` markdown parser. Mermaid, MathJax, and highlight.js load in the webview from jsDelivr at exact, pinned versions; [dependencies.md](dependencies.md) explains how those versions are chosen.
 
 ## High-Level Architecture
 
@@ -20,6 +20,7 @@ User edits markdown → onDidChangeTextDocument fires
 updateWebviewContent() renders markdown to HTML
          ↓
 Webview displays rendered content with Mermaid/MathJax
+and loads D2 diagrams as images from the configured renderer
 ```
 
 **Design principle:** One active webview panel per extension session. The panel follows the active Markdown editor: when another Markdown file becomes the active editor, the panel renders that file. This minimizes resource consumption and simplifies state management.
@@ -55,6 +56,23 @@ Raw HTML in a document passes through `marked` unchanged, so the CSP in Layer 1 
 - **Mermaid security level:**
   - Diagrams render with `securityLevel: 'strict'`.
   - That level disables click handlers and sanitizes HTML labels.
+
+### Layer 2b: The D2 Renderer Address
+
+D2 diagrams are `<img>` tags whose address points at a renderer that the user sets. The address is the one place where document text leaves the machine, so it has its own controls.
+
+- **Who chooses the renderer:**
+  - The setting `lightweightMarkdownViewer.d2.rendererUrl` has application scope, so only user settings can set it. A cloned repository cannot choose where diagrams go.
+- **Validation:**
+  - `parseRendererUrl()` accepts only `http:` and `https:` URLs without credentials, query string or fragment, and with a host made of letters, digits, `-`, `_` and `.`, or an IPv6 literal. The host rule keeps `;` and `,` out of the CSP.
+  - An invalid value renders a setup message and no image, and adds nothing to the CSP.
+- **CSP:**
+  - The validated origin is appended to `img-src` through the `{{RENDERER_ORIGIN}}` placeholder. `http:` is never allowed as a whole scheme, and `connect-src` stays unset.
+- **Why an image:**
+  - An `<img>` cannot run the scripts inside an SVG, and it needs no message from the page to the extension host.
+  - The cost is that the page cannot read a renderer's error message. [decisions.md](decisions.md#fetch-d2-diagrams-for-error-messages-and-post) records the fetch alternative.
+- **Document text:**
+  - The D2 source reaches the page only as the compressed address and, hidden until a failure, as escaped text.
 
 ### Layer 3: Trusted External Scripts
 
@@ -97,11 +115,12 @@ The extension's state is managed entirely in memory and is reset every time the 
    - `currentPanel`: Holds the reference to the active webview.
    - `currentDocument`: Holds the reference to the text document being previewed.
 3. **Event Listening:** An `onDidChangeTextDocument` listener watches for edits, and an `onDidChangeActiveTextEditor` listener switches the preview to the newly active Markdown file. The switch ignores the panel taking focus (no editor), non-Markdown files, and the `git` side of a diff, and it cancels any pending debounced update so the previous file cannot overwrite the new one.
+   A change to any `lightweightMarkdownViewer.d2` setting redraws the open preview, because it changes every D2 address.
 4. **Update Cycle:** When the document changes, the listener triggers an update:
    - A new CSP `nonce` is generated.
    - The markdown content is parsed and rendered into a full HTML document.
    - The webview's HTML is replaced with the new content.
-5. **Disposal:** When the user closes the panel, any pending debounced update is cancelled and `currentPanel` and `currentDocument` are reset to `undefined`. The document-change and theme-change listeners stay registered for the life of the extension and do nothing while no panel is open.
+5. **Disposal:** When the user closes the panel, any pending debounced update is cancelled and `currentPanel` and `currentDocument` are reset to `undefined`. The document-change, theme-change and configuration-change listeners stay registered for the life of the extension and do nothing while no panel is open.
 
 ## Content Processing Pipeline
 
@@ -109,10 +128,12 @@ The extension's state is managed entirely in memory and is reset every time the 
    - Block math: `$$ ... $$`, on one line or several. The body may not contain a blank line.
    - Inline math: `$...$`, and `$$...$$` written inside a sentence. The opening `$` must touch the formula, the closing `$` must not follow a space or precede a digit, so "costs $5 and $10" stays text. This is Pandoc's rule.
    - Mermaid: GitHub-style (` ```mermaid `, also `~~~`) and Azure DevOps-style (`::: mermaid`). The second form becomes an ordinary `code` token with the language `mermaid`, so both render identically and both nest in lists and quotes.
+   - D2 needs no extension: a `code` token whose language is `d2` (case-insensitive, with or without text after it) is handled in step 4.
 2. **Headings:** `collectHeadings()` walks the tokens, builds each outline entry from the visible text, and gives it a GitHub-style ID (`intro`, `intro-1` for duplicates). The ID is written onto the token and the heading renderer reads it from there, so the outline and the page cannot disagree. Each entry also records `lineIndex`, the source line of its top-level block.
 3. **Images:** When `renderMarkdown` receives `resolveImage`, it rewrites Markdown image addresses on the tokens, and the `src` of raw `<img>` tags inside HTML tokens. Code and prose are never touched.
-4. **Rendering:** `marked.parser()` renders the tokens. Math is emitted as `\(...\)` and `\[...\]` and Mermaid as `<pre class="mermaid">`, with the source HTML-escaped. The page configures MathJax with only those delimiters, so a stray dollar sign in the text is never paired.
-5. **Path Resolution:** `resolveImagePath()` decodes percent escapes (`%20`), then converts the address to a webview-accessible URI, handling:
+4. **D2:** `renderMarkdown` turns each `d2` code token into a finished `html` token. `renderD2Block()` builds the address `<renderer>/d2/svg/<payload>?theme=..` where the payload is the source deflated at level 9 and encoded as URL-safe Base64 (`encodeD2Payload()`, Node's `zlib`). Only options that differ from the renderer's defaults are added, except the theme, which follows the editor (light 0, dark and high contrast 200). An empty block, a missing or invalid renderer URL, and an address over 8,000 characters each render a notice instead of an image.
+5. **Rendering:** `marked.parser()` renders the tokens. Math is emitted as `\(...\)` and `\[...\]` and Mermaid as `<pre class="mermaid">`, with the source HTML-escaped. The page configures MathJax with only those delimiters, so a stray dollar sign in the text is never paired.
+6. **Path Resolution:** `resolveImagePath()` decodes percent escapes (`%20`), then converts the address to a webview-accessible URI, handling:
    - Relative paths (`./images/photo.png`)
    - Parent directory paths (`../docs/diagram.png`)
    - Workspace-root paths (`/assets/icon.png`)
@@ -136,7 +157,8 @@ Every edit replaces the whole webview page, which resets the browser's scroll po
 ### Current Approach
 
 - **Full re-render on every change:** The entire markdown is re-parsed and HTML regenerated
-- **Debounced:** 300ms debounce on `onDidChangeTextDocument` batches rapid edits
+- **Debounced:** 300ms debounce on `onDidChangeTextDocument` batches rapid edits. A document with a D2 fence waits 800ms once a renderer is set, so the renderer is not asked after every keystroke
+- **D2 requests:** A full page replacement reloads every image. An unchanged block keeps its address, so the browser reuses the picture when the renderer sends cache headers. The d2-renderer image does (`immutable`). In real VS Code, editing one D2 block produced one request and editing prose produced none
 - **Why:** Ensures consistency and simplicity. Rendering on the host is fast enough that the cost is not worth an incremental design
 - **Cost:** Measured on 2026-10-26 under Node: about 0.1 ms for `examples/test.md` and about 15 ms for a 79 KB document. Host rendering is not the bottleneck. The visible delay comes from the webview reloading and from Mermaid and MathJax typesetting, which are not included in these numbers
 
@@ -193,7 +215,7 @@ The TOC uses native HTML `<details>/<summary>` elements for collapsibility:
 - **Animation:** Uses GPU-accelerated `transform` for smooth, jank-free slide transition
 - **No layout shifts:** Overlay pattern means zero reflows during open/close
 - **Keyboard-friendly:** Escape key closes sidebar; Enter/Space on `<summary>` toggles sections; semantic HTML enables screen reader navigation
-- **Theme-aware:** All CSS uses `var(--vscode-*)` variables; `resolveTheme()` auto-detects light/dark for highlight.js and Mermaid themes; `onDidChangeActiveColorTheme` re-renders on theme switch
+- **Theme-aware:** All CSS uses `var(--vscode-*)` variables; `resolveTheme()` auto-detects light/dark for highlight.js, Mermaid and D2 themes; `onDidChangeActiveColorTheme` re-renders on theme switch
 
 ## Guidelines for Future Changes
 
@@ -205,7 +227,7 @@ The following areas are generally safe for modification and extension:
 
 - **Styling:** Adjusting CSS for elements like the body, code blocks, and tables
 - **Markdown Options:** Passing new configuration options to the `marked()` parser
-- **VS Code Settings:** Adding new user-configurable settings in `package.json`
+- **VS Code Settings:** Adding new user-configurable settings in `package.json`. Keep the surface small: the only settings are the three `d2.*` ones, and a setting that decides where data goes needs application scope
 - **New Commands:** Adding new commands in `package.json` and implementing them in `extension.js`
 - **Sidebar Styling:** Adjusting colors, spacing, or hover effects in `.toc-sidebar` or `.toc-link` classes
 
@@ -214,7 +236,8 @@ The following areas are generally safe for modification and extension:
 Changes to the following areas are high-risk and **must undergo a security review**. They form the core of the extension's security and stability:
 
 - **Content Security Policy (CSP):** Modifying the CSP header can instantly create security vulnerabilities
+- **The D2 renderer URL:** `parseRendererUrl()`, the `{{RENDERER_ORIGIN}}` placeholder and the setting's scope decide where diagram text goes
 - **Nonce Generation:** The cryptographic token logic is critical for preventing XSS
-- **Math, Mermaid, heading and image handling:** The parser extensions and token passes in `renderMarkdown()` handle untrusted input
+- **Math, Mermaid, D2, heading and image handling:** The parser extensions and token passes in `renderMarkdown()` handle untrusted input
 - **State Management:** Altering the data flow could introduce bugs or race conditions
 - **Script Execution:** Any addition of user script execution or dynamic eval operations

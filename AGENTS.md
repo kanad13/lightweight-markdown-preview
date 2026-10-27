@@ -50,6 +50,7 @@ Before adding, upgrading, or auditing any dependency (npm package, CDN library, 
 - CDN-loaded (Mermaid, MathJax, highlight.js) at exact versions defined in `CDN_VERSIONS` in `src/extension.js`
 - Mermaid: backtick (```) and Azure DevOps (:::) syntaxes, handled as `marked` extensions
 - Math: inline ($...$) and block ($$...$$) as `marked` extensions; source is HTML-escaped and emitted as `\(..\)` / `\[..\]`
+- D2: ```d2 fences become `<img>` tags that point at the renderer URL the user sets (`lightweightMarkdownViewer.d2.rendererUrl`). The extension host never fetches it, `parseRendererUrl` validates it, and the CSP admits that one origin for images only
 - TOC sidebar: overlay pattern, slides from right, no layout reflow
 
 ## Code Style (enforced by ESLint)
