@@ -37,6 +37,7 @@ The extension has two halves, and each half has its own kind of check.
 | `test/d2.test.js`             | D2: address encoding against Python reference vectors, renderer URL validation, fence detection, notices, the CSP that admits the renderer, hostile input, settings, theme mapping, the quick-pick command, the debounce, manifest and page contract | `.html` loader and `vscode` shim |
 | `test/images.test.js`         | Every readme image is wide enough, small enough, and has no ink on its edge ring, which is what a cut-off picture looks like                                                                                                                         | None                             |
 | `test/live/renderers.live.js` | Opt-in. Real renderers draw plain, nested, table, sequence and Unicode diagrams; the theme, and the sketch, ELK and TALA options written in the diagram, change the picture; a syntax error is an error                                              | Needs `D2_RENDERERS`             |
+| `test/real-window/run.sh`     | Not a suite: a script that drives a real VS Code window (see Real-Window Check)                                                                                                                                                                      | Real VS Code                     |
 | `test/guide-svgs.test.js`     | Each D2 block in `docs/d2.md` has a pre-drawn SVG that records the hash of its source, holds no script, and follows the light or dark scheme                                                                                                         | None                             |
 | `test/docs.test.js`           | Relative links and heading anchors in every Markdown file; the routing table in `AGENTS.md` matches `docs/workflows.md`; readme images use absolute raw URLs, exist in `assets/`, and have alt text                                                  | None                             |
 | `test/helpers/fake-vscode.js` | Shared `vscode` and `.html` shims, handler capture, fake documents and panel                                                                                                                                                                         | Not a suite                      |
@@ -81,6 +82,21 @@ Run this check before a release and after any change to `src/webview.html`. Use 
    - Switch between a light and a dark theme and confirm that the diagrams change theme.
    - Clear the setting and confirm that D2 fences are plain code blocks with one hint line.
    - Set the renderer to `http://localhost:9` and confirm that every D2 block shows the failure message and no broken-image icon.
+
+## Real-Window Check
+
+`test/real-window/run.sh` drives a real VS Code window: it loads the extension and a small driver extension, opens documents, edits, changes themes and settings, and reads the preview page over the DevTools protocol. It covers what the fakes cannot: the real CSP, theme mapping, file access, Restricted Mode and the quick pick.
+
+```bash
+npm run build
+test/real-window/run.sh stable "/path/to/Visual Studio Code.app/Contents/MacOS/Code"
+test/real-window/run.sh v105 "/path/to/VS Code 1.105.0/Visual Studio Code.app/Contents/MacOS/Electron"
+```
+
+- **Builds:** run it in VS Code Stable, and before a release in the `engines.vscode` floor. Builds before about 1.106 name the executable `Electron`. Insiders results are provisional.
+- **Renderer:** it needs the d2-renderer container on `http://localhost:8080`. Ask the maintainer to start it.
+- **Profile folder:** it uses `~/.lmpv` (set `LMP_HOME` to change it), because VS Code's socket path must stay under about 100 characters.
+- **Last run:** 2026-10-27, VS Code Stable 1.143.1 and 1.105.0, every line passed. A line that reports `requests +1` after one D2 edit and `+0` after a prose edit proves that only the changed diagram asks the renderer again.
 
 ## Guide Pictures
 
