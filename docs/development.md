@@ -71,7 +71,8 @@ npm test
   - The package leaves `assets/` out, so a relative link breaks on the Marketplace and Open VSX pages. A `github.com/.../blob/...` link returns an HTML page, not the image.
   - Use PNG or JPEG, because the Marketplace rejects SVG. Give every image alt text that names what it shows.
   - Add the file to `assets/` on the same branch. The image URL works for readers only after the branch merges to `main`.
-  - `examples/showcase.md` is the document behind the screenshots. Open it in VS Code to retake them.
+  - `examples/showcase.md` is the document behind the screenshots. Build its pages with `test/visual/build-visual-check.js` and capture each one with `test/visual/capture.js`, which ends a screenshot between blocks.
+  - `test/images.test.js` fails when a screenshot is too small, too large or cut off at an edge.
 
 ### Dependencies
 

@@ -8,19 +8,33 @@ Planned as 1.7.0.
 
 ### Added
 
-- D2 diagrams. A ` ```d2 ` fence (or `~~~d2`, in lists and quotes) renders as an image from a Kroki-compatible renderer that you choose. [D2](https://d2lang.com) is a text language for architecture, sequence and database diagrams that GitHub and VS Code do not render. The new [D2 guide](docs/d2.md) explains setup, settings and defaults.
-- Renderers to start from: a local Docker container from [d2-renderer](https://github.com/kanad13/d2-renderer), which also documents a deploy to Google Cloud Run, or the Kroki public service to try it. The [d2-architect](https://github.com/kanad13/coherent-output/tree/main/skills/d2-architect) agent skill writes D2 diagrams that this preview draws.
-- The command **Markdown: Choose D2 Renderer** with a local Docker container, the Kroki public service, or your own URL, and the setting `lightweightMarkdownViewer.d2.rendererUrl`. It is a user setting, so a repository cannot choose where your diagrams go.
-- One setting, `lightweightMarkdownViewer.d2.rendererUrl`. Layout, sketch style and padding go in the diagram itself, in `vars: { d2-config: { ... } }`, so the same file draws the same way everywhere.
-- A message and the diagram source in place of a D2 diagram that did not render, and a notice for a diagram too large for a URL. While no renderer is set, a D2 fence stays the ordinary code block it was, with one hint line under the first one, so documents without D2 look exactly as before.
-- The D2 guide ([docs/d2.md](docs/d2.md)) shows each example's source with a pre-drawn SVG copy, so GitHub readers see the diagrams too. A test fails when a source changes and its copy does not. A visual check page generator, `test/visual/build-visual-check.js`. An opt-in live check, `npm run test:live`, draws test diagrams through real renderers, and a test checks that no readme image is cut off.
+- **D2 diagrams:**
+  - A ` ```d2 ` fence (also `~~~d2`, in lists and quotes) renders as an image from a Kroki-compatible renderer that you choose.
+  - [D2](https://d2lang.com) is a text language for architecture, sequence and database diagrams. GitHub and VS Code do not render it.
+  - The [D2 guide](docs/d2.md) has the setup, examples with their source and pre-drawn pictures, and troubleshooting.
+- **Choosing a renderer:**
+  - The command **Markdown: Choose D2 Renderer** offers a local Docker container, the Kroki public service or your own URL.
+  - The setting `lightweightMarkdownViewer.d2.rendererUrl` is the only new setting. It is a user setting, so a repository cannot choose where your diagrams go.
+  - [d2-renderer](https://github.com/kanad13/d2-renderer) provides the Docker image and a runbook that deploys it to Google Cloud Run.
+  - The [d2-architect](https://github.com/kanad13/coherent-output/tree/main/skills/d2-architect) agent skill writes D2 diagrams that this preview draws.
+- **Options in the diagram:**
+  - Layout, sketch style and padding go in `vars: { d2-config: { ... } }`, so the same file draws the same way everywhere.
+- **When a diagram does not draw:**
+  - A message and the diagram source replace it, and the diagrams around it keep working.
+  - A diagram too large for a URL shows its source with a note.
+  - While no renderer is set, a D2 fence stays an ordinary code block with one hint line, so documents without D2 look as before.
 
 ### Changed
 
-- The preview follows the VS Code theme for D2 as well: theme 0 for light themes and Dark Mauve (200) for dark and the dark high-contrast theme.
-- Documents with D2 wait 800 ms instead of 300 ms after an edit once a renderer is set, so the renderer is not asked after every keystroke.
-- The readme is rewritten around what the extension does for diagram authors, with new screenshots. The package description, keywords and categories match.
-- The Content Security Policy admits the configured renderer origin for images. It never admits `http:` as a whole scheme.
+- **Theme:**
+  - D2 diagrams follow the VS Code theme: D2 theme 0 for light themes and Dark Mauve (200) for dark and dark high-contrast themes.
+- **Edit delay:**
+  - Documents with D2 wait 800 ms instead of 300 ms after an edit once a renderer is set, so the renderer is not asked after every keystroke.
+- **Security policy:**
+  - The Content Security Policy admits the configured renderer origin for images, and never `http:` as a whole scheme.
+- **Readme and listing:**
+  - The readme is rewritten around what the extension does for diagram authors, with new screenshots.
+  - The package description, keywords and categories match.
 
 ## [1.6.0] - 2026-10-26
 
