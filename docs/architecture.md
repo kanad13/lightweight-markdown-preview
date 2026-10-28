@@ -43,6 +43,7 @@ The extension enforces a strict CSP. A script runs only if it carries the unique
   - An inline `<script>`, an inline event handler and a `javascript:` link are blocked, and so is a script tag that points at jsDelivr or any other host.
 - **Limits:**
   - A document can still make the preview request an image, a stylesheet or a font from any `https:` host, because remote images are a feature. That request exposes the reader's IP address to the host. The page sends no `Referer` (`<meta name="referrer" content="no-referrer">`), so the host does not learn the page address either.
+  - Mermaid, MathJax and highlight.js load from jsDelivr at pinned versions, so a machine without network access shows their source text instead of the drawing. [decisions.md](decisions.md#declined) records why they are not bundled.
   - VS Code's webview does not enforce `form-action` (checked in a real window on 2026-10-28), so the page script also cancels every `submit` event.
   - Raw HTML that is not script, such as `<details>`, `<kbd>` and `<img width>`, passes through and works.
   - The page sends no messages to the extension host, and the CSP sets no `connect-src`. [decisions.md](decisions.md#script-policy-and-raw-html) says what to settle before that changes.
