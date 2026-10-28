@@ -36,6 +36,8 @@ All notable changes to this project will be documented in this file.
   - `base-uri 'none'` and `form-action 'none'` are added, the page cancels form submits itself because VS Code's webview does not enforce `form-action`, and the page sends no `Referer`.
   - Raw HTML such as `<details>`, `<kbd>` and `<img width>` still works.
   - New tests load the real page in headless Chrome and check each of these cases.
+- **Mermaid:**
+  - The page loads Mermaid 12.2.0 in place of 12.1.0. The release adds an opt-in mindmap coloring option and fixes node sizing and edge routing.
 - **Readme and listing:**
   - The readme leads with a features table, then install, D2, Mermaid, math, and a security and privacy section that lists every network request.
   - New screenshot of D2 source beside the drawn diagram.
