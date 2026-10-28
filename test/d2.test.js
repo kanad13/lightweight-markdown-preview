@@ -56,9 +56,15 @@ describe("D2 payload encoding", () => {
 		"a: A\nb: B\na -> b: hi": "eNpLtFJw5EqyUnDiSlTQtVMAsjIyAS5mBKg=",
 	};
 
-	for (const [source, expected] of Object.entries(vectors)) {
-		it(`matches the Python reference for ${JSON.stringify(source.slice(0, 20))}`, () => {
-			assert.equal(encodeD2Payload(source), expected);
+	// Node versions bundle different zlib builds, so the compressed bytes differ between them while every stream stays valid.
+	// The contract with a renderer is that it inflates to the source, so the test checks that and the level-9 header, not the bytes.
+	for (const [source, reference] of Object.entries(vectors)) {
+		it(`agrees with the Python reference for ${JSON.stringify(source.slice(0, 20))}`, () => {
+			const payload = encodeD2Payload(source);
+			assert.equal(decode(reference), source, "the reference vector decodes to the source");
+			assert.equal(decode(payload), source);
+			assert.ok(payload.startsWith("eN"), "zlib header for level 9");
+			assert.ok(!/[+/]/.test(payload));
 		});
 	}
 
