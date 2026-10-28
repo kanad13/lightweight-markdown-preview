@@ -1,8 +1,8 @@
 {
 	"name": "lightweight-markdown-preview",
 	"displayName": "Lightweight Markdown Preview",
-	"description": "Lightweight, privacy-friendly Markdown preview with Mermaid diagrams and MathJax equations. No bloat, no tracking.",
-	"version": "1.6.0",
+	"description": "Lightweight, private Markdown preview for VS Code with Mermaid, D2, MathJax (LaTeX) and highlighted code. Locked-down page, no telemetry.",
+	"version": "1.7.0",
 	"icon": "assets/icon.png",
 	"publisher": "KunalPathak",
 	"author": "Kunal Pathak",
@@ -15,8 +15,8 @@
 		"node": ">=22.13.0"
 	},
 	"categories": [
-		"Other",
-		"Formatters"
+		"Visualization",
+		"Other"
 	],
 	"keywords": [
 		"markdown",
@@ -33,7 +33,20 @@
 		"render",
 		"documentation",
 		"chart",
-		"flowchart"
+		"flowchart",
+		"d2",
+		"d2lang",
+		"kroki",
+		"architecture-diagram",
+		"latex",
+		"azure-devops",
+		"security",
+		"secure",
+		"sequence-diagram",
+		"markdown-preview",
+		"mermaid-diagram",
+		"d2-diagram",
+		"no-telemetry"
 	],
 	"qna": "marketplace",
 	"galleryBanner": {
@@ -48,6 +61,11 @@
 				"title": "Show Lightweight Markdown Preview",
 				"category": "Markdown",
 				"icon": "$(eye)"
+			},
+			{
+				"command": "lightweightMarkdownViewer.chooseD2Renderer",
+				"title": "Choose D2 Renderer",
+				"category": "Markdown"
 			}
 		],
 		"menus": {
@@ -58,6 +76,17 @@
 					"group": "navigation"
 				}
 			]
+		},
+		"configuration": {
+			"title": "Lightweight Markdown Preview",
+			"properties": {
+				"lightweightMarkdownViewer.d2.rendererUrl": {
+					"type": "string",
+					"default": "",
+					"scope": "application",
+					"markdownDescription": "Base URL of a Kroki-compatible D2 renderer, for example `http://localhost:8080` for a local Docker container or `https://kroki.io`. D2 diagrams are sent only to this URL. Leave empty to leave D2 blocks as code. Run **Markdown: Choose D2 Renderer** for a guided choice. Layout, sketch style and other D2 options go in the diagram itself, in `vars: { d2-config: { ... } }`."
+				}
+			}
 		}
 	},
 	"capabilities": {
@@ -69,6 +98,7 @@
 		"build": "webpack",
 		"lint": "eslint .",
 		"test": "npm run build && node --test \"test/*.test.js\" && npm run lint",
+		"test:live": "node --test \"test/live/*.live.js\"",
 		"package": "npm run build && vsce package",
 		"publish": "npm run build && vsce publish"
 	},

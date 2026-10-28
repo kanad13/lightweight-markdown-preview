@@ -18,6 +18,18 @@ const handlers = {};
 /** Messages passed to `showErrorMessage`, cleared by `reset()`. */
 const errors = [];
 
+/** Settings the fake `getConfiguration` serves, keyed by full id such as "lightweightMarkdownViewer.d2.rendererUrl". Cleared by `reset()`. */
+const settings = {};
+
+/** Calls made to `update` on a configuration section, cleared by `reset()`. */
+const settingUpdates = [];
+
+/** Sections passed to `getConfiguration`, cleared by `reset()`; lets tests prove the extension reads only its own settings. */
+const configSections = [];
+
+/** Answers the fake quick-pick and input box give next; set by tests, cleared by `reset()`. */
+const prompts = { quickPick: undefined, inputBox: undefined, quickPickItems: undefined, inputBoxOptions: undefined };
+
 const noopDisposable = () => ({ dispose: () => {} });
 
 const vscode = {
@@ -25,6 +37,14 @@ const vscode = {
 		activeColorTheme: { kind: 1 },
 		activeTextEditor: undefined,
 		showErrorMessage: (message) => errors.push(message),
+		showQuickPick: async (items) => {
+			prompts.quickPickItems = items;
+			return typeof prompts.quickPick === "function" ? prompts.quickPick(items) : prompts.quickPick;
+		},
+		showInputBox: async (options) => {
+			prompts.inputBoxOptions = options;
+			return prompts.inputBox;
+		},
 		createWebviewPanel: undefined,
 		onDidChangeActiveColorTheme: (handler) => {
 			handlers.theme = handler;
@@ -37,6 +57,16 @@ const vscode = {
 	},
 	workspace: {
 		workspaceFolders: undefined,
+		getConfiguration: (section) => (configSections.push(section), {
+			get: (key, fallback) => (`${section}.${key}` in settings ? settings[`${section}.${key}`] : fallback),
+			update: async (key, value, target) => {
+				settingUpdates.push({ id: `${section}.${key}`, value, target });
+			},
+		}),
+		onDidChangeConfiguration: (handler) => {
+			handlers.config = handler;
+			return noopDisposable();
+		},
 		onDidChangeTextDocument: (handler) => {
 			handlers.docChange = handler;
 			return noopDisposable();
@@ -44,12 +74,13 @@ const vscode = {
 	},
 	commands: {
 		registerCommand: (id, handler) => {
-			handlers.command = handler;
+			handlers[id === "lightweightMarkdownViewer.chooseD2Renderer" ? "chooseRenderer" : "command"] = handler;
 			return noopDisposable();
 		},
 	},
 	ViewColumn: { Beside: 2 },
 	Uri: { joinPath: (base, ...parts) => ({ path: path.posix.join(base.path, ...parts) }) },
+	ConfigurationTarget: { Global: 1, Workspace: 2 },
 	ColorThemeKind: { Light: 1, Dark: 2, HighContrast: 3, HighContrastLight: 4 },
 };
 
@@ -130,9 +161,16 @@ function openPreview(activate, doc) {
  */
 function reset() {
 	errors.length = 0;
+	settingUpdates.length = 0;
+	configSections.length = 0;
+	for (const key of Object.keys(settings)) delete settings[key];
+	prompts.quickPick = undefined;
+	prompts.inputBox = undefined;
+	prompts.quickPickItems = undefined;
+	prompts.inputBoxOptions = undefined;
 	vscode.workspace.workspaceFolders = undefined;
 	vscode.window.activeColorTheme.kind = 1;
 	vscode.window.activeTextEditor = undefined;
 }
 
-module.exports = { install, handlers, errors, vscode, makeDoc, openPreview, reset };
+module.exports = { install, handlers, errors, settings, settingUpdates, configSections, prompts, vscode, makeDoc, openPreview, reset };

@@ -50,6 +50,7 @@ Before adding, upgrading, or auditing any dependency (npm package, CDN library, 
 - CDN-loaded (Mermaid, MathJax, highlight.js) at exact versions defined in `CDN_VERSIONS` in `src/extension.js`
 - Mermaid: backtick (```) and Azure DevOps (:::) syntaxes, handled as `marked` extensions
 - Math: inline ($...$) and block ($$...$$) as `marked` extensions; source is HTML-escaped and emitted as `\(..\)` / `\[..\]`
+- D2: ```d2 fences become `<img>` tags that point at the renderer URL the user sets (`lightweightMarkdownViewer.d2.rendererUrl`). The extension host never fetches it, `parseRendererUrl` validates it, and the CSP admits that one origin for images only
 - TOC sidebar: overlay pattern, slides from right, no layout reflow
 
 ## Code Style (enforced by ESLint)
@@ -79,7 +80,8 @@ When a task touches 3+ files or requires multiple related edits:
 ## Testing
 
 - The testing strategy, commands, and manual smoke check live in `docs/testing.md`; update it when a workflow, contract, or tool changes
-- Manual testing via F5 debug launch
+- Manual testing via F5 debug launch. Run real-window checks in VS Code Stable, the build that most users run, and before a release also in the `engines.vscode` floor. Insiders results are provisional; say so when they are all there is
 - Test file at `examples/test.md` with diverse Markdown content, Mermaid diagrams, and MathJax equations
 - `npm test` and `npm audit --omit=dev` must pass before any work is considered complete. The audit cannot see CDN libraries; `docs/workflows.md` covers them under Maintain and Upgrade
 - Build a `.vsix` (`npm run package`) after each phase for manual install testing
+- D2 checks need a real renderer. Ask the maintainer to start the container from the d2-renderer README (`docker run -d --name d2-test --platform linux/amd64 -p 8080:8080 ghcr.io/kanad13/d2-renderer:latest`) and use `http://localhost:8080`. Do not build or pull one yourself. Run `npm run test:live` against it and against `https://kroki.io`; `docs/testing.md` has the command

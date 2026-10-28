@@ -19,9 +19,6 @@ docs/
 examples/
 test/
 node_modules/
-docs/markdown-preview.png
-assets/markdown-preview.gif
-assets/markdown-preview.png
 assets/readme-*.png
 .prettierrc
 .prettierignore

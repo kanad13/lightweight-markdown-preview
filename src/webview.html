@@ -3,7 +3,10 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data: vscode-resource:; script-src 'nonce-{{NONCE}}' https://cdn.jsdelivr.net; style-src 'unsafe-inline' https://cdn.jsdelivr.net; font-src https: data:;">
+	<!-- 'strict-dynamic' makes the browser ignore host allowlists for scripts: only a script that carries the nonce, or that a nonce-carrying script loads (MathJax, Mermaid), runs. Script markup written in a document has neither. base-uri and form-action do not fall back to default-src, so they are set here. -->
+	<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data: vscode-resource:{{RENDERER_ORIGIN}}; script-src 'nonce-{{NONCE}}' 'strict-dynamic'; style-src 'unsafe-inline' https://cdn.jsdelivr.net; font-src https: data:; base-uri 'none'; form-action 'none';">
+	<!-- Remote images, stylesheets and fonts are fetched without a Referer header, so a document cannot learn where it was opened from -->
+	<meta name="referrer" content="no-referrer">
 	<title>Markdown Preview</title>
 	<link rel="stylesheet" href="{{HLJS_THEME}}">
 	<style>
@@ -286,6 +289,36 @@
 			text-align: center;
 		}
 
+		/* D2 diagrams are images from the configured renderer; the notice and error boxes replace them when there is nothing to show */
+		.d2-diagram {
+			margin: 16px 0;
+			text-align: center;
+		}
+
+		.d2-notice, .d2-error {
+			border: 1px solid var(--vscode-inputValidation-warningBorder, var(--vscode-widget-border, var(--vscode-panel-border)));
+			background: var(--vscode-inputValidation-warningBackground, var(--vscode-editorWidget-background));
+			border-radius: 4px;
+			padding: 8px 12px;
+			margin: 16px 0;
+			text-align: left;
+		}
+
+		.d2-hint {
+			font-size: 0.85em;
+			color: var(--vscode-descriptionForeground);
+			margin: -8px 0 16px;
+		}
+
+		.d2-error[hidden], .d2-source[hidden] {
+			display: none;
+		}
+
+		.d2-source {
+			text-align: left;
+			margin: 8px 0 0;
+		}
+
 		h1, h2, h3, h4, h5, h6 {
 			scroll-margin-top: 20px;
 		}
@@ -442,6 +475,9 @@
 			}
 		});
 
+		// A <form> written in a document must not navigate the preview. The CSP's form-action blocks this in a browser, but VS Code's webview does not enforce it (checked in a real window), so the page refuses the submit itself
+		document.addEventListener('submit', (e) => e.preventDefault(), true);
+
 		// In-page links such as [intro](#intro) scroll to their heading; the webview has no document URL to resolve them against
 		document.querySelector('.content').addEventListener('click', (e) => {
 			const link = e.target.closest('a[href^="#"]');
@@ -469,6 +505,21 @@
 		} catch (error) {
 			console.error('Syntax highlighting failed:', error);
 		}
+
+		// An image cannot report why the renderer refused a diagram, so a failed one is swapped for a message and the source
+		document.querySelectorAll('img.d2-img').forEach((img) => {
+			const showFailure = () => {
+				// Named elements only: a [hidden] selector would also match the image that has just been hidden
+				img.closest('.d2-diagram').querySelectorAll('.d2-error, .d2-source').forEach((element) => { element.hidden = false; });
+				img.hidden = true;
+			};
+			// A broken image can fail before this listener exists
+			if (img.complete && img.naturalWidth === 0) {
+				showFailure();
+			} else {
+				img.addEventListener('error', showFailure, { once: true });
+			}
+		});
 
 		// Dynamic import: a failed CDN fetch must not abort the script that restores the scroll position
 		try {

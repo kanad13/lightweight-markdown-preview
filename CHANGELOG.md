@@ -2,6 +2,47 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.0] - 2026-10-28
+
+### Added
+
+- **D2 diagrams:**
+  - A ` ```d2 ` fence (also `~~~d2`, in lists and quotes) renders as an image from a Kroki-compatible renderer that you choose.
+  - [D2](https://d2lang.com) is a text language for architecture, sequence and database diagrams. GitHub and VS Code do not render it.
+  - The [D2 guide](docs/d2.md) has the setup, examples with their source and pre-drawn pictures, and troubleshooting.
+- **Choosing a renderer:**
+  - The command **Markdown: Choose D2 Renderer** offers a local Docker container, the Kroki public service or your own URL.
+  - The setting `lightweightMarkdownViewer.d2.rendererUrl` is the only new setting. It is a user setting, so a repository cannot choose where your diagrams go.
+  - [d2-renderer](https://github.com/kanad13/d2-renderer) provides the Docker image and a runbook that deploys it to Google Cloud Run.
+  - The [d2-architect](https://github.com/kanad13/coherent-output/tree/main/skills/d2-architect) agent skill writes D2 diagrams that this preview draws.
+- **Options in the diagram:**
+  - Layout, sketch style and padding go in `vars: { d2-config: { ... } }`, so the same file draws the same way everywhere.
+- **When a diagram does not draw:**
+  - A message and the diagram source replace it, and the diagrams around it keep working.
+  - A diagram too large for a URL shows its source with a note.
+  - While no renderer is set, a D2 fence stays an ordinary code block with one hint line, so documents without D2 look as before.
+- **Security policy:**
+  - `SECURITY.md` says how to report a vulnerability, what the preview protects, every network request it makes, and the known limits.
+
+### Changed
+
+- **Theme:**
+  - D2 diagrams follow the VS Code theme: D2 theme 0 for light themes and Dark Mauve (200) for dark and dark high-contrast themes.
+- **Edit delay:**
+  - Documents with D2 wait 800 ms instead of 300 ms after an edit once a renderer is set, so the renderer is not asked after every keystroke.
+- **Security policy:**
+  - The Content Security Policy admits the configured renderer origin for images, and never `http:` as a whole scheme.
+  - Scripts run only if they carry the render's nonce or a nonce-carrying script loads them (`'strict-dynamic'`). Before, a `<script src>` in a document that pointed at jsDelivr ran, and jsDelivr serves any npm or GitHub file. MathJax and Mermaid load as before.
+  - `base-uri 'none'` and `form-action 'none'` are added, the page cancels form submits itself because VS Code's webview does not enforce `form-action`, and the page sends no `Referer`.
+  - Raw HTML such as `<details>`, `<kbd>` and `<img width>` still works.
+  - New tests load the real page in headless Chrome and check each of these cases.
+- **Mermaid:**
+  - The page loads Mermaid 12.2.0 in place of 12.1.0. The release adds an opt-in mindmap coloring option and fixes node sizing and edge routing.
+- **Readme and listing:**
+  - The readme leads with a features table, then install, D2, Mermaid, math, and a security and privacy section that lists every network request.
+  - New screenshot of D2 source beside the drawn diagram.
+  - The package description and keywords match.
+
 ## [1.6.0] - 2026-10-26
 
 ### Added

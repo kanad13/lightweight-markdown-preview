@@ -1,0 +1,1 @@
+{"name":"lmp-driver","version":"0.0.1","publisher":"test","engines":{"vscode":"^1.105.0"},"main":"./ext.js","activationEvents":["onStartupFinished"]}
