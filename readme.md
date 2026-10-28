@@ -1,24 +1,21 @@
 # Lightweight Markdown Preview: Mermaid, D2 and Math in VS Code
 
-See your Markdown the way your readers will, while you type. The preview draws **D2 diagrams** (which GitHub and VS Code's built-in preview leave as code), **Mermaid** in both the GitHub and Azure DevOps syntax, **LaTeX math** and **highlighted code**, in a panel beside your file. It follows your color theme, installs quickly, and keeps your documents on your machine.
+A Markdown preview for VS Code. It draws D2 diagrams, Mermaid diagrams (GitHub and Azure DevOps syntax), LaTeX math and highlighted code beside your file. It follows your VS Code color theme, adds a collapsible outline sidebar, and collects no telemetry.
 
 ![A dark VS Code theme showing one document with a D2 network diagram, a Mermaid flowchart and a math formula](https://raw.githubusercontent.com/kanad13/lightweight-markdown-preview/main/assets/readme-hero-dark.png)
 
-## What you get
+## Features
 
-- **Architecture diagrams as text, drawn as you type:**
-  - Write D2 in a fence and see the picture. Nested boxes, database tables, sequence diagrams and class diagrams all work.
-  - Diagrams live in your repository as plain text, so they diff, review and merge like code.
-- **One Mermaid source for GitHub and Azure DevOps:**
-  - GitHub reads backtick fences. Azure DevOps reads `::: mermaid` blocks. The preview draws both, so you check a diagram once and publish it to either.
-- **Math that reads the way you meant it:**
-  - Prices such as "$5 and $10" and shell variables such as `$HOME` stay text. Only real formulas become math.
-- **Files you can open without a second thought:**
-  - Open a Markdown file from a cloned repository, a download or an email, and the preview does not run scripts hidden in it.
-- **Documents that stay yours:**
-  - There is no telemetry and no account. D2 diagrams go only to a renderer you choose, and that can be a container on your own machine.
-- **A small footprint:**
-  - The package is about 100 KB, with one setting and one runtime dependency. It does one job well.
+| Feature          | What it does                                                                        | What you gain                                                                                                                                    |
+| :--------------- | :---------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------- |
+| D2 diagrams      | Draws every `d2` fence through a renderer you choose                                | Architecture diagrams stay text in your repository, so they diff in pull requests and AI agents can write them. See [D2 diagrams](#d2-diagrams). |
+| Mermaid          | Draws backtick fences (GitHub) and `::: mermaid` blocks (Azure DevOps)              | You check a diagram once and publish it to either platform.                                                                                      |
+| LaTeX math       | Draws `$...$` inline and `$$...$$` block formulas with MathJax                      | Prices such as "$5 and $10" and shell variables such as `$HOME` stay text.                                                                       |
+| Highlighted code | Colors fenced code by language                                                      | Code samples are easy to scan.                                                                                                                   |
+| Outline sidebar  | Lists your headings in a collapsible panel that follows where you read              | You move through long documents quickly, and `[intro](#intro)` links scroll to their heading.                                                    |
+| Color themes     | Follows your light, dark or high contrast VS Code theme and redraws when it changes | Text, code and diagrams match your editor.                                                                                                       |
+| Script blocking  | Does not run scripts that a Markdown file contains                                  | Files from the internet, email or an unfamiliar repository cannot run code in the preview.                                                       |
+| No telemetry     | Collects nothing and needs no account                                               | Your documents and diagrams stay with you.                                                                                                       |
 
 ## Install
 
@@ -27,97 +24,91 @@ See your Markdown the way your readers will, while you type. The preview draws *
 - **Forks such as Cursor and VSCodium:**
   - Install from [Open VSX](https://open-vsx.org/extension/KunalPathak/lightweight-markdown-preview).
   - Or download the `.vsix` from the [GitHub releases](https://github.com/kanad13/lightweight-markdown-preview/releases) and run **Extensions: Install from VSIX...**.
-- **Use it:**
-  - Open a Markdown file, then select the eye icon in the editor title bar, or run **Markdown: Show Lightweight Markdown Preview**.
-  - The preview updates as you type and follows the file you edit.
+
+### First use
+
+1. Open a Markdown file.
+2. Select the eye icon in the editor title bar, or run **Markdown: Show Lightweight Markdown Preview**.
+3. Edit the file. The preview updates as you type and follows the file you switch to.
 
 ## D2 diagrams
 
-[D2](https://d2lang.com) describes architecture diagrams as text, with nested containers, database tables, sequence diagrams and class diagrams. The preview draws each ` ```d2 ` fence for you.
+[D2](https://d2lang.com) is a text language for architecture diagrams, with nested containers, database tables, sequence diagrams and class diagrams. Text diagrams diff and review like code, and an AI agent can write and revise them. The preview draws each ` ```d2 ` fence as you type.
+
+![A VS Code window with a Markdown file on the left that holds a D2 fence, and the Markdown preview on the right that shows the drawn diagram: a web shop sends an order to an order service, which saves to a database and enqueues to a queue](https://raw.githubusercontent.com/kanad13/lightweight-markdown-preview/main/assets/readme-d2-source-and-preview.png)
 
 ![A D2 diagram of a cloud network, drawn in the preview: users, a CDN, a load balancer, two availability zones with app servers and a replicated database, and a VPN to a data center](https://raw.githubusercontent.com/kanad13/lightweight-markdown-preview/main/assets/readme-d2-network.png)
 
-### Start in two minutes
+### Set up a renderer
 
-- **Run a renderer on your machine:**
-  - One command starts the [d2-renderer](https://github.com/kanad13/d2-renderer) container. Your diagram text never leaves your computer, and layout engines such as TALA are included.
-    ```bash
-    docker run -d --name d2-renderer --platform linux/amd64 -p 8080:8080 ghcr.io/kanad13/d2-renderer:latest
-    ```
-- **Point the preview at it:**
-  - Run **Markdown: Choose D2 Renderer** and pick **Local Docker container**.
-  - Prefer a shared server? d2-renderer ships a runbook that deploys it to Google Cloud Run, and the public Kroki service works for a quick try.
-- **Keep going with the [D2 guide](docs/d2.md):**
-  - It has more examples with their source, options such as sketch style and layout engines, and troubleshooting.
+1. **Start the renderer.** The [d2-renderer](https://github.com/kanad13/d2-renderer) container keeps your diagram text on your machine:
 
-### Let an agent write the diagrams
+   ```bash
+   docker run -d --name d2-renderer --platform linux/amd64 -p 8080:8080 ghcr.io/kanad13/d2-renderer:latest
+   ```
 
-- **[d2-architect](https://github.com/kanad13/coherent-output/tree/main/skills/d2-architect):**
-  - An agent skill that adds a checked D2 diagram under every heading of a technical document, without changing your text.
-  - This preview draws what it writes, so the loop is: ask your agent for diagrams, read them in the preview, keep the ones you like.
+2. **Choose it.** Run **Markdown: Choose D2 Renderer** and pick **Local Docker container**.
 
-## Mermaid
+   ![The Choose D2 Renderer quick pick with four choices: a local Docker container, the Kroki public service, another URL, and turning D2 off](https://raw.githubusercontent.com/kanad13/lightweight-markdown-preview/main/assets/readme-d2-choose-renderer.png)
 
-- **Two syntaxes, one preview:**
-  - The same sequence diagram below is drawn from a GitHub-style fence and from an Azure DevOps-style block.
+3. **Write a `d2` fence.** The diagram appears in the preview.
+
+### Your D2 toolkit
+
+| Piece                                                                                    | What it does                                                                                                             |
+| :--------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------- |
+| [D2 guide](docs/d2.md)                                                                   | Setup, examples with their source and pictures, diagram options and troubleshooting.                                     |
+| [d2-renderer](https://github.com/kanad13/d2-renderer)                                    | The container that draws the diagrams. It includes the TALA layout engine, and a runbook deploys it to Google Cloud Run. |
+| [d2-architect](https://github.com/kanad13/coherent-output/tree/main/skills/d2-architect) | An agent skill that adds a checked D2 diagram under every heading of a document, without changing your text.             |
+
+## Mermaid, math and code
+
+Mermaid draws from both platform syntaxes, so one source works on GitHub and in Azure DevOps. The sequence diagram below is drawn from a GitHub fence and from an Azure DevOps block.
 
 ![The same Mermaid sequence diagram drawn from a GitHub-style fence and from an Azure DevOps-style block](https://raw.githubusercontent.com/kanad13/lightweight-markdown-preview/main/assets/readme-mermaid-two-syntaxes.png)
 
-## Math and code
-
-- **Math:**
-  - Write inline math as `$x_n$` and block math as `$$ ... $$`.
-  - Dollar signs that are not math stay text, so "costs $5 and $10" and `echo $HOME` render as written.
-- **Code:**
-  - Fenced code is highlighted.
+Write inline math as `$x_n$` and block math as `$$ ... $$`. Dollar signs that are not math stay text, so "costs $5 and $10" and `echo $HOME` render as written. Fenced code is highlighted.
 
 ![A light theme showing a load formula and a highlighted Python function](https://raw.githubusercontent.com/kanad13/lightweight-markdown-preview/main/assets/readme-math-and-code-light.png)
 
-## Outline
+## Outline and themes
 
-- **Sidebar:**
-  - The ☰ button opens a collapsible outline.
-  - The outline follows where you read.
-- **Links:**
-  - A link such as `[intro](#intro)` scrolls to its heading.
+The ☰ button opens a collapsible outline that follows where you read. The preview uses your active color theme, whether light, dark or high contrast, and redraws when you change it.
 
 ![The outline sidebar listing the headings of a document](https://raw.githubusercontent.com/kanad13/lightweight-markdown-preview/main/assets/readme-outline-sidebar.png)
-
-## Themes
-
-- **Follows VS Code:**
-  - Text, code and diagrams use the active color theme: light, dark or high contrast.
-  - The preview redraws when you change the theme.
 
 | Dark                                                                                                                                                           | Light                                                                                                                                                            |
 | :------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | ![A Mermaid flowchart and a formula in a dark theme](https://raw.githubusercontent.com/kanad13/lightweight-markdown-preview/main/assets/readme-theme-dark.png) | ![A Mermaid flowchart and a formula in a light theme](https://raw.githubusercontent.com/kanad13/lightweight-markdown-preview/main/assets/readme-theme-light.png) |
 
-## Safe to open, private by design
+## Security and privacy
 
-A Markdown file can carry HTML, so the preview treats every file as untrusted, including one you did not write.
+A Markdown file can contain HTML and scripts. The preview blocks them, so a file from the internet, an email or a cloned repository cannot run code in the preview.
 
-- **Open anything:**
-  - Scripts in a document do not run, whatever address they name, so a file from a repository you just cloned cannot take over your preview.
-  - Harmless HTML such as `<details>`, `<kbd>` and sized images keeps working.
-- **No tracking:**
-  - There is no telemetry and no analytics. The page does not tell image hosts which page you are reading.
-- **You choose where diagrams go:**
-  - The renderer is a user setting, so a repository cannot send your diagrams to its own server.
-- **Works in Restricted Mode:**
-  - Workspace Trust is supported, so you can preview files in folders you have not trusted yet.
-- **The details:**
-  - [architecture.md](docs/architecture.md) explains the security model and its limits, and the tests load the real page in a browser against hostile documents.
+| Risk                                           | What the preview does                                                                                  |
+| :--------------------------------------------- | :----------------------------------------------------------------------------------------------------- |
+| A script inside a Markdown file                | Does not run it, whatever address it names. Harmless HTML such as `<details>` and `<kbd>` still works. |
+| A form or `<base>` tag that redirects the page | Blocks form submits and `<base>` redirects.                                                            |
+| A document that reports where you read it      | Sends no `Referer` header with image and font requests.                                                |
+| A repository that picks your D2 renderer       | Cannot: the renderer is a user setting.                                                                |
+| A folder you have not trusted                  | Previews work in VS Code Restricted Mode.                                                              |
+| Usage tracking                                 | None: no telemetry, no analytics, no account.                                                          |
 
-## Focused by design
+The preview makes these network requests and no others:
 
-- **One job:**
-  - The preview shows your Markdown beside your editor, and the editor stays the place where you write.
-  - Because it ships no export pipeline, bundled browser engine or plugin system, it stays small, quick and easy to audit.
-- **One setting:**
-  - The D2 renderer is the only choice you make. Text, code and diagrams follow your VS Code theme.
-- **Your ideas shape it:**
-  - Scroll sync and links between Markdown files are on the list for when someone needs them. [Open an issue](https://github.com/kanad13/lightweight-markdown-preview/issues) with your workflow.
+- **Libraries:** Mermaid, MathJax, its fonts, highlight.js and its theme, from jsDelivr at pinned versions.
+- **Images:** the remote images your document names, fetched from their hosts.
+- **D2 diagrams:** the diagram text, sent to the renderer you set.
+
+The [security policy](SECURITY.md) explains how to report a vulnerability.
+
+## At a glance
+
+| Measure              | Value                    |
+| :------------------- | :----------------------- |
+| Package size         | About 100 KB             |
+| Runtime dependencies | One: `marked`            |
+| Settings             | One: the D2 renderer URL |
 
 ## Contribute
 

@@ -11,7 +11,7 @@ const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
 const guides = fs.readdirSync(path.join(root, "docs")).filter((f) => f.endsWith(".md"));
-const markdownFiles = ["readme.md", "CHANGELOG.md", "AGENTS.md", ...guides.map((f) => `docs/${f}`)];
+const markdownFiles = ["readme.md", "CHANGELOG.md", "AGENTS.md", "SECURITY.md", ...guides.map((f) => `docs/${f}`)];
 
 /** Returns the lines of a Markdown file outside fenced code blocks, where `#` starts a shell comment rather than a heading. */
 function proseLines(file) {
