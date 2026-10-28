@@ -44,7 +44,7 @@ A Markdown preview for VS Code. It draws D2 diagrams, Mermaid diagrams (GitHub a
 1. **Start the renderer.** The [d2-renderer](https://github.com/kanad13/d2-renderer) container keeps your diagram text on your machine:
 
    ```bash
-   docker run -d --name d2-renderer --platform linux/amd64 -p 8080:8080 ghcr.io/kanad13/d2-renderer:latest
+   docker run -d --name d2-renderer -p 8080:8080 ghcr.io/kanad13/d2-renderer:latest
    ```
 
 2. **Choose it.** Run **Markdown: Choose D2 Renderer** and pick **Local Docker container**.

@@ -77,7 +77,7 @@ Run this check before a release and after any change to `src/webview.html`. Use 
 5. Open a second Markdown file in another tab. Confirm the preview switches and starts at the top.
 6. Switch the VS Code color theme. Confirm diagrams and code colors follow it.
 7. Open Developer Tools and confirm the only console error is the blocked MathJax worker message.
-8. D2, with a renderer running and `docs/d2.md` open. The renderer is the container from the d2-renderer README, started by the maintainer: `docker run -d --name d2-test --platform linux/amd64 -p 8080:8080 ghcr.io/kanad13/d2-renderer:latest`, used as `http://localhost:8080`. If no container is running, ask the maintainer to start one; do not build one yourself.
+8. D2, with a renderer running and `docs/d2.md` open. The renderer is the container from the d2-renderer README, started by the maintainer: `docker run -d --name d2-test -p 8080:8080 ghcr.io/kanad13/d2-renderer:latest`, used as `http://localhost:8080`. If no container is running, ask the maintainer to start one; do not build one yourself.
    - Run **Markdown: Choose D2 Renderer** and pick the local container. Confirm the diagrams appear and the hint under the code block disappears.
    - Edit one D2 block and confirm that only that block asks the renderer for a new picture (the container log shows one `GET`) and that the scroll position stays.
    - Break a block on purpose and confirm that a message and the source replace it while the other diagrams stay.
