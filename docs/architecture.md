@@ -31,22 +31,25 @@ The security model assumes that any Markdown file could be malicious. The extens
 
 ### Layer 1: Content Security Policy (CSP) with Nonces
 
-The extension enforces a strict CSP that runs only scripts with a unique, random `nonce` (number used once).
+The extension enforces a strict CSP. A script runs only if it carries the unique, random `nonce` of the current render, or if a script that carries the nonce loads it.
 
 - **How it works:**
   - The extension generates a new nonce for every preview render.
   - The nonce appears in the CSP `meta` tag and in every legitimate `<script>` tag.
+  - `script-src` is `'nonce-…' 'strict-dynamic'`. With `'strict-dynamic'` the browser ignores host allowlists for scripts, so MathJax and Mermaid still load from jsDelivr because a nonce-carrying script loads them, while a `<script src>` written in a document does not run.
+  - `base-uri 'none'` and `form-action 'none'` close two gaps that `default-src` does not cover. A `<base>` tag cannot redirect relative links, and the browser refuses a `<form>` submit.
+  - `default-src 'none'` also closes frames, objects, workers and `connect-src`. `img-src` allows `https:` so that remote images load, and `style-src` allows inline styles and jsDelivr for the highlight.js theme.
 - **Effect:**
-  - An inline `<script>` tag injected through Markdown lacks the nonce, and the browser blocks it.
-- **Limit:**
-  - The CSP also allows scripts from `https://cdn.jsdelivr.net` by host, because the page loads its libraries from there.
-  - A `<script src="https://cdn.jsdelivr.net/...">` tag in a document therefore runs. In a test page, such a tag loaded jQuery.
-  - The damage is bounded: the CSP sets no `connect-src`, and the page sends no messages to the extension host.
-  - [decisions.md](decisions.md#raw-html-in-documents-and-the-script-allowlist) tracks the open question. Settle it before any page-to-host message exists.
+  - An inline `<script>`, an inline event handler and a `javascript:` link are blocked, and so is a script tag that points at jsDelivr or any other host.
+- **Limits:**
+  - A document can still make the preview request an image, a stylesheet or a font from any `https:` host, because remote images are a feature. That request exposes the reader's IP address to the host. The page sends no `Referer` (`<meta name="referrer" content="no-referrer">`), so the host does not learn the page address either.
+  - VS Code's webview does not enforce `form-action` (checked in a real window on 2026-10-28), so the page script also cancels every `submit` event.
+  - Raw HTML that is not script, such as `<details>`, `<kbd>` and `<img width>`, passes through and works.
+  - The page sends no messages to the extension host, and the CSP sets no `connect-src`. [decisions.md](decisions.md#script-policy-and-raw-html) says what to settle before that changes.
 
 ### Layer 2: Escaping of Generated Markup
 
-Raw HTML in a document passes through `marked` unchanged, so the CSP in Layer 1 is the control that stops such markup from running inline scripts. Its limit for scripts hosted on jsDelivr is described there. The extension escapes every fragment it builds itself.
+Raw HTML in a document passes through `marked` unchanged, so the CSP in Layer 1 is the control that stops such markup from running scripts. The extension does not filter tags, because a filter misses forms such as an unclosed `<script src>`, and the CSP needs no list of tags to work. The extension escapes every fragment it builds itself.
 
 - **Outline entries:**
   - `escapeHtml()` escapes heading text before it enters the sidebar markup.

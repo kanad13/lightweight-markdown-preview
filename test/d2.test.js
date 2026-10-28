@@ -269,9 +269,9 @@ describe("D2 with a renderer URL that cannot be used", () => {
 });
 
 describe("people who never use D2 see no change", () => {
-	// The CSP the extension shipped before D2 support, with the nonce replaced; a change here changes what every existing user's page may load
+	// The CSP when no renderer is set, with the nonce replaced; D2 may add its origin to img-src and nothing else, so this is also what every user without D2 gets
 	const CSP_BEFORE_D2 =
-		"default-src 'none'; img-src https: data: vscode-resource:; script-src 'nonce-N' https://cdn.jsdelivr.net; style-src 'unsafe-inline' https://cdn.jsdelivr.net; font-src https: data:;";
+		"default-src 'none'; img-src https: data: vscode-resource:; script-src 'nonce-N' 'strict-dynamic'; style-src 'unsafe-inline' https://cdn.jsdelivr.net; font-src https: data:; base-uri 'none'; form-action 'none';";
 	const root = path.join(__dirname, "..");
 	const documents = ["examples/test.md", "docs/dependencies.md", "docs/development.md", "docs/workflows.md"].map(
 		(file) => [file, fs.readFileSync(path.join(root, file), "utf8")]
@@ -300,7 +300,7 @@ describe("people who never use D2 see no change", () => {
 		});
 	}
 
-	it("keeps the Content Security Policy exactly as before", () => {
+	it("keeps the Content Security Policy the same whatever D2 is set to", () => {
 		const csp = /Content-Security-Policy" content="([^"]*)"/.exec(
 			getWebviewContent("", "N", [], {}, "doc", undefined)
 		)[1];
@@ -383,7 +383,7 @@ describe("Content Security Policy for the renderer", () => {
 	it("keeps every other directive unchanged", () => {
 		const csp = /Content-Security-Policy" content="([^"]*)"/.exec(page("http://localhost:8080"))[1];
 		assert.ok(csp.startsWith("default-src 'none';"));
-		assert.ok(csp.includes("script-src 'nonce-NONCE' https://cdn.jsdelivr.net;"));
+		assert.ok(csp.includes("script-src 'nonce-NONCE' 'strict-dynamic';"));
 		assert.ok(!csp.includes("connect-src"));
 	});
 
@@ -435,7 +435,7 @@ describe("hostile input", () => {
 			)[1];
 			assert.ok(!csp.includes("unsafe-inline';") || csp.includes("style-src 'unsafe-inline'"));
 			assert.ok(!/script-src \*/.test(csp));
-			assert.equal(csp.split(";").length, 6, csp);
+			assert.equal(csp.split(";").length, 8, csp);
 		});
 	}
 

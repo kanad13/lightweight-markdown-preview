@@ -3,7 +3,10 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data: vscode-resource:{{RENDERER_ORIGIN}}; script-src 'nonce-{{NONCE}}' https://cdn.jsdelivr.net; style-src 'unsafe-inline' https://cdn.jsdelivr.net; font-src https: data:;">
+	<!-- 'strict-dynamic' makes the browser ignore host allowlists for scripts: only a script that carries the nonce, or that a nonce-carrying script loads (MathJax, Mermaid), runs. Script markup written in a document has neither. base-uri and form-action do not fall back to default-src, so they are set here. -->
+	<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data: vscode-resource:{{RENDERER_ORIGIN}}; script-src 'nonce-{{NONCE}}' 'strict-dynamic'; style-src 'unsafe-inline' https://cdn.jsdelivr.net; font-src https: data:; base-uri 'none'; form-action 'none';">
+	<!-- Remote images, stylesheets and fonts are fetched without a Referer header, so a document cannot learn where it was opened from -->
+	<meta name="referrer" content="no-referrer">
 	<title>Markdown Preview</title>
 	<link rel="stylesheet" href="{{HLJS_THEME}}">
 	<style>
@@ -471,6 +474,9 @@
 				observer.observe(heading);
 			}
 		});
+
+		// A <form> written in a document must not navigate the preview. The CSP's form-action blocks this in a browser, but VS Code's webview does not enforce it (checked in a real window), so the page refuses the submit itself
+		document.addEventListener('submit', (e) => e.preventDefault(), true);
 
 		// In-page links such as [intro](#intro) scroll to their heading; the webview has no document URL to resolve them against
 		document.querySelector('.content').addEventListener('click', (e) => {

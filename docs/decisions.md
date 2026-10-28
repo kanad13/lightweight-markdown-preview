@@ -32,30 +32,32 @@ The project goals set the limits: small, private, and no configuration beyond th
 | Deferred      | The value is real but too small for the current cost. Reopen when the condition holds. |
 | Declined      | Conflicts with a project goal. Do not reopen without changing the goal.                |
 
-## Open question
+## Built
 
-### Raw HTML in documents and the script allowlist
+### Script policy and raw HTML
 
-Last reviewed: 2026-10-26.
+Last reviewed: 2026-10-28. Verdict: pursue, approved by the maintainer. Built on `feat/d2-diagrams`; remove this entry when it ships.
 
 - **Problem:**
-  - [architecture.md](architecture.md) states that a script injected through Markdown lacks the nonce and is blocked. That is true for inline scripts only.
-  - The CSP also allows scripts from `https://cdn.jsdelivr.net` by host, and `marked` passes raw HTML through. In a test page, `<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js">` in Markdown loaded and ran.
-  - jsDelivr serves arbitrary npm and GitHub content, so a hostile document can run any script published there.
-- **Why the damage is limited today:**
-  - The CSP sets no `connect-src`, so scripts cannot make network requests.
-  - The page sends no messages to the extension host, so a script has nothing to call.
-  - Images can still load from any `https:` host, which the extension already allows.
-- **Options:**
-  - Correct the architecture text now. This costs nothing and should happen regardless.
-  - Replace the host allowlist with `'strict-dynamic'` so that only nonce-carrying scripts load more scripts. This needs a check in a real VS Code webview, because Mermaid loads through a dynamic `import()`.
-  - Escape raw HTML in the renderer. This is the simplest, and it breaks documents that use `<details>`, `<kbd>`, or `<img width>`.
+  - The CSP allowed scripts from `https://cdn.jsdelivr.net` by host, and `marked` passes raw HTML through. A `<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js">` in a document loaded and ran, and jsDelivr serves any npm or GitHub file.
+  - The damage was limited: no `connect-src`, and no message from the page to the host.
+- **What was built:**
+  - `script-src 'nonce-…' 'strict-dynamic'` in place of the host allowlist, `base-uri 'none'`, `form-action 'none'`, a `no-referrer` policy, and a `submit` guard in the page script.
+- **Evidence (2026-10-28, headless Chrome and a real VS Code Insiders window; Stable not yet checked):**
+  - The jsDelivr script, an unclosed `<script src>`, upper-case and SVG script forms all ran under the old policy and were blocked under the new one. Math, Mermaid and highlight.js still worked, including in a real VS Code webview.
+  - `<iframe>`, `<object>` and `<embed>` were already blocked by `default-src 'none'`.
+  - `form-action` is **not** enforced in VS Code's webview: a click on a raw `<form>` button navigated the preview away. The page script now cancels `submit`, which was verified in the real window.
+  - A raw `<meta http-equiv="refresh">` did not navigate the VS Code webview, so it needs no handling.
+  - A `<base>` tag did not change link resolution in the real window, and `base-uri 'none'` covers other browsers.
+  - Remote images get a `Referer` with the origin only, never the file path, so the `no-referrer` policy is cheap defense in depth rather than a leak fix.
+- **Alternatives rejected:**
+  - Stripping `<script>`, `<iframe>` and `<object>` from HTML tokens. A regex that needs `</script>` misses an unclosed `<script src>`, which is its own inline token and still loaded the library. Any tag list also trails what browsers accept. The CSP needs no list.
+  - Escaping all raw HTML. It breaks `<details>`, `<kbd>` and `<img width>`.
+  - Overriding the image renderer to add `referrerpolicy`. It would have to repeat `marked`'s escaping and miss raw `<img>` tags, where one `<meta>` tag covers both and CSS and fonts too.
+- **Still open:**
+  - Remote images, stylesheets and fonts load from any `https:` host, so a document can reveal the reader's IP address. This is how remote images work, and the privacy section of the readme says so.
 - **Reopen when:**
-  - Any change adds a message from the page to the extension host. Settle this first, because that channel is what makes a hostile script dangerous.
-- **Since D2 support:**
-  - `img-src` also admits the configured D2 renderer origin, so a hostile document can make the preview request an image from that one origin. The request is a plain `GET` for an image. No message channel was added.
-
-## Built
+  - Any change adds a message from the page to the extension host. A hostile script cannot run now, but the sender of any message still needs validating.
 
 ### D2 diagrams through a renderer URL
 
@@ -69,7 +71,7 @@ Last reviewed: 2026-10-27. Verdict: scoped pursue, approved by the maintainer. B
 - **Cost:**
   - About 150 lines of host code, one setting, one command, and one CSP source.
   - No new dependency: Node's `zlib` builds the address.
-  - No message from the page to the extension host, so the open question below stays unchanged.
+  - No message from the page to the extension host, so the script policy below stays unchanged.
 - **Premises checked on 2026-10-27:**
   - Kroki and the d2-renderer image accept `layout-engine`, `sketch`, `pad` and `theme-id` written in the diagram's `d2-config`. A diagram that names `tala` fails on Kroki, which does not bundle it.
   - Kroki returns a D2 compile error as an SVG that shows the message, so an `<img>` displays it. The d2-renderer image answers 400 with text, so the page shows its own failure box instead.
@@ -112,7 +114,7 @@ Last reviewed: 2026-10-27.
   - It needs `connect-src` for the renderer origin, and `blob:` in `img-src` if the SVG should still load through an `<img>`. Injecting the SVG into the page would let SVG scripts run and needs a sanitizer.
   - It needs the renderer to allow cross-origin reads. The d2-renderer image does, and a Kroki-compatible server may not.
   - The image path already shows the failure box, the source, and Kroki's own error pictures.
-  - It relates to the question under [Open question](#open-question), because a script on the page could then reach the renderer.
+  - It adds `connect-src`, which the script policy in [Script policy and raw HTML](#script-policy-and-raw-html) keeps closed.
 - **Reopen when:**
   - Users hit the 8,000-character limit, or ask for the compiler message in the preview.
 
@@ -139,7 +141,7 @@ Last reviewed: 2026-10-26.
   - Build both directions or neither. Editor-to-preview alone would feel half-finished and could confuse people who expect the reverse.
 - **Why it waits:**
   - The preview needs a source line for every rendered block. The renderer now runs on the `marked` token stream, and a probe showed that summing the newlines in each token's `raw` text gives the line of every top-level block. Headings already record it as `lineIndex`. Tagging every block is the remaining step.
-  - Preview-to-editor needs a message from the page to the extension host. That is a new input path, so it needs the CSP question above settled and a security review, and the host must accept only a whole-number line.
+  - Preview-to-editor needs a message from the page to the extension host. That is a new input path, so it needs a security review of that channel, and the host must accept only a whole-number line.
   - Both directions need loop guards, so that a programmatic scroll does not trigger the reverse scroll.
   - Mermaid and MathJax change block heights after the first render, so positions are measured at scroll time. A long code block needs interpolation between its first and last line.
   - The page script has no automated tests, so the manual smoke check grows.
@@ -183,7 +185,7 @@ Last reviewed: 2026-10-26.
   - The extension then has to validate every target path.
 - **Reopen when:**
   - A concrete workflow needs it.
-  - Plan it together with scroll sync and the CSP question, since all three share the message channel.
+  - Plan it together with scroll sync, since both share the message channel.
 
 ## Declined
 

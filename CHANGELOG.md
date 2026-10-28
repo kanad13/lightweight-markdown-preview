@@ -32,6 +32,10 @@ Planned as 1.7.0.
   - Documents with D2 wait 800 ms instead of 300 ms after an edit once a renderer is set, so the renderer is not asked after every keystroke.
 - **Security policy:**
   - The Content Security Policy admits the configured renderer origin for images, and never `http:` as a whole scheme.
+  - Scripts run only if they carry the render's nonce or a nonce-carrying script loads them (`'strict-dynamic'`). Before, a `<script src>` in a document that pointed at jsDelivr ran, and jsDelivr serves any npm or GitHub file. MathJax and Mermaid load as before.
+  - `base-uri 'none'` and `form-action 'none'` are added, the page cancels form submits itself because VS Code's webview does not enforce `form-action`, and the page sends no `Referer`.
+  - Raw HTML such as `<details>`, `<kbd>` and `<img width>` still works.
+  - New tests load the real page in headless Chrome and check each of these cases.
 - **Readme and listing:**
   - The readme is rewritten around what the extension does for diagram authors, with new screenshots.
   - The package description, keywords and categories match.
