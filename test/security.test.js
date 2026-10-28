@@ -157,7 +157,7 @@ function startBrowser() {
 		response.setHeader("content-type", "text/html");
 		response.end(body ?? "");
 	});
-	const port = 9400 + Math.floor(Math.random() * 400);
+	let port;
 	const profile = fs.mkdtempSync(path.join(os.tmpdir(), "lmp-security-"));
 	let chrome;
 
@@ -169,13 +169,25 @@ function startBrowser() {
 				[
 					"--headless=new",
 					"--disable-gpu",
-					`--remote-debugging-port=${port}`,
+					"--remote-debugging-port=0",
 					`--user-data-dir=${profile}`,
 					"--no-first-run",
+					"--disable-dev-shm-usage",
 					"about:blank",
 				],
 				{ stdio: "ignore" }
 			);
+			// Chrome picks a free port and writes it here, so a busy port cannot stop the run; a cold start on a CI runner can take several seconds
+			const portFile = path.join(profile, "DevToolsActivePort");
+			for (let i = 0; i < 150 && !port; i++) {
+				if (fs.existsSync(portFile)) {
+					port = Number(fs.readFileSync(portFile, "utf8").split("\n")[0]) || undefined;
+				}
+				if (!port) {
+					await sleep(200);
+				}
+			}
+			assert.ok(port, "Chrome did not report a DevTools port within 30 seconds");
 		},
 		/**
 		 * Opens a page, waits, and evaluates an expression in it.
@@ -239,8 +251,12 @@ function startBrowser() {
 				await exited;
 			}
 			server.close();
-			// Chrome's helper processes can still hold files for a moment; a leftover temp folder is harmless
-			fs.rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+			// Chrome's helper processes can still hold files for a moment; a leftover temp folder is harmless, so a failed cleanup must not fail the suite
+			try {
+				fs.rmSync(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 });
+			} catch {
+				// left behind in the temp directory
+			}
 		},
 	};
 }
