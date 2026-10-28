@@ -2,9 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
-
-Planned as 1.7.0.
+## [1.7.0] - 2026-10-28
 
 ### Added
 
@@ -23,6 +21,8 @@ Planned as 1.7.0.
   - A message and the diagram source replace it, and the diagrams around it keep working.
   - A diagram too large for a URL shows its source with a note.
   - While no renderer is set, a D2 fence stays an ordinary code block with one hint line, so documents without D2 look as before.
+- **Security policy:**
+  - `SECURITY.md` says how to report a vulnerability, what the preview protects, every network request it makes, and the known limits.
 
 ### Changed
 
@@ -37,8 +37,9 @@ Planned as 1.7.0.
   - Raw HTML such as `<details>`, `<kbd>` and `<img width>` still works.
   - New tests load the real page in headless Chrome and check each of these cases.
 - **Readme and listing:**
-  - The readme is rewritten around what the extension does for diagram authors, with new screenshots.
-  - The package description, keywords and categories match.
+  - The readme leads with a features table, then install, D2, Mermaid, math, and a security and privacy section that lists every network request.
+  - New screenshot of D2 source beside the drawn diagram.
+  - The package description and keywords match.
 
 ## [1.6.0] - 2026-10-26
 
