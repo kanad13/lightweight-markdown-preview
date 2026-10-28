@@ -88,7 +88,7 @@ Last reviewed: 2026-10-27. Verdict: scoped pursue, approved by the maintainer. B
   - Documents with D2 wait 800 ms after an edit instead of 300 ms once a renderer is set.
 - **Related:**
   - TALA is open source under D2's MPL-2.0 license and ships with D2 0.9.0, per D2's announcement (checked 2026-10-27). The d2-renderer image has it and Kroki does not.
-  - The published d2-renderer image is `linux/amd64` only, so Apple Silicon needs `--platform linux/amd64`. The docs say so.
+  - The published d2-renderer image is multi-architecture (`linux/amd64` and `linux/arm64`), so the same `docker run` works on Apple Silicon without a `--platform` flag (checked 2026-10-28).
 
 ## Deferred
 
