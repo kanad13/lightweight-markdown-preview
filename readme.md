@@ -1,8 +1,35 @@
-# Lightweight Markdown Preview
+# Lightweight Markdown Preview: Mermaid, D2 and Math in VS Code
 
-A small, private Markdown preview for VS Code. It draws Mermaid and D2 diagrams, LaTeX math and highlighted code beside your file, and it follows your color theme.
+A fast, private Markdown preview for VS Code, built for people who draw diagrams in Markdown. It renders **Mermaid** (GitHub and Azure DevOps syntax), **D2**, **LaTeX math** (MathJax) and **highlighted code** beside your file, follows your color theme, and sends no telemetry. The package is about 100 KB.
 
 ![A dark VS Code theme showing one document with a D2 network diagram, a Mermaid flowchart and a math formula](https://raw.githubusercontent.com/kanad13/lightweight-markdown-preview/main/assets/readme-hero-dark.png)
+
+## Why use it
+
+- **D2 diagrams:**
+  - [D2](https://d2lang.com) describes architecture, sequence and database diagrams as text. GitHub and VS Code's built-in preview do not draw it, and this extension does.
+  - You choose the renderer: a Docker container on your own machine, the public Kroki service, or your own server.
+- **Mermaid for GitHub and Azure DevOps:**
+  - It draws both the backtick fence and the `::: mermaid` block, so one source previews the same way for either platform.
+- **Math and code:**
+  - Inline and block LaTeX through MathJax, and syntax highlighting for fenced code.
+  - Prices such as "$5 and $10" and shell variables such as `$HOME` stay text.
+- **Private and locked down:**
+  - No telemetry or analytics, and your Markdown stays on your machine.
+  - The preview page runs only its own scripts, so a script in a Markdown file you open from the internet does not run. [Details below](#private-and-secure-by-design).
+- **Small and focused:**
+  - One setting, no plugins, one runtime dependency. It does one job: preview Markdown.
+
+## Install
+
+- **VS Code:**
+  - Search for "Lightweight Markdown Preview" in the Extensions view, or for `KunalPathak.lightweight-markdown-preview`.
+- **Forks such as Cursor and VSCodium:**
+  - Install from [Open VSX](https://open-vsx.org/extension/KunalPathak/lightweight-markdown-preview).
+  - Or download the `.vsix` from the [GitHub releases](https://github.com/kanad13/lightweight-markdown-preview/releases) and run **Extensions: Install from VSIX...**.
+- **Use it:**
+  - Open a Markdown file, then select the eye icon in the editor title bar, or run **Markdown: Show Lightweight Markdown Preview**.
+  - The preview updates as you type and follows the file you edit.
 
 ## Diagrams
 
@@ -59,28 +86,26 @@ A small, private Markdown preview for VS Code. It draws Mermaid and D2 diagrams,
 | :------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | ![A Mermaid flowchart and a formula in a dark theme](https://raw.githubusercontent.com/kanad13/lightweight-markdown-preview/main/assets/readme-theme-dark.png) | ![A Mermaid flowchart and a formula in a light theme](https://raw.githubusercontent.com/kanad13/lightweight-markdown-preview/main/assets/readme-theme-light.png) |
 
-## Install
+## Private and secure by design
 
-- **VS Code:**
-  - Search for "Lightweight Markdown Preview" in the Extensions view, or for `KunalPathak.lightweight-markdown-preview`.
-- **Forks such as Cursor and VSCodium:**
-  - Install from [Open VSX](https://open-vsx.org/extension/KunalPathak/lightweight-markdown-preview).
-  - Or download the `.vsix` from the [GitHub releases](https://github.com/kanad13/lightweight-markdown-preview/releases) and run **Extensions: Install from VSIX...**.
-- **Use it:**
-  - Open a Markdown file, then select the eye icon in the editor title bar, or run **Markdown: Show Lightweight Markdown Preview**.
-  - The preview updates as you type and follows the file you edit.
-
-## Private by design
+A Markdown file can hold HTML, so the preview treats every file as untrusted, including one from a cloned repository or an email attachment.
 
 - **Your text stays with you:**
-  - The preview has no telemetry and no analytics.
-  - Your Markdown stays on your machine.
-  - D2 diagrams go to the renderer you choose, which can also run on your machine.
-- **Locked-down page:**
-  - The page runs only scripts that carry a fresh random nonce.
-  - The preview escapes every piece of text that it inserts.
+  - No telemetry, no analytics and no accounts.
+  - Your Markdown stays on your machine. D2 diagrams go only to the renderer you choose, and you can run it on your machine.
+  - The renderer setting is a user setting, so a repository cannot point your diagrams at its own server.
+- **Only the preview's own scripts run:**
+  - The page runs a script only if it carries a fresh random nonce for that render, or if such a script loads it. A `<script>` tag, an inline handler or a `javascript:` link in a document does not run, whatever address it names.
+  - The preview escapes every piece of text that it inserts, and Mermaid runs at its strict security level.
+  - Frames, plugins, form submits and `<base>` redirects are blocked. The page sends no `Referer` header.
+  - Harmless HTML such as `<details>`, `<kbd>` and sized `<img>` tags still works.
+- **What it does not hide:**
+  - A remote image in a document is fetched from its host, which sees your IP address. That is how remote images work, so open files from sources you do not trust with that in mind.
+  - Mermaid and MathJax load from jsDelivr at pinned versions, so an offline machine shows their source text instead of the drawing.
 - **Restricted Mode:**
   - Workspace Trust is supported, so previews work in untrusted folders.
+- **Check it:**
+  - [architecture.md](docs/architecture.md) explains the security model, and tests load the real page in a browser against hostile documents.
 
 ## Not included
 
