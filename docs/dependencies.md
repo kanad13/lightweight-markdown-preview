@@ -55,16 +55,13 @@ The extension targets the current stable release of VS Code and carries no compa
   - The current stable VS Code release.
   - Insiders builds are not a target.
 - **Floor:**
-  - `engines.vscode` names the newest VS Code release that is at least 12 months old.
-  - A floor that follows the calendar keeps the extension from depending on legacy editors.
-  - A 12-month window still reaches editors that update slowly.
-- **Forks:**
-  - Cursor, Windsurf, and other forks run an older VS Code base than upstream.
-  - A fork refuses to install an extension whose `engines.vscode` is above its base.
-  - Check the fork's base version in its About dialog before you raise the floor.
+  - `engines.vscode` is the lowest base version among the forks the README advertises. Cursor is the lowest today, at 1.105.x, so every sibling extension uses 1.105.0.
+  - `@types/vscode` is pinned to exactly the floor, so type checking in the editor flags any API newer than the floor.
+  - A package test fails when the floor is above 1.105.0.
 - **Moving the floor:**
-  - At each quarterly review, raise `engines.vscode` and the exact `@types/vscode` pin together.
-  - Move both to the newest release that is at least 12 months old.
+  - Raise it only when the code needs a newer API, or when the lowest advertised fork rebases onto a newer base. Never raise it because of a date.
+  - Before raising it, read each fork's base version in its About dialog. A floor above a fork's base blocks installation there.
+  - Raise the floor, the `@types/vscode` pin, and the test ceiling together, in every sibling extension. Name the API in `decisions.md`.
 - **Release dates:**
   - Run `npm view @types/vscode time` to list VS Code release dates.
 
